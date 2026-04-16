@@ -131,6 +131,7 @@ export const SUPPORTED_SIMULATION_TYPES = [
   'spring_mass',
   'circular_motion',
   'collisions',
+  'wave_motion',
 ]
 
 export const SIMULATION_DISPLAY_NAMES = {
@@ -140,6 +141,7 @@ export const SIMULATION_DISPLAY_NAMES = {
   spring_mass: 'Spring-Mass System',
   circular_motion: 'Circular Motion',
   collisions: 'Collision Simulation',
+  wave_motion: 'Wave Motion',
   circuit: 'Electric Circuit',
   titration: 'Titration',
   combustion: 'Combustion',

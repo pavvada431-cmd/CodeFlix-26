@@ -5,6 +5,7 @@ import Pendulum from '../simulations/Pendulum'
 import SpringMass from '../simulations/SpringMass'
 import CircularMotion from '../simulations/CircularMotion'
 import Collisions from '../simulations/Collisions'
+import WaveMotion from '../simulations/WaveMotion'
 import { SUPPORTED_SIMULATION_TYPES, SIMULATION_DISPLAY_NAMES } from '../hooks/useSimulation'
 
 function SimulationNotSupported({ simulationType }) {
@@ -202,6 +203,15 @@ export default function SimulationRouter({
           isPlaying,
         }
 
+      case 'wave_motion':
+        return {
+          amplitude: variables.amplitude ?? 0.5,
+          frequency: variables.frequency ?? 1,
+          wavelength: variables.wavelength ?? 2,
+          waveType: variables.waveType ?? 'transverse',
+          isPlaying,
+        }
+
       default:
         return {}
     }
@@ -221,7 +231,7 @@ export default function SimulationRouter({
 
   const commonProps = {
     key: simulationKey,
-    onDataPoint: (simulationType === 'pendulum' || simulationType === 'spring_mass' || simulationType === 'circular_motion' || simulationType === 'collisions') ? onDataPoint : undefined,
+    onDataPoint: (simulationType === 'pendulum' || simulationType === 'spring_mass' || simulationType === 'circular_motion' || simulationType === 'collisions' || simulationType === 'wave_motion') ? onDataPoint : undefined,
   }
 
   switch (simulationType) {
@@ -242,6 +252,9 @@ export default function SimulationRouter({
 
     case 'collisions':
       return <Collisions {...simulationProps} {...commonProps} />
+
+    case 'wave_motion':
+      return <WaveMotion {...simulationProps} {...commonProps} />
 
     default:
       return <SimulationNotSupported simulationType={simulationType} />
