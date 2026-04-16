@@ -1,4 +1,37 @@
-function Navbar({ activeDomain, onDomainChange, onDemoMode }) {
+import { useState } from 'react'
+import { encodeProblemToURL, encodeDemoToURL, copyToClipboard } from '../utils/share'
+import { showSuccess, showError } from '../utils/toast'
+
+function Navbar({ activeDomain, onDomainChange, onDemoMode, parsedData, demoId }) {
+  const [isSharing, setIsSharing] = useState(false)
+
+  const handleShare = async () => {
+    setIsSharing(true)
+
+    try {
+      let url
+      if (demoId) {
+        url = encodeDemoToURL(demoId)
+      } else if (parsedData) {
+        const problemText = parsedData.steps?.join(' ') || ''
+        url = encodeProblemToURL(problemText)
+      }
+
+      if (url) {
+        const success = await copyToClipboard(url)
+        if (success) {
+          showSuccess('Link copied to clipboard!')
+        } else {
+          showError('Failed to copy link')
+        }
+      }
+    } catch {
+      showError('Failed to generate share link')
+    } finally {
+      setIsSharing(false)
+    }
+  }
+
   return (
     <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0a0f1e]/80 backdrop-blur-xl">
       <div className="relative mx-auto flex max-w-[1800px] flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
@@ -48,6 +81,19 @@ function Navbar({ activeDomain, onDomainChange, onDemoMode }) {
           >
             Demo Mode
           </button>
+
+          {(parsedData || demoId) && (
+            <button
+              onClick={handleShare}
+              disabled={isSharing}
+              className="flex items-center gap-2 rounded-full border border-[rgba(0,245,255,0.25)] bg-[rgba(0,245,255,0.08)] px-4 py-2 font-mono-display text-xs uppercase tracking-[0.2em] text-[#00f5ff] transition hover:border-[rgba(0,245,255,0.4)] hover:bg-[rgba(0,245,255,0.15)] disabled:opacity-50"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              Share
+            </button>
+          )}
 
           <a
             href="https://github.com/pavvada431-cmd/CodeFlix-26"

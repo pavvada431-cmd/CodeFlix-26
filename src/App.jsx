@@ -6,7 +6,10 @@ import GraphPanel from './components/GraphPanel'
 import SimulationRouter from './components/SimulationRouter'
 import ErrorBoundary from './components/ErrorBoundary'
 import ToastContainer from './components/Toast'
+import SplashScreen from './components/SplashScreen'
 import useSimulation from './hooks/useSimulation'
+import { decodeDemoFromURL } from './utils/share'
+import { getRandomDemo } from './data/demos'
 
 const LOADING_MESSAGES = [
   'Reading problem...',
@@ -125,10 +128,23 @@ function App() {
   const simulation = useSimulation()
   const [activeDomain, setActiveDomain] = useState('physics')
   const [showDemoOverlay, setShowDemoOverlay] = useState(false)
+  const [showSplash, setShowSplash] = useState(true)
+
+  useEffect(() => {
+    const demoFromURL = decodeDemoFromURL()
+    if (demoFromURL) {
+      simulation.solve(demoFromURL.parsedData)
+    }
+  }, [simulation])
+
+  const handleSplashComplete = useCallback(() => {
+    setShowSplash(false)
+  }, [])
 
   const handleDemoMode = useCallback(() => {
+    const demo = getRandomDemo()
     setShowDemoOverlay(true)
-    simulation.solve('A 10kg block slides down a 30-degree frictionless incline. Find its acceleration.')
+    simulation.solve(demo.parsedData)
     setTimeout(() => setShowDemoOverlay(false), 2000)
   }, [simulation])
 
@@ -139,13 +155,19 @@ function App() {
   const hasSolved = !!simulation.parsedData
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0a0f1e] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(0,245,255,0.08),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(0,245,255,0.05),transparent_35%)]" />
+    <>
+      <SplashScreen onComplete={handleSplashComplete} />
+
+      {showSplash && <div className="hidden" />} {/* Prevent main content flash */}
+
+      <div className={`relative min-h-screen overflow-hidden bg-[#0a0f1e] text-white transition-opacity duration-500 ${showSplash ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(0,245,255,0.08),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(0,245,255,0.05),transparent_35%)]" />
 
       <Navbar
         activeDomain={activeDomain}
         onDomainChange={setActiveDomain}
         onDemoMode={handleDemoMode}
+        parsedData={simulation.parsedData}
       />
 
       <main className="relative mx-auto flex min-h-[calc(100vh-80px)] max-w-[1800px] gap-4 px-4 pb-4 lg:px-6">
@@ -266,8 +288,9 @@ function App() {
           }
         }
       `}</style>
-    </div>
-  )
+      </div>
+      </>
+    )
 }
 
 export default App
