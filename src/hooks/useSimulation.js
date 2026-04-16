@@ -128,12 +128,14 @@ export const SUPPORTED_SIMULATION_TYPES = [
   'inclined_plane',
   'projectile',
   'pendulum',
+  'spring_mass',
 ]
 
 export const SIMULATION_DISPLAY_NAMES = {
   inclined_plane: 'Inclined Plane',
   projectile: 'Projectile Motion',
   pendulum: 'Simple Pendulum',
+  spring_mass: 'Spring-Mass System',
   circuit: 'Electric Circuit',
   titration: 'Titration',
   combustion: 'Combustion',

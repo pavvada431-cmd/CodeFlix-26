@@ -99,6 +99,40 @@ export const DEMO_PROBLEMS = [
     },
   },
   {
+    id: 'spring-mass-shm',
+    label: 'Spring-Mass Oscillator',
+    problemText: 'A 2kg mass attached to a spring with k=50 N/m is pulled down 0.5m and released. Find the period and total energy.',
+    parsedData: {
+      domain: 'physics',
+      type: 'spring_mass',
+      variables: {
+        springConstant: 50,
+        mass: 2,
+        initialDisplacement: 0.5,
+        damping: 0,
+      },
+      units: {
+        springConstant: 'N/m',
+        mass: 'kg',
+        initialDisplacement: 'm',
+        damping: 'coefficient',
+      },
+      formula: 'T = 2π√(m/k) = 2π√(2/50) = 1.256 s',
+      steps: [
+        'Angular frequency: ω = √(k/m) = √(50/2) = 5 rad/s',
+        'Period: T = 2π/ω = 2π/5 = 1.26 s',
+        'Frequency: f = 1/T = 0.796 Hz',
+        'Total mechanical energy: E = ½kA² = ½ × 50 × 0.5² = 6.25 J',
+        'Maximum velocity: v_max = ωA = 5 × 0.5 = 2.5 m/s',
+      ],
+      answer: {
+        value: 1.256,
+        unit: 's',
+        explanation: 'The mass oscillates with a period of 1.26 seconds. The total mechanical energy is 6.25 J, which remains constant (undamped case).',
+      },
+    },
+  },
+  {
     id: 'inclined-friction',
     label: 'Incline with Friction',
     problemText: 'A 5kg block slides down a 25-degree incline with coefficient of friction 0.3. Find the acceleration.',

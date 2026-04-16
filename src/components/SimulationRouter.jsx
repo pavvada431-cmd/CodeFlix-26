@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import InclinedPlane from '../simulations/InclinedPlane'
 import ProjectileMotion from '../simulations/ProjectileMotion'
 import Pendulum from '../simulations/Pendulum'
+import SpringMass from '../simulations/SpringMass'
 import { SUPPORTED_SIMULATION_TYPES, SIMULATION_DISPLAY_NAMES } from '../hooks/useSimulation'
 
 function SimulationNotSupported({ simulationType }) {
@@ -172,6 +173,15 @@ export default function SimulationRouter({
           isPlaying,
         }
 
+      case 'spring_mass':
+        return {
+          springConstant: variables.springConstant ?? variables.k ?? 50,
+          mass: variables.mass ?? 2,
+          initialDisplacement: variables.displacement ?? variables.initialDisplacement ?? 0.5,
+          damping: variables.damping ?? 0,
+          isPlaying,
+        }
+
       default:
         return {}
     }
@@ -191,7 +201,7 @@ export default function SimulationRouter({
 
   const commonProps = {
     key: simulationKey,
-    onDataPoint: simulationType === 'pendulum' ? onDataPoint : undefined,
+    onDataPoint: (simulationType === 'pendulum' || simulationType === 'spring_mass') ? onDataPoint : undefined,
   }
 
   switch (simulationType) {
@@ -203,6 +213,9 @@ export default function SimulationRouter({
 
     case 'pendulum':
       return <Pendulum {...simulationProps} {...commonProps} />
+
+    case 'spring_mass':
+      return <SpringMass {...simulationProps} {...commonProps} />
 
     default:
       return <SimulationNotSupported simulationType={simulationType} />
