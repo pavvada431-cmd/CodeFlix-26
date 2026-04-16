@@ -1,5 +1,5 @@
 import { useRef, useEffect, useMemo, useState } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import Matter from 'matter-js';
 
@@ -60,8 +60,6 @@ function GroundGrid() {
       const x = m * SCALE;
       vertices.push(x, 0.001, -0.5 * SCALE);
       vertices.push(x, 0.001, 0.5 * SCALE);
-
-      const label = m.toString();
     }
 
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
@@ -128,15 +126,13 @@ function LaunchPlatform({ initialHeight }) {
 function PredictedTrajectory({ initialVelocity, launchAngle, initialHeight }) {
   const lineRef = useRef();
 
-  const { curve, geometry } = useMemo(() => {
+  const geometry = useMemo(() => {
     const points = calculateTrajectoryPoints(initialVelocity, launchAngle, initialHeight);
-    if (points.length < 2) return { curve: null, geometry: null };
+    if (points.length < 2) return null;
 
     const curve = new THREE.CatmullRomCurve3(points);
     const curvePoints = curve.getPoints(100);
-    const geometry = new THREE.BufferGeometry().setFromPoints(curvePoints);
-
-    return { curve, geometry };
+    return new THREE.BufferGeometry().setFromPoints(curvePoints);
   }, [initialVelocity, launchAngle, initialHeight]);
 
   if (!geometry) return null;
@@ -199,7 +195,6 @@ function BallSprite({ text, offsetY = 0.5 }) {
 }
 
 function MaxHeightLabel({ visible }) {
-  const spriteRef = useRef();
   const [opacity, setOpacity] = useState(0);
 
   useFrame(() => {
@@ -265,9 +260,10 @@ function DustParticle({ position, velocity, opacity }) {
 function DustBurst({ position, active }) {
   const [particles, setParticles] = useState([]);
   const [opacity, setOpacity] = useState(0);
+  const [initialized, setInitialized] = useState(false);
 
-  useEffect(() => {
-    if (active && particles.length === 0) {
+  useFrame(() => {
+    if (active && !initialized) {
       const newParticles = [];
       for (let i = 0; i < 20; i++) {
         const angle = (Math.random() * Math.PI * 2);
@@ -284,12 +280,15 @@ function DustBurst({ position, active }) {
       }
       setParticles(newParticles);
       setOpacity(1);
+      setInitialized(true);
     }
-  }, [active, position, particles.length]);
-
-  useFrame(() => {
+    if (!active) {
+      setInitialized(false);
+      setParticles([]);
+      setOpacity(0);
+    }
     if (opacity > 0 && particles.length > 0) {
-      setOpacity(Math.max(0, opacity - 0.02));
+      setOpacity(prev => Math.max(0, prev - 0.02));
     }
   });
 
@@ -305,14 +304,14 @@ function DustBurst({ position, active }) {
           opacity={opacity}
         />
       ))}
-    </>  );
+    </>
+  );
 }
 
 function SimulationScene({ initialVelocity, launchAngle, initialHeight, isPlaying }) {
   const ballRef = useRef();
   const engineRef = useRef();
   const ballBodyRef = useRef();
-  const { scene } = useThree();
 
   const [trailPoints, setTrailPoints] = useState([]);
   const [hasLanded, setHasLanded] = useState(false);
@@ -325,6 +324,8 @@ function SimulationScene({ initialVelocity, launchAngle, initialHeight, isPlayin
   const [ballPosition, setBallPosition] = useState({ x: 0, y: initialHeight * SCALE, z: 0 });
 
   const prevHeight = useRef(initialHeight);
+  const needsResetRef = useRef(false);
+  const prevIsPlayingRef = useRef(false);
 
   useEffect(() => {
     const Engine = Matter.Engine;
@@ -359,7 +360,17 @@ function SimulationScene({ initialVelocity, launchAngle, initialHeight, isPlayin
   }, [initialVelocity, launchAngle, initialHeight]);
 
   useEffect(() => {
-    if (isPlaying && ballBodyRef.current) {
+    if (isPlaying && !prevIsPlayingRef.current) {
+      needsResetRef.current = true;
+    }
+    prevIsPlayingRef.current = isPlaying;
+  }, [isPlaying, initialVelocity, launchAngle, initialHeight]);
+
+  useFrame((state, delta) => {
+    if (!engineRef.current || !ballBodyRef.current) return;
+
+    if (needsResetRef.current && isPlaying) {
+      needsResetRef.current = false;
       const angleRad = (launchAngle * Math.PI) / 180;
       Matter.Body.setVelocity(ballBodyRef.current, {
         x: initialVelocity * SCALE * Math.cos(angleRad),
@@ -378,10 +389,8 @@ function SimulationScene({ initialVelocity, launchAngle, initialHeight, isPlayin
       setDustActive(false);
       setBallPosition({ x: 0.5 * SCALE, y: initialHeight * SCALE, z: 0 });
     }
-  }, [isPlaying, initialVelocity, launchAngle, initialHeight]);
 
-  useFrame((state, delta) => {
-    if (!isPlaying || !engineRef.current || !ballBodyRef.current) return;
+    if (!isPlaying) return;
 
     Matter.Engine.update(engineRef.current, delta * 1000);
 
