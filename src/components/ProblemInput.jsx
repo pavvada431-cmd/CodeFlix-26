@@ -1,5 +1,6 @@
 import { useRef, useState, useMemo } from 'react'
 import { sanitizeInput } from '../utils/validator'
+import { parseProblem } from '../utils/problemParser'
 
 const MAX_INPUT_LENGTH = 500
 const AI_PROVIDERS = [
@@ -80,7 +81,11 @@ function ProblemInput({
 }) {
   const textareaRef = useRef(null)
   const [problemText, setProblemText] = useState('')
-  const [errorMessage, setErrorMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+  const [connected, setConnected] = useState(true)
+  const isBusy = isLoading || loading
 
   const sanitizedText = useMemo(() => {
     return sanitizeInput(problemText)
@@ -92,23 +97,45 @@ function ProblemInput({
 
   const handleExampleClick = (text) => {
     setProblemText(text)
-    setErrorMessage('')
+    setError('')
+    setSuccess(false)
     textareaRef.current?.focus()
   }
 
-  const handleSolve = () => {
+  const handleSolve = async () => {
     const trimmedProblem = sanitizedText.trim()
 
     if (!trimmedProblem) {
-      setErrorMessage('Describe a problem before starting the parser.')
+      setError('Describe a problem before starting the parser.')
+      setSuccess(false)
       textareaRef.current?.focus()
       return
     }
 
-    setErrorMessage('')
+    setLoading(true)
+    setError('')
+    setSuccess(false)
 
-    if (typeof onSolved === 'function') {
-      onSolved(trimmedProblem)
+    try {
+      const parsedData = await parseProblem(trimmedProblem, provider)
+      console.log('PARSED DATA:', parsedData)
+
+      if (!parsedData?.type || !parsedData?.variables || typeof parsedData.variables !== 'object') {
+        throw new Error('Parsed data is missing required fields: type and variables')
+      }
+
+      setConnected(true)
+      setSuccess(true)
+
+      if (typeof onSolved === 'function') {
+        onSolved(parsedData)
+      }
+    } catch (solveError) {
+      setConnected(false)
+      setError(solveError?.message || 'Failed to parse problem')
+      setSuccess(false)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -130,9 +157,10 @@ function ProblemInput({
 
     setProblemText(value)
 
-    if (errorMessage) {
-      setErrorMessage('')
+    if (error) {
+      setError('')
     }
+    setSuccess(false)
   }
 
   return (
@@ -161,7 +189,7 @@ function ProblemInput({
             <select
               id="ai-provider"
               value={provider}
-              disabled={isLoading}
+              disabled={isBusy}
               onChange={(event) => onProviderChange?.(event.target.value)}
               className="mt-2 min-w-[230px] rounded-xl border border-white/10 bg-[#0b1324]/90 px-3 py-2 font-mono-display text-xs text-slate-200 outline-none transition focus:border-[rgba(0,245,255,0.45)] focus:bg-[rgba(0,245,255,0.08)] disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -171,6 +199,15 @@ function ProblemInput({
                 </option>
               ))}
             </select>
+            <div className="mt-2 flex justify-end">
+              <span className={`rounded-full border px-2 py-1 font-mono-display text-[10px] uppercase tracking-[0.18em] ${
+                connected
+                  ? 'border-[rgba(52,211,153,0.45)] bg-[rgba(52,211,153,0.15)] text-emerald-300'
+                  : 'border-[rgba(248,113,113,0.45)] bg-[rgba(248,113,113,0.15)] text-red-300'
+              }`}>
+                API: {connected ? 'Connected' : 'Error'}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -187,7 +224,7 @@ function ProblemInput({
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               placeholder="Describe your physics or chemistry problem... e.g. 'A 10kg block slides down a 30-degree frictionless incline'"
-              disabled={isLoading}
+              disabled={isBusy}
               maxLength={MAX_INPUT_LENGTH}
               className="min-h-48 w-full resize-none rounded-[18px] border border-transparent bg-transparent px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
             />
@@ -210,7 +247,7 @@ function ProblemInput({
                 key={example.label}
                 type="button"
                 onClick={() => handleExampleClick(example.text)}
-                disabled={isLoading}
+                disabled={isBusy}
                 className="rounded-full border border-[rgba(255,255,255,0.1)] bg-white/5 px-3 py-1.5 font-mono-display text-[10px] uppercase tracking-[0.18em] text-[#8892a4] transition hover:border-[rgba(0,245,255,0.3)] hover:bg-[rgba(0,245,255,0.08)] hover:text-[#00f5ff] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {example.label}
@@ -223,19 +260,31 @@ function ProblemInput({
           <button
             type="button"
             onClick={handleSolve}
-            disabled={isLoading || !sanitizedText.trim()}
+            disabled={isBusy || !sanitizedText.trim()}
             className="inline-flex items-center justify-center gap-3 rounded-xl border border-[rgba(0,245,255,0.35)] bg-[linear-gradient(135deg,rgba(0,245,255,0.2),rgba(0,245,255,0.1))] px-5 py-3 font-heading text-base font-semibold tracking-wide text-[#dffeff] shadow-[0_0_20px_rgba(0,245,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:-translate-y-0.5 hover:shadow-[0_0_28px_rgba(0,245,255,0.25),inset_0_1px_0_rgba(255,255,255,0.15)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <span className="h-2 w-2 rounded-full bg-[#00f5ff] shadow-[0_0_12px_rgba(0,245,255,0.8)]" />
-            Solve &amp; Simulate
+            {loading ? 'Parsing...' : 'Solve &amp; Simulate'}
           </button>
 
-          {errorMessage ? (
+          {loading ? (
+            <p className="rounded-xl border border-[rgba(56,189,248,0.25)] bg-[rgba(7,89,133,0.2)] px-4 py-2 text-sm text-cyan-300">
+              Parsing...
+            </p>
+          ) : null}
+
+          {success ? (
+            <p className="rounded-xl border border-[rgba(52,211,153,0.25)] bg-[rgba(6,78,59,0.2)] px-4 py-2 text-sm text-emerald-300">
+              Parsed successfully
+            </p>
+          ) : null}
+
+          {error ? (
             <p
               role="alert"
               className="rounded-xl border border-[rgba(248,113,113,0.25)] bg-[rgba(127,29,29,0.2)] px-4 py-2 text-sm text-red-300"
             >
-              {errorMessage}
+              {error}
             </p>
           ) : null}
         </div>

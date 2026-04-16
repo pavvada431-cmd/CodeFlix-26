@@ -500,6 +500,7 @@ export default function App() {
             >
               <ErrorBoundary onReset={simulation.reset}>
                 <SimulationRouter
+                  parsedData={simulation.parsedData}
                   simulationType={simulation.activeSimulation}
                   variables={simulation.currentVariables}
                   isPlaying={simulation.isPlaying}

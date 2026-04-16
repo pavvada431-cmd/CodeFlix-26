@@ -7,6 +7,8 @@ app.use(cors())
 app.use(express.json())
 
 app.post('/api/ai', async (req, res) => {
+  console.log('Incoming request:', req.body)
+
   try {
     const {
       provider = 'anthropic',
@@ -21,9 +23,11 @@ app.post('/api/ai', async (req, res) => {
       })
     }
 
-    const result = await callAI(provider, messages, options)
-    return res.json(result)
+    const response = await callAI(provider, messages, options)
+    console.log('AI response:', response?.data ?? response)
+    return res.json(response)
   } catch (error) {
+    console.error('API ERROR:', error?.response?.data || error?.message)
     const status = Number.isInteger(error?.status) ? error.status : 500
     return res.status(status).json({
       error: 'AI request failed',

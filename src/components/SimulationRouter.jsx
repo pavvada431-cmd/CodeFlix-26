@@ -120,35 +120,8 @@ function LoadingSimulation() {
   )
 }
 
-function SimulationPlaceholder() {
-  return (
-    <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-dashed border-white/20 bg-[#07111f]/60 p-8 text-center">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/5">
-        <svg
-          className="h-8 w-8 text-slate-500"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-          />
-        </svg>
-      </div>
-      <h3 className="mb-2 font-heading text-xl font-semibold text-white">
-        No Simulation Loaded
-      </h3>
-      <p className="max-w-sm text-sm text-slate-400">
-        Parse a physics problem to generate an interactive simulation
-      </p>
-    </div>
-  )
-}
-
 export default function SimulationRouter({
+  parsedData,
   simulationType,
   variables,
   isPlaying,
@@ -158,163 +131,168 @@ export default function SimulationRouter({
   particleMultiplier = 1,
   accentColor = '#00f5ff',
 }) {
-  const simulationProps = useMemo(() => {
-    if (!variables) return {}
+  console.log('Simulation type:', parsedData?.type)
 
-    switch (simulationType) {
+  const resolvedSimulationType = parsedData?.type ?? simulationType
+  const resolvedVariables = variables ?? parsedData?.variables
+
+  const simulationProps = useMemo(() => {
+    if (!resolvedVariables) return {}
+
+    switch (resolvedSimulationType) {
       case 'inclined_plane':
         return {
-          mass: variables.mass ?? 10,
-          angle: variables.angle ?? 30,
-          friction: variables.friction ?? 0,
+          mass: resolvedVariables.mass ?? 10,
+          angle: resolvedVariables.angle ?? 30,
+          friction: resolvedVariables.friction ?? 0,
           isPlaying,
         }
 
       case 'projectile':
         return {
-          initialVelocity: variables.velocity ?? variables.initialVelocity ?? 30,
-          launchAngle: variables.angle ?? 45,
-          height: variables.height ?? 2,
+          initialVelocity: resolvedVariables.velocity ?? resolvedVariables.initialVelocity ?? 30,
+          launchAngle: resolvedVariables.angle ?? 45,
+          height: resolvedVariables.height ?? 2,
           isPlaying,
         }
 
       case 'pendulum':
         return {
-          length: variables.length ?? 2,
-          mass: variables.mass ?? 1,
-          initialAngle: variables.angle ?? 30,
-          damping: variables.damping ?? 0,
+          length: resolvedVariables.length ?? 2,
+          mass: resolvedVariables.mass ?? 1,
+          initialAngle: resolvedVariables.angle ?? 30,
+          damping: resolvedVariables.damping ?? 0,
           isPlaying,
         }
 
       case 'spring_mass':
         return {
-          springConstant: variables.springConstant ?? variables.k ?? 50,
-          mass: variables.mass ?? 2,
-          initialDisplacement: variables.displacement ?? variables.initialDisplacement ?? 0.5,
-          damping: variables.damping ?? 0,
+          springConstant: resolvedVariables.springConstant ?? resolvedVariables.k ?? 50,
+          mass: resolvedVariables.mass ?? 2,
+          initialDisplacement: resolvedVariables.displacement ?? resolvedVariables.initialDisplacement ?? 0.5,
+          damping: resolvedVariables.damping ?? 0,
           isPlaying,
         }
 
       case 'circular_motion':
         return {
-          radius: variables.radius ?? 2,
-          mass: variables.mass ?? 1,
-          angularVelocity: variables.angularVelocity ?? variables.omega ?? 2,
+          radius: resolvedVariables.radius ?? 2,
+          mass: resolvedVariables.mass ?? 1,
+          angularVelocity: resolvedVariables.angularVelocity ?? resolvedVariables.omega ?? 2,
           isPlaying,
         }
 
       case 'collisions':
         return {
-          mass1: variables.mass1 ?? 1,
-          mass2: variables.mass2 ?? 1,
-          velocity1: variables.velocity1 ?? 5,
-          velocity2: variables.velocity2 ?? -5,
-          collisionType: variables.collisionType ?? 'elastic',
+          mass1: resolvedVariables.mass1 ?? 1,
+          mass2: resolvedVariables.mass2 ?? 1,
+          velocity1: resolvedVariables.velocity1 ?? 5,
+          velocity2: resolvedVariables.velocity2 ?? -5,
+          collisionType: resolvedVariables.collisionType ?? 'elastic',
           isPlaying,
         }
 
       case 'wave_motion':
         return {
-          amplitude: variables.amplitude ?? 0.5,
-          frequency: variables.frequency ?? 1,
-          wavelength: variables.wavelength ?? 2,
-          waveType: variables.waveType ?? 'transverse',
+          amplitude: resolvedVariables.amplitude ?? 0.5,
+          frequency: resolvedVariables.frequency ?? 1,
+          wavelength: resolvedVariables.wavelength ?? 2,
+          waveType: resolvedVariables.waveType ?? 'transverse',
           isPlaying,
         }
 
       case 'rotational_mechanics':
         return {
-          objectType: variables.objectType ?? 'disk',
-          mass: variables.mass ?? 2,
-          radius: variables.radius ?? 1,
-          appliedForce: variables.force ?? variables.appliedForce ?? 10,
-          forcePosition: variables.forcePosition ?? 90,
+          objectType: resolvedVariables.objectType ?? 'disk',
+          mass: resolvedVariables.mass ?? 2,
+          radius: resolvedVariables.radius ?? 1,
+          appliedForce: resolvedVariables.force ?? resolvedVariables.appliedForce ?? 10,
+          forcePosition: resolvedVariables.forcePosition ?? 90,
           isPlaying,
         }
 
       case 'orbital':
         return {
-          centralMass: variables.centralMass ?? 100,
-          orbitingMass: variables.orbitingMass ?? 1,
-          initialDistance: variables.distance ?? variables.initialDistance ?? 5,
-          initialVelocity: variables.velocity ?? variables.initialVelocity ?? 1,
+          centralMass: resolvedVariables.centralMass ?? 100,
+          orbitingMass: resolvedVariables.orbitingMass ?? 1,
+          initialDistance: resolvedVariables.distance ?? resolvedVariables.initialDistance ?? 5,
+          initialVelocity: resolvedVariables.velocity ?? resolvedVariables.initialVelocity ?? 1,
           isPlaying,
         }
 
       case 'buoyancy':
         return {
-          fluidDensity: variables.fluidDensity ?? 1000,
-          objectDensity: variables.objectDensity ?? 800,
-          objectVolume: variables.volume ?? 0.125,
-          objectShape: variables.objectShape ?? 'sphere',
+          fluidDensity: resolvedVariables.fluidDensity ?? 1000,
+          objectDensity: resolvedVariables.objectDensity ?? 800,
+          objectVolume: resolvedVariables.volume ?? 0.125,
+          objectShape: resolvedVariables.objectShape ?? 'sphere',
           isPlaying,
         }
 
       case 'ideal_gas':
         return {
-          numParticles: variables.numParticles ?? 50,
-          temperature: variables.temperature ?? 300,
-          volume: variables.volume ?? 8,
+          numParticles: resolvedVariables.numParticles ?? 50,
+          temperature: resolvedVariables.temperature ?? 300,
+          volume: resolvedVariables.volume ?? 8,
           isPlaying,
         }
 
       case 'electric_field':
         return {
-          charges: variables.charges ?? [{ x: -1, y: 0, q: 1e-6 }, { x: 1, y: 0, q: -1e-6 }],
+          charges: resolvedVariables.charges ?? [{ x: -1, y: 0, q: 1e-6 }, { x: 1, y: 0, q: -1e-6 }],
           isPlaying,
         }
 
       case 'optics_lens':
         return {
-          lensType: variables.lensType ?? 'convex',
-          focalLength: variables.focalLength ?? 2,
-          objectDistance: variables.objectDistance ?? 4,
-          objectHeight: variables.objectHeight ?? 1,
+          lensType: resolvedVariables.lensType ?? 'convex',
+          focalLength: resolvedVariables.focalLength ?? 2,
+          objectDistance: resolvedVariables.objectDistance ?? 4,
+          objectHeight: resolvedVariables.objectHeight ?? 1,
           isPlaying,
         }
 
       case 'optics_mirror':
         return {
           lensType: 'mirror',
-          focalLength: variables.focalLength ?? 2,
-          objectDistance: variables.objectDistance ?? 4,
-          objectHeight: variables.objectHeight ?? 1,
+          focalLength: resolvedVariables.focalLength ?? 2,
+          objectDistance: resolvedVariables.objectDistance ?? 4,
+          objectHeight: resolvedVariables.objectHeight ?? 1,
           isPlaying,
         }
 
       case 'radioactive_decay':
         return {
-          initialAtoms: variables.initialAtoms ?? 100,
-          halfLife: variables.halfLife ?? 5,
-          decayType: variables.decayType ?? 'alpha',
+          initialAtoms: resolvedVariables.initialAtoms ?? 100,
+          halfLife: resolvedVariables.halfLife ?? 5,
+          decayType: resolvedVariables.decayType ?? 'alpha',
           isPlaying,
         }
 
       case 'electromagnetic':
         return {
-          charge: variables.charge ?? 1.6e-19,
-          velocity: variables.velocity ?? 1e6,
-          magneticField: variables.magneticField ?? 0.5,
-          electricField: variables.electricField ?? 0,
+          charge: resolvedVariables.charge ?? 1.6e-19,
+          velocity: resolvedVariables.velocity ?? 1e6,
+          magneticField: resolvedVariables.magneticField ?? 0.5,
+          electricField: resolvedVariables.electricField ?? 0,
           isPlaying,
         }
 
       default:
         return {}
     }
-  }, [simulationType, variables, isPlaying])
+  }, [resolvedSimulationType, resolvedVariables, isPlaying])
 
   if (isLoading) {
     return <LoadingSimulation />
   }
 
-  if (!simulationType) {
-    return <SimulationPlaceholder />
+  if (!parsedData || !parsedData.type) {
+    return <div style={{ color: 'red' }}>No simulation data available</div>
   }
 
-  if (!SUPPORTED_SIMULATION_TYPES.includes(simulationType)) {
-    return <SimulationNotSupported simulationType={simulationType} />
+  if (!SUPPORTED_SIMULATION_TYPES.includes(resolvedSimulationType)) {
+    return <SimulationNotSupported simulationType={resolvedSimulationType} />
   }
 
   const commonProps = {
@@ -325,7 +303,7 @@ export default function SimulationRouter({
   }
 
   const renderSimulation = () => {
-    switch (simulationType) {
+    switch (resolvedSimulationType) {
       case 'inclined_plane':
         return <InclinedPlane {...simulationProps} {...commonProps} />
       case 'projectile':
@@ -358,14 +336,19 @@ export default function SimulationRouter({
       case 'electromagnetic':
         return <MagneticFields {...simulationProps} {...commonProps} />
       default:
-        return <SimulationNotSupported simulationType={simulationType} />
+        return <SimulationNotSupported simulationType={resolvedSimulationType} />
     }
   }
 
   return (
-    <Suspense fallback={<LoadingSimulation />}>
-      {renderSimulation()}
-    </Suspense>
+    <div className="relative h-full">
+      <div style={{ position: 'absolute', top: 10, left: 10 }}>
+        Active Simulation: {resolvedSimulationType}
+      </div>
+      <Suspense fallback={<LoadingSimulation />}>
+        {renderSimulation()}
+      </Suspense>
+    </div>
   )
 }
 

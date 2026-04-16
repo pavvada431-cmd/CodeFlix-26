@@ -178,35 +178,55 @@ function parseModelJson(rawText) {
 }
 
 async function requestProblemParse(problemText, systemPrompt, provider) {
-  const response = await fetch(AI_PROXY_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      provider,
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        {
-          role: 'user',
-          content: problemText.trim(),
-        },
-      ],
-      options: {
-        max_tokens: 1200,
-        temperature: 0,
+  const requestPayload = {
+    provider,
+    messages: [
+      {
+        role: 'system',
+        content: systemPrompt,
       },
-    }),
-  })
+      {
+        role: 'user',
+        content: problemText.trim(),
+      },
+    ],
+    options: {
+      max_tokens: 1200,
+      temperature: 0,
+    },
+  }
 
-  const payload = await response.json().catch(() => ({}))
+  console.log('Parser request payload:', requestPayload)
+
+  let response
+  try {
+    response = await fetch(AI_PROXY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestPayload),
+    })
+  } catch (error) {
+    throw new Error(`Failed to reach API: ${error?.message ?? 'Unknown network error'}`)
+  }
+
+  let payload
+  try {
+    payload = await response.json()
+  } catch {
+    throw new Error(`Invalid API response format (status ${response.status})`)
+  }
+
+  console.log('Parser raw API response:', payload)
 
   if (!response.ok) {
     const errorMessage = payload?.message ?? payload?.error ?? 'AI request failed'
     throw new Error(`API Error (${response.status}): ${errorMessage}`)
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('AI provider returned an invalid response payload')
   }
 
   const responseText = typeof payload?.content === 'string' ? payload.content.trim() : ''
@@ -223,6 +243,7 @@ async function parseWithRetry(problemText, systemPrompt, provider, maxRetries = 
   try {
     const rawResponse = await requestProblemParse(problemText, systemPrompt, provider)
     const parsedProblem = parseModelJson(rawResponse)
+    console.log('Parser parsed JSON output:', parsedProblem)
     return assertValidParsedProblem(parsedProblem)
   } catch (error) {
     if (!(error instanceof InvalidJsonResponseError)) {
@@ -237,6 +258,7 @@ async function parseWithRetry(problemText, systemPrompt, provider, maxRetries = 
     try {
       const rawResponse = await requestProblemParse(problemText, retryPrompt, provider)
       const parsedProblem = parseModelJson(rawResponse)
+      console.log('Parser parsed JSON output:', parsedProblem)
       return assertValidParsedProblem(parsedProblem)
     } catch (error) {
       lastError = error
