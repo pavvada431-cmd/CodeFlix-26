@@ -6,6 +6,7 @@ import SpringMass from '../simulations/SpringMass'
 import CircularMotion from '../simulations/CircularMotion'
 import Collisions from '../simulations/Collisions'
 import WaveMotion from '../simulations/WaveMotion'
+import RotationalMechanics from '../simulations/RotationalMechanics'
 import { SUPPORTED_SIMULATION_TYPES, SIMULATION_DISPLAY_NAMES } from '../hooks/useSimulation'
 
 function SimulationNotSupported({ simulationType }) {
@@ -212,6 +213,16 @@ export default function SimulationRouter({
           isPlaying,
         }
 
+      case 'rotational_mechanics':
+        return {
+          objectType: variables.objectType ?? 'disk',
+          mass: variables.mass ?? 2,
+          radius: variables.radius ?? 1,
+          appliedForce: variables.appliedForce ?? 10,
+          forcePosition: variables.forcePosition ?? 90,
+          isPlaying,
+        }
+
       default:
         return {}
     }
@@ -231,7 +242,7 @@ export default function SimulationRouter({
 
   const commonProps = {
     key: simulationKey,
-    onDataPoint: (simulationType === 'pendulum' || simulationType === 'spring_mass' || simulationType === 'circular_motion' || simulationType === 'collisions' || simulationType === 'wave_motion') ? onDataPoint : undefined,
+    onDataPoint: (simulationType === 'pendulum' || simulationType === 'spring_mass' || simulationType === 'circular_motion' || simulationType === 'collisions' || simulationType === 'wave_motion' || simulationType === 'rotational_mechanics') ? onDataPoint : undefined,
   }
 
   switch (simulationType) {
@@ -255,6 +266,9 @@ export default function SimulationRouter({
 
     case 'wave_motion':
       return <WaveMotion {...simulationProps} {...commonProps} />
+
+    case 'rotational_mechanics':
+      return <RotationalMechanics {...simulationProps} {...commonProps} />
 
     default:
       return <SimulationNotSupported simulationType={simulationType} />

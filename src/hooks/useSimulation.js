@@ -132,6 +132,7 @@ export const SUPPORTED_SIMULATION_TYPES = [
   'circular_motion',
   'collisions',
   'wave_motion',
+  'rotational_mechanics',
 ]
 
 export const SIMULATION_DISPLAY_NAMES = {
@@ -142,6 +143,7 @@ export const SIMULATION_DISPLAY_NAMES = {
   circular_motion: 'Circular Motion',
   collisions: 'Collision Simulation',
   wave_motion: 'Wave Motion',
+  rotational_mechanics: 'Rotational Mechanics',
   circuit: 'Electric Circuit',
   titration: 'Titration',
   combustion: 'Combustion',
