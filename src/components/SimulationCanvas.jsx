@@ -2,16 +2,36 @@ import {
   useCallback,
   startTransition,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
 import { PhysicsEngine } from '../utils/physicsEngine'
 import { SceneManager } from '../utils/sceneManager'
 import { formatNumber } from '../utils/formatters'
+import { showWarning } from '../utils/toast'
 
 const SPEED_OPTIONS = [0.25, 0.5, 1, 2]
 const TIMELINE_DURATION_SECONDS = 10
 const HUD_UPDATE_INTERVAL_MS = 100
+const OUT_OF_BOUNDS_THRESHOLD = 10000
+
+function checkWebGLSupport() {
+  try {
+    const canvas = document.createElement('canvas')
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
+    if (gl && gl instanceof WebGLRenderingContext) {
+      return { supported: true, type: 'webgl' }
+    }
+    const gl2 = canvas.getContext('webgl2')
+    if (gl2 && gl2 instanceof WebGL2RenderingContext) {
+      return { supported: true, type: 'webgl2' }
+    }
+    return { supported: false, type: null }
+  } catch {
+    return { supported: false, type: null }
+  }
+}
 
 function toRenderableObjects(sceneConfig) {
   if (Array.isArray(sceneConfig)) {
@@ -138,7 +158,49 @@ function normalizeForceVectors(forceVectors, bodyStates) {
     )
 }
 
-function SimulationCanvas({
+function WebGLFallback() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-[rgba(248,113,113,0.3)] bg-[rgba(248,113,113,0.1)]">
+        <svg className="h-8 w-8 text-[#f87171]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+      </div>
+      <h3 className="mb-2 font-heading text-xl font-semibold text-white">
+        WebGL Not Available
+      </h3>
+      <p className="mb-4 max-w-md text-sm text-slate-400">
+        Your browser or device doesn&apos;t support WebGL, which is required for 3D rendering.
+      </p>
+      <div className="w-full max-w-md rounded-xl border border-white/10 bg-white/5 p-4">
+        <p className="mb-2 font-mono-display text-xs uppercase tracking-wider text-slate-400">
+          Try these solutions:
+        </p>
+        <ul className="space-y-2 text-sm text-slate-300">
+          <li className="flex items-center gap-2">
+            <span className="text-[#00f5ff]">1.</span>
+            Update your browser to the latest version
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="text-[#00f5ff]">2.</span>
+            Enable hardware acceleration in browser settings
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="text-[#00f5ff]">3.</span>
+            Try a different browser (Chrome, Firefox, Edge)
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="text-[#00f5ff]">4.</span>
+            Update your graphics card drivers
+          </li>
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+function SimulationCanvasContent({
+  canvasRef,
   sceneConfig,
   bodyStates,
   forceVectors,
@@ -146,8 +208,8 @@ function SimulationCanvas({
   playbackSpeed,
   onIsPlayingChange,
   onPlaybackSpeedChange,
+  onReset,
 }) {
-  const canvasRef = useRef(null)
   const sceneManagerRef = useRef(null)
   const physicsEngineRef = useRef(null)
   const syncFrameRef = useRef(null)
@@ -171,7 +233,7 @@ function SimulationCanvas({
       ? playbackSpeed
       : internalSpeed
 
-  const setPlayingState = (nextValue) => {
+  const setPlayingState = useCallback((nextValue) => {
     if (typeof onIsPlayingChange === 'function') {
       onIsPlayingChange(nextValue)
     }
@@ -179,9 +241,9 @@ function SimulationCanvas({
     if (typeof isPlaying !== 'boolean') {
       setInternalPlaying(nextValue)
     }
-  }
+  }, [onIsPlayingChange, isPlaying])
 
-  const setPlaybackSpeedState = (nextValue) => {
+  const setPlaybackSpeedState = useCallback((nextValue) => {
     if (typeof onPlaybackSpeedChange === 'function') {
       onPlaybackSpeedChange(nextValue)
     }
@@ -189,7 +251,7 @@ function SimulationCanvas({
     if (!(Number.isFinite(playbackSpeed) && playbackSpeed > 0)) {
       setInternalSpeed(nextValue)
     }
-  }
+  }, [onPlaybackSpeedChange, playbackSpeed])
 
   const getCurrentBodyStates = useCallback(() => {
     const physicsEngine = physicsEngineRef.current
@@ -241,43 +303,74 @@ function SimulationCanvas({
     }
   }, [])
 
+  const checkOutOfBounds = useCallback((states) => {
+    for (const state of states) {
+      if (
+        Math.abs(state.x) > OUT_OF_BOUNDS_THRESHOLD ||
+        Math.abs(state.y) > OUT_OF_BOUNDS_THRESHOLD
+      ) {
+        return true
+      }
+    }
+    return false
+  }, [])
+
+  const handleOutOfBounds = useCallback(() => {
+    showWarning('Simulation reset — object left bounds')
+    if (typeof onReset === 'function') {
+      onReset()
+    }
+  }, [onReset])
+
   const rebuildPhysicsWorld = useCallback(() => {
     physicsEngineRef.current?.destroy()
 
-    const physicsEngine = new PhysicsEngine()
-    physicsEngine.init()
-    physicsEngine.stopLoop()
+    try {
+      const physicsEngine = new PhysicsEngine()
+      physicsEngine.init()
+      physicsEngine.stopLoop()
 
-    if (Number.isFinite(sceneConfig?.gravity?.x) || Number.isFinite(sceneConfig?.gravity?.y)) {
-      physicsEngine.setGravity(
-        Number.isFinite(sceneConfig?.gravity?.x) ? sceneConfig.gravity.x : 0,
-        Number.isFinite(sceneConfig?.gravity?.y) ? sceneConfig.gravity.y : 1,
-      )
+      if (Number.isFinite(sceneConfig?.gravity?.x) || Number.isFinite(sceneConfig?.gravity?.y)) {
+        physicsEngine.setGravity(
+          Number.isFinite(sceneConfig?.gravity?.x) ? sceneConfig.gravity.x : 0,
+          Number.isFinite(sceneConfig?.gravity?.y) ? sceneConfig.gravity.y : 1,
+        )
+      }
+
+      const bodyDefinitions = extractBodyDefinitions(sceneConfig)
+
+      bodyDefinitions.forEach((definition) => {
+        physicsEngine.addBody(definition)
+      })
+
+      physicsEngine.engine.timing.timeScale = resolvedPlaybackSpeed
+      physicsEngineRef.current = physicsEngine
+    } catch (error) {
+      console.error('Failed to initialize physics engine:', error)
+      showWarning('Physics engine initialization failed')
     }
-
-    const bodyDefinitions = extractBodyDefinitions(sceneConfig)
-
-    bodyDefinitions.forEach((definition) => {
-      physicsEngine.addBody(definition)
-    })
-
-    physicsEngine.engine.timing.timeScale = resolvedPlaybackSpeed
-    physicsEngineRef.current = physicsEngine
   }, [resolvedPlaybackSpeed, sceneConfig])
 
   useEffect(() => {
-    const sceneManager = new SceneManager()
-    sceneManager.init(canvasRef)
-    sceneManagerRef.current = sceneManager
+    let sceneManager = null
+
+    try {
+      sceneManager = new SceneManager()
+      sceneManager.init(canvasRef)
+      sceneManagerRef.current = sceneManager
+    } catch (error) {
+      console.error('Failed to initialize SceneManager:', error)
+      return
+    }
 
     return () => {
       stopSyncLoop()
       physicsEngineRef.current?.destroy()
       physicsEngineRef.current = null
-      sceneManager.destroy()
+      sceneManager?.destroy()
       sceneManagerRef.current = null
     }
-  }, [stopSyncLoop])
+  }, [stopSyncLoop, canvasRef])
 
   useEffect(() => {
     const sceneManager = sceneManagerRef.current
@@ -342,6 +435,12 @@ function SimulationCanvas({
         simulationTimeRef.current += deltaSeconds * resolvedPlaybackSpeed
 
         const states = getCurrentBodyStates()
+
+        if (checkOutOfBounds(states)) {
+          handleOutOfBounds()
+          return
+        }
+
         sceneManager.updatePositions(states)
         renderForceOverlay(states)
 
@@ -387,6 +486,8 @@ function SimulationCanvas({
     resolvedIsPlaying,
     resolvedPlaybackSpeed,
     stopSyncLoop,
+    checkOutOfBounds,
+    handleOutOfBounds,
   ])
 
   useEffect(() => {
@@ -401,7 +502,7 @@ function SimulationCanvas({
     }
   }, [])
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     const physicsEngine = physicsEngineRef.current
 
     stopSyncLoop()
@@ -418,9 +519,9 @@ function SimulationCanvas({
     if (resolvedIsPlaying) {
       setPlayingState(false)
     }
-  }
+  }, [stopSyncLoop, renderSnapshot, resolvedIsPlaying, setPlayingState])
 
-  const handleTimelineChange = (event) => {
+  const handleTimelineChange = useCallback((event) => {
     const nextProgress = Number(event.target.value)
     const physicsEngine = physicsEngineRef.current
     const targetTime = (nextProgress / 100) * TIMELINE_DURATION_SECONDS
@@ -446,17 +547,10 @@ function SimulationCanvas({
     if (resolvedIsPlaying) {
       setPlayingState(false)
     }
-  }
+  }, [stopSyncLoop, renderSnapshot, resolvedIsPlaying, setPlayingState])
 
   return (
-    <section className="relative h-full min-h-[760px] overflow-hidden rounded-[34px] border border-[rgba(0,245,255,0.14)] bg-[#07111f]/85 shadow-[0_26px_90px_rgba(2,8,23,0.6)]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(0,245,255,0.12),transparent_32%),linear-gradient(180deg,rgba(10,15,30,0.12),rgba(10,15,30,0.55))]" />
-
-      <canvas
-        ref={canvasRef}
-        className="relative z-0 h-full w-full"
-      />
-
+    <>
       <div className="pointer-events-none absolute left-5 top-5 z-10 flex flex-wrap items-center gap-3">
         <div className="rounded-full border border-white/10 bg-[#081221]/72 px-4 py-2 font-mono-display text-xs uppercase tracking-[0.24em] text-slate-200 backdrop-blur-md">
           Time {formatNumber(simulationTime)} s
@@ -529,8 +623,59 @@ function SimulationCanvas({
           </label>
         </div>
       </div>
-    </section>
+    </>
   )
 }
 
-export default SimulationCanvas
+export default function SimulationCanvas({
+  sceneConfig,
+  bodyStates,
+  forceVectors,
+  isPlaying,
+  playbackSpeed,
+  onIsPlayingChange,
+  onPlaybackSpeedChange,
+  onReset,
+}) {
+  const canvasRef = useRef(null)
+  const webglSupported = useMemo(() => checkWebGLSupport().supported, [])
+
+  if (webglSupported === undefined) {
+    return (
+      <section className="relative flex h-full min-h-[400px] items-center justify-center overflow-hidden rounded-[24px] border border-white/10 bg-[#07111f]/85">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#00f5ff] border-t-transparent" />
+      </section>
+    )
+  }
+
+  if (webglSupported === false) {
+    return (
+      <section className="relative h-full min-h-[400px] overflow-hidden rounded-[24px] border border-white/10 bg-[#07111f]/85">
+        <WebGLFallback />
+      </section>
+    )
+  }
+
+  return (
+    <section className="relative h-full min-h-[760px] overflow-hidden rounded-[34px] border border-[rgba(0,245,255,0.14)] bg-[#07111f]/85 shadow-[0_26px_90px_rgba(2,8,23,0.6)]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(0,245,255,0.12),transparent_32%),linear-gradient(180deg,rgba(10,15,30,0.12),rgba(10,15,30,0.55))]" />
+
+      <canvas
+        ref={canvasRef}
+        className="relative z-0 h-full w-full"
+      />
+
+      <SimulationCanvasContent
+        canvasRef={canvasRef}
+        sceneConfig={sceneConfig}
+        bodyStates={bodyStates}
+        forceVectors={forceVectors}
+        isPlaying={isPlaying}
+        playbackSpeed={playbackSpeed}
+        onIsPlayingChange={onIsPlayingChange}
+        onPlaybackSpeedChange={onPlaybackSpeedChange}
+        onReset={onReset}
+      />
+    </section>
+  )
+}

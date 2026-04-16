@@ -29,11 +29,23 @@ Use double quotes for every key and every string value.
 Do not include comments, ellipses, or trailing commas.
 Return exactly one JSON object that can be parsed by JSON.parse.`
 
+const RETRY_PROMPTS = [
+  'Return ONLY raw JSON, no markdown. Previous response was invalid JSON.',
+  'Return ONLY raw JSON, no markdown, no text, no code fences. Just the JSON object.',
+]
+
 class InvalidJsonResponseError extends Error {
   constructor(message, rawResponse) {
     super(message)
     this.name = 'InvalidJsonResponseError'
     this.rawResponse = rawResponse
+  }
+}
+
+class MaxRetriesExceededError extends Error {
+  constructor(message) {
+    super(message)
+    this.name = 'MaxRetriesExceededError'
   }
 }
 
@@ -53,8 +65,22 @@ function getResponseText(payload) {
 }
 
 function parseModelJson(rawText) {
+  let cleanedText = rawText.trim()
+
+  const markdownMatch = cleanedText.match(/```(?:json)?\s*([\s\S]*?)```/)
+  if (markdownMatch) {
+    cleanedText = markdownMatch[1].trim()
+  }
+
+  const jsonStart = cleanedText.indexOf('{')
+  const jsonEnd = cleanedText.lastIndexOf('}')
+
+  if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+    cleanedText = cleanedText.substring(jsonStart, jsonEnd + 1)
+  }
+
   try {
-    return JSON.parse(rawText)
+    return JSON.parse(cleanedText)
   } catch {
     throw new InvalidJsonResponseError(
       'Anthropic response was not valid JSON',
@@ -93,12 +119,45 @@ async function requestProblemParse(problemText, systemPrompt) {
   const payload = await response.json()
 
   if (!response.ok) {
-    throw new Error(
-      payload?.error?.message ?? 'Anthropic request failed',
-    )
+    const errorMessage = payload?.error?.message ?? 'Anthropic request failed'
+    throw new Error(`API Error (${response.status}): ${errorMessage}`)
   }
 
   return getResponseText(payload)
+}
+
+async function parseWithRetry(problemText, systemPrompt, maxRetries = 2) {
+  let lastError = null
+
+  try {
+    const rawResponse = await requestProblemParse(problemText, systemPrompt)
+    const parsedProblem = parseModelJson(rawResponse)
+    return assertValidParsedProblem(parsedProblem)
+  } catch (error) {
+    if (!(error instanceof InvalidJsonResponseError)) {
+      throw error
+    }
+    lastError = error
+  }
+
+  for (let retry = 0; retry < maxRetries; retry++) {
+    const retryPrompt = `${STRICT_SYSTEM_PROMPT}\n\n${RETRY_PROMPTS[retry] || RETRY_PROMPTS[RETRY_PROMPTS.length - 1]}`
+
+    try {
+      const rawResponse = await requestProblemParse(problemText, retryPrompt)
+      const parsedProblem = parseModelJson(rawResponse)
+      return assertValidParsedProblem(parsedProblem)
+    } catch (error) {
+      lastError = error
+      if (!(error instanceof InvalidJsonResponseError)) {
+        throw error
+      }
+    }
+  }
+
+  throw new MaxRetriesExceededError(
+    `Failed to parse problem after ${maxRetries + 1} attempts. ${lastError?.message ?? 'Invalid JSON responses'}`
+  )
 }
 
 export async function parseProblem(problemText) {
@@ -107,24 +166,8 @@ export async function parseProblem(problemText) {
   }
 
   if (!ANTHROPIC_API_KEY) {
-    throw new Error('Missing VITE_ANTHROPIC_API_KEY')
+    throw new Error('Missing VITE_ANTHROPIC_API_KEY - API key not configured')
   }
 
-  try {
-    const rawResponse = await requestProblemParse(problemText, BASE_SYSTEM_PROMPT)
-    const parsedProblem = parseModelJson(rawResponse)
-    return assertValidParsedProblem(parsedProblem)
-  } catch (error) {
-    if (!(error instanceof InvalidJsonResponseError)) {
-      throw error
-    }
-  }
-
-  const retryPrompt = `${STRICT_SYSTEM_PROMPT}
-
-The previous reply was not valid JSON. Return corrected JSON for this same problem text.`
-
-  const retryResponse = await requestProblemParse(problemText, retryPrompt)
-  const parsedProblem = parseModelJson(retryResponse)
-  return assertValidParsedProblem(parsedProblem)
+  return parseWithRetry(problemText, BASE_SYSTEM_PROMPT, 2)
 }

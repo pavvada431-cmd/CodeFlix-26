@@ -398,6 +398,14 @@ function SimulationScene({ initialVelocity, launchAngle, initialHeight, isPlayin
     const pos = body.position;
     const vel = body.velocity;
 
+    if (
+      Math.abs(pos.x) > 10000 * SCALE ||
+      Math.abs(pos.y) > 10000 * SCALE
+    ) {
+      needsResetRef.current = true;
+      return;
+    }
+
     const scaledHeight = pos.y / SCALE;
     const scaledVel = Math.sqrt(vel.x * vel.x + vel.y * vel.y) / SCALE;
     const scaledDist = pos.x / SCALE;

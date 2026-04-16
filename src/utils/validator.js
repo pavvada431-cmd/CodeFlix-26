@@ -14,6 +14,9 @@ const DOMAIN_TYPES = {
   chemistry: new Set(['titration', 'combustion']),
 }
 
+const WARNINGS = []
+const MAX_INPUT_LENGTH = 500
+
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -32,10 +35,87 @@ function normalizeUnit(unit) {
     .trim()
 }
 
+export function clampAngle(value, unit) {
+  const normalizedUnit = normalizeUnit(unit)
+  const maxDegrees = 89
+  const maxRadians = (89 * Math.PI) / 180
+
+  if (normalizedUnit.includes('rad')) {
+    const clamped = Math.min(Math.max(value, -maxRadians), maxRadians)
+    if (clamped !== value) {
+      WARNINGS.push(`Angle clamped from ${value.toFixed(3)} to ${clamped.toFixed(3)} radians`)
+    }
+    return clamped
+  } else {
+    const clamped = Math.min(Math.max(value, -maxDegrees), maxDegrees)
+    if (clamped !== value) {
+      WARNINGS.push(`Angle clamped from ${value.toFixed(1)}° to ${clamped.toFixed(1)}°`)
+    }
+    return clamped
+  }
+}
+
+export function sanitizeMass(value) {
+  if (value <= 0) {
+    WARNINGS.push(`Mass must be positive, set to 0.1 kg`)
+    return 0.1
+  }
+  return value
+}
+
+export function sanitizeVelocity(value) {
+  const maxVelocity = 1000
+  if (value > maxVelocity) {
+    WARNINGS.push(`Velocity ${value} m/s exceeds safe limit, clamped to ${maxVelocity} m/s`)
+    return maxVelocity
+  }
+  if (value < 0) {
+    WARNINGS.push(`Velocity cannot be negative, using absolute value`)
+    return Math.abs(value)
+  }
+  return value
+}
+
+export function getWarnings() {
+  const warnings = [...WARNINGS]
+  WARNINGS.length = 0
+  return warnings
+}
+
+export function clearWarnings() {
+  WARNINGS.length = 0
+}
+
+export function sanitizeInput(input) {
+  if (typeof input !== 'string') return ''
+
+  return input
+    .replace(/<[^>]*>/g, '')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+=/gi, '')
+    .substring(0, MAX_INPUT_LENGTH)
+}
+
+export function validateInputLength(input) {
+  if (input.length >= MAX_INPUT_LENGTH) {
+    return {
+      valid: false,
+      message: `Input exceeds maximum length of ${MAX_INPUT_LENGTH} characters`,
+    }
+  }
+  return { valid: true }
+}
+
 function validateAngle(key, value, unit, errors) {
   const normalizedUnit = normalizeUnit(unit)
   const upperBound = normalizedUnit.includes('rad') ? Math.PI / 2 : 90
   const unitLabel = normalizedUnit.includes('rad') ? 'radians' : 'degrees'
+
+  if (value > 89 && !normalizedUnit.includes('rad')) {
+    errors.push(`Angle ${key} (${value}°) exceeds maximum 89°, will be clamped`)
+  } else if (value > Math.PI / 2 && normalizedUnit.includes('rad')) {
+    errors.push(`Angle ${key} exceeds maximum π/2 radians, will be clamped`)
+  }
 
   if (value < 0 || value > upperBound) {
     errors.push(`${key} must be between 0 and ${upperBound} ${unitLabel}`)
@@ -119,7 +199,16 @@ function validateVariableRange(key, value, unit, errors) {
     return
   }
 
-  if (/speed|velocity|acceleration|force|energy|work|power|current|voltage|charge/.test(normalizedKey)) {
+  if (/speed|velocity/.test(normalizedKey)) {
+    if (value > 1000) {
+      errors.push(`${key} (${value}) exceeds maximum safe velocity (1000 m/s), will be clamped`)
+    } else if (value === 0) {
+      errors.push(`${key} should not be 0`)
+    }
+    return
+  }
+
+  if (/acceleration|force|energy|work|power|current|voltage|charge/.test(normalizedKey)) {
     if (value === 0) {
       errors.push(`${key} should not be 0`)
     }

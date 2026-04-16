@@ -4,6 +4,8 @@ import ProblemInput from './components/ProblemInput'
 import SolutionPanel from './components/SolutionPanel'
 import GraphPanel from './components/GraphPanel'
 import SimulationRouter from './components/SimulationRouter'
+import ErrorBoundary from './components/ErrorBoundary'
+import ToastContainer from './components/Toast'
 import useSimulation from './hooks/useSimulation'
 
 const LOADING_MESSAGES = [
@@ -192,14 +194,20 @@ function App() {
 
         <section className="hidden flex-1 lg:block">
           <div className="sticky top-4 h-[calc(100vh-100px)] overflow-hidden rounded-[24px] border border-white/10 bg-[#07111f]/80 shadow-[0_24px_80px_rgba(2,8,23,0.55)]">
-            <SimulationRouter
-              simulationType={simulation.activeSimulation}
-              variables={simulation.currentVariables}
-              isPlaying={simulation.isPlaying}
-              simulationKey={simulation.simulationKey}
-              onDataPoint={simulation.onDataPoint}
-              isLoading={simulation.isLoading}
-            />
+            <ErrorBoundary
+              onReset={() => {
+                simulation.reset()
+              }}
+            >
+              <SimulationRouter
+                simulationType={simulation.activeSimulation}
+                variables={simulation.currentVariables}
+                isPlaying={simulation.isPlaying}
+                simulationKey={simulation.simulationKey}
+                onDataPoint={simulation.onDataPoint}
+                isLoading={simulation.isLoading}
+              />
+            </ErrorBoundary>
           </div>
         </section>
 
@@ -225,17 +233,25 @@ function App() {
               </div>
             </div>
             <div className="flex-1 overflow-hidden">
-              <SimulationRouter
-                simulationType={simulation.activeSimulation}
-                variables={simulation.currentVariables}
-                isPlaying={simulation.isPlaying}
-                simulationKey={simulation.simulationKey}
-                onDataPoint={simulation.onDataPoint}
-                isLoading={simulation.isLoading}
-              />
+              <ErrorBoundary
+                onReset={() => {
+                  simulation.reset()
+                }}
+              >
+                <SimulationRouter
+                  simulationType={simulation.activeSimulation}
+                  variables={simulation.currentVariables}
+                  isPlaying={simulation.isPlaying}
+                  simulationKey={simulation.simulationKey}
+                  onDataPoint={simulation.onDataPoint}
+                  isLoading={simulation.isLoading}
+                />
+              </ErrorBoundary>
             </div>
           </div>
         </section>
+
+        <ToastContainer />
       </main>
 
       <style>{`

@@ -106,6 +106,14 @@ function PendulumScene({
     const pos = body.position;
     const vel = body.velocity;
 
+    if (
+      Math.abs(pos.x) > 10000 * SCALE ||
+      Math.abs(pos.y) > 10000 * SCALE
+    ) {
+      needsResetRef.current = true;
+      return;
+    }
+
     const pivotY = length * SCALE;
     const dx = pos.x - 0;
     const dy = pos.y - pivotY;

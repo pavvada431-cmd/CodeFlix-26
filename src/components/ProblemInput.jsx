@@ -1,4 +1,7 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useMemo } from 'react'
+import { sanitizeInput } from '../utils/validator'
+
+const MAX_INPUT_LENGTH = 500
 
 const EXAMPLES = [
   {
@@ -28,6 +31,14 @@ function ProblemInput({ onSolved, isLoading = false }) {
   const [problemText, setProblemText] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
+  const sanitizedText = useMemo(() => {
+    return sanitizeInput(problemText)
+  }, [problemText])
+
+  const charCount = problemText.length
+  const isNearLimit = charCount >= MAX_INPUT_LENGTH * 0.9
+  const isAtLimit = charCount >= MAX_INPUT_LENGTH
+
   const handleExampleClick = (text) => {
     setProblemText(text)
     setErrorMessage('')
@@ -35,7 +46,7 @@ function ProblemInput({ onSolved, isLoading = false }) {
   }
 
   const handleSolve = () => {
-    const trimmedProblem = problemText.trim()
+    const trimmedProblem = sanitizedText.trim()
 
     if (!trimmedProblem) {
       setErrorMessage('Describe a problem before starting the parser.')
@@ -54,6 +65,22 @@ function ProblemInput({ onSolved, isLoading = false }) {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       handleSolve()
+    }
+  }
+
+  const handleChange = (e) => {
+    let value = e.target.value
+
+    value = sanitizeInput(value)
+
+    if (value.length > MAX_INPUT_LENGTH) {
+      value = value.substring(0, MAX_INPUT_LENGTH)
+    }
+
+    setProblemText(value)
+
+    if (errorMessage) {
+      setErrorMessage('')
     }
   }
 
@@ -82,16 +109,20 @@ function ProblemInput({ onSolved, isLoading = false }) {
               id="problem-input"
               ref={textareaRef}
               value={problemText}
-              onChange={(event) => {
-                setProblemText(event.target.value)
-                if (errorMessage) setErrorMessage('')
-              }}
+              onChange={handleChange}
               onKeyDown={handleKeyDown}
               placeholder="Describe your physics or chemistry problem... e.g. 'A 10kg block slides down a 30-degree frictionless incline'"
               disabled={isLoading}
+              maxLength={MAX_INPUT_LENGTH}
               className="min-h-48 w-full resize-none rounded-[18px] border border-transparent bg-transparent px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <p className={`font-mono-display text-[10px] uppercase tracking-[0.28em] ${isAtLimit ? 'text-[#f87171]' : isNearLimit ? 'text-[#fbbf24]' : 'text-slate-500'}`}>
+            {charCount}/{MAX_INPUT_LENGTH} characters
+          </p>
         </div>
 
         <div>
@@ -117,7 +148,7 @@ function ProblemInput({ onSolved, isLoading = false }) {
           <button
             type="button"
             onClick={handleSolve}
-            disabled={isLoading || !problemText.trim()}
+            disabled={isLoading || !sanitizedText.trim()}
             className="inline-flex items-center justify-center gap-3 rounded-xl border border-[rgba(0,245,255,0.35)] bg-[linear-gradient(135deg,rgba(0,245,255,0.2),rgba(0,245,255,0.1))] px-5 py-3 font-heading text-base font-semibold tracking-wide text-[#dffeff] shadow-[0_0_20px_rgba(0,245,255,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:-translate-y-0.5 hover:shadow-[0_0_28px_rgba(0,245,255,0.25),inset_0_1px_0_rgba(255,255,255,0.15)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <span className="h-2 w-2 rounded-full bg-[#00f5ff] shadow-[0_0_12px_rgba(0,245,255,0.8)]" />
