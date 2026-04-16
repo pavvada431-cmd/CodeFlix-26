@@ -1,14 +1,7 @@
 import { assertValidParsedProblem } from './validator'
 
-const ANTHROPIC_API_URL =
-  import.meta.env.VITE_ANTHROPIC_API_URL ?? 'https://api.anthropic.com/v1/messages'
-
-const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
-
-const ANTHROPIC_VERSION =
-  import.meta.env.VITE_ANTHROPIC_VERSION ?? '2023-06-01'
-
-const MODEL_NAME = 'claude-sonnet-4-20250514'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
+const AI_PROXY_URL = `${API_BASE_URL}/ai`
 
 const VARIABLE_SCHEMAS = {
   inclined_plane: {
@@ -159,21 +152,6 @@ class MaxRetriesExceededError extends Error {
   }
 }
 
-function getResponseText(payload) {
-  const content = Array.isArray(payload?.content) ? payload.content : []
-  const text = content
-    .filter((block) => block?.type === 'text' && typeof block.text === 'string')
-    .map((block) => block.text)
-    .join('\n')
-    .trim()
-
-  if (!text) {
-    throw new Error('Anthropic returned an empty response')
-  }
-
-  return text
-}
-
 function parseModelJson(rawText) {
   let cleanedText = rawText.trim()
 
@@ -199,48 +177,51 @@ function parseModelJson(rawText) {
   }
 }
 
-async function requestProblemParse(problemText, systemPrompt) {
-  const response = await fetch(ANTHROPIC_API_URL, {
+async function requestProblemParse(problemText, systemPrompt, provider) {
+  const response = await fetch(AI_PROXY_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'anthropic-version': ANTHROPIC_VERSION,
-      'x-api-key': ANTHROPIC_API_KEY,
     },
     body: JSON.stringify({
-      model: MODEL_NAME,
-      max_tokens: 1200,
-      temperature: 0,
-      system: systemPrompt,
+      provider,
       messages: [
         {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
           role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: problemText.trim(),
-            },
-          ],
+          content: problemText.trim(),
         },
       ],
+      options: {
+        max_tokens: 1200,
+        temperature: 0,
+      },
     }),
   })
 
-  const payload = await response.json()
+  const payload = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    const errorMessage = payload?.error?.message ?? 'Anthropic request failed'
+    const errorMessage = payload?.message ?? payload?.error ?? 'AI request failed'
     throw new Error(`API Error (${response.status}): ${errorMessage}`)
   }
 
-  return getResponseText(payload)
+  const responseText = typeof payload?.content === 'string' ? payload.content.trim() : ''
+  if (!responseText) {
+    throw new Error('AI provider returned an empty response')
+  }
+
+  return responseText
 }
 
-async function parseWithRetry(problemText, systemPrompt, maxRetries = 2) {
+async function parseWithRetry(problemText, systemPrompt, provider, maxRetries = 2) {
   let lastError = null
 
   try {
-    const rawResponse = await requestProblemParse(problemText, systemPrompt)
+    const rawResponse = await requestProblemParse(problemText, systemPrompt, provider)
     const parsedProblem = parseModelJson(rawResponse)
     return assertValidParsedProblem(parsedProblem)
   } catch (error) {
@@ -254,7 +235,7 @@ async function parseWithRetry(problemText, systemPrompt, maxRetries = 2) {
     const retryPrompt = `${STRICT_SYSTEM_PROMPT}\n\n${RETRY_PROMPTS[retry] || RETRY_PROMPTS[RETRY_PROMPTS.length - 1]}`
 
     try {
-      const rawResponse = await requestProblemParse(problemText, retryPrompt)
+      const rawResponse = await requestProblemParse(problemText, retryPrompt, provider)
       const parsedProblem = parseModelJson(rawResponse)
       return assertValidParsedProblem(parsedProblem)
     } catch (error) {
@@ -270,16 +251,12 @@ async function parseWithRetry(problemText, systemPrompt, maxRetries = 2) {
   )
 }
 
-export async function parseProblem(problemText) {
+export async function parseProblem(problemText, provider = 'anthropic') {
   if (typeof problemText !== 'string' || problemText.trim().length === 0) {
     throw new Error('problemText must be a non-empty string')
   }
 
-  if (!ANTHROPIC_API_KEY) {
-    throw new Error('Missing VITE_ANTHROPIC_API_KEY - API key not configured')
-  }
-
-  return parseWithRetry(problemText, BASE_SYSTEM_PROMPT, 2)
+  return parseWithRetry(problemText, BASE_SYSTEM_PROMPT, provider, 2)
 }
 
 export { VARIABLE_SCHEMAS }

@@ -28,7 +28,8 @@ const GRID_STYLE = {
   stroke: '#21262d',
 }
 
-const API_URL = '/api/claude'
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
+const API_URL = `${API_BASE_URL}/ai`
 
 function getLocalAnalysis(simulationType, dataStream, variables) {
   const analysis = {
@@ -152,13 +153,19 @@ async function callClaudeAPI(prompt, systemPrompt) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt: systemPrompt + '\n\n' + prompt,
-        max_tokens: 500,
+        provider: 'anthropic',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt },
+        ],
+        options: {
+          max_tokens: 500,
+        },
       }),
     })
     if (!response.ok) throw new Error('API request failed')
     const data = await response.json()
-    return data.completion || data.response || data.content
+    return data.content
   } catch (error) {
     console.warn('Claude API unavailable, using local analysis:', error)
     return null

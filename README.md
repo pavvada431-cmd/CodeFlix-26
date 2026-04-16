@@ -44,7 +44,10 @@ SimuSolve/
 │   └── utils/               # Utilities
 │       ├── share.js         # URL encoding/decoding
 │       └── toast.js         # Toast notifications
-├── server.js                 # Claude API proxy server
+├── backend/
+│   ├── server.js             # Unified AI proxy route (/api/ai)
+│   └── providers.js          # Multi-provider adapters
+├── server.js                 # Legacy entrypoint (loads backend/server.js)
 ├── index.html
 ├── vite.config.js
 └── package.json
@@ -100,8 +103,11 @@ To enable AI-powered physics tutoring and quiz generation:
 # Install API dependencies
 npm install cors express
 
-# Set your Anthropic API key
-export ANTHROPIC_API_KEY=sk-ant-...
+# Set one or more AI provider keys
+export ANTHROPIC_API_KEY=...
+export OPENAI_API_KEY=...
+export GEMINI_API_KEY=...
+export GROQ_API_KEY=...
 
 # Run both servers
 npm run dev:all
@@ -169,7 +175,9 @@ Create `.env` from `.env.example`:
 cp .env.example .env
 ```
 
-| Variable       | Description                  | Default                |
-|---------------|------------------------------|------------------------|
-| `VITE_API_URL`| Backend API endpoint         | `http://localhost:3001`|
-| `ANTHROPIC_API_KEY` | Claude API key (optional) | -                      |
+| Variable | Description | Default |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Anthropic API key (`claude-sonnet-4-20250514`) | - |
+| `OPENAI_API_KEY` | OpenAI API key (`gpt-4o`) | - |
+| `GEMINI_API_KEY` | Gemini API key (`gemini-1.5-flash`) | - |
+| `GROQ_API_KEY` | Groq API key (`llama-3.3-70b-versatile`) | - |

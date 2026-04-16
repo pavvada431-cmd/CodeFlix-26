@@ -18,12 +18,14 @@ export default function useSimulation() {
   const dataStreamIntervalRef = useRef(null)
   const lastDataTimeRef = useRef(0)
 
-  const solve = useCallback(async (problemText) => {
+  const solve = useCallback(async (problemInput, provider = 'anthropic') => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const result = await parseProblem(problemText)
+      const result = typeof problemInput === 'string'
+        ? await parseProblem(problemInput, provider)
+        : problemInput
 
       setParsedData(result)
       setCurrentVariables(result.variables || {})

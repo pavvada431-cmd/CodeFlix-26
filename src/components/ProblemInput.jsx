@@ -2,6 +2,12 @@ import { useRef, useState, useMemo } from 'react'
 import { sanitizeInput } from '../utils/validator'
 
 const MAX_INPUT_LENGTH = 500
+const AI_PROVIDERS = [
+  { value: 'anthropic', label: 'Anthropic (Claude Sonnet 4)' },
+  { value: 'openai', label: 'OpenAI (GPT-4o)' },
+  { value: 'gemini', label: 'Google Gemini (1.5 Flash)' },
+  { value: 'groq', label: 'Groq (Llama 3.3 70B)' },
+]
 
 const EXAMPLES = [
   {
@@ -66,7 +72,12 @@ const EXAMPLES = [
   },
 ]
 
-function ProblemInput({ onSolved, isLoading = false }) {
+function ProblemInput({
+  onSolved,
+  isLoading = false,
+  provider = 'anthropic',
+  onProviderChange,
+}) {
   const textareaRef = useRef(null)
   const [problemText, setProblemText] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
@@ -127,16 +138,40 @@ function ProblemInput({ onSolved, isLoading = false }) {
   return (
     <section className="rounded-[24px] border border-white/10 bg-[#07111f]/80 p-5 shadow-[0_16px_60px_rgba(2,8,23,0.45)] backdrop-blur-xl">
       <div className="flex flex-col gap-3">
-        <div>
-          <p className="font-mono-display text-[10px] uppercase tracking-[0.32em] text-[rgba(0,245,255,0.72)]">
-            Problem Input
-          </p>
-          <h2 className="mt-2 font-heading text-2xl font-semibold tracking-tight text-white">
-            Describe the scenario
-          </h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-[#8892a4]">
-            Paste a word problem and SimuSolve will extract variables and build an interactive simulation.
-          </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="font-mono-display text-[10px] uppercase tracking-[0.32em] text-[rgba(0,245,255,0.72)]">
+              Problem Input
+            </p>
+            <h2 className="mt-2 font-heading text-2xl font-semibold tracking-tight text-white">
+              Describe the scenario
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-[#8892a4]">
+              Paste a word problem and SimuSolve will extract variables and build an interactive simulation.
+            </p>
+          </div>
+
+          <div className="sm:self-start">
+            <label
+              htmlFor="ai-provider"
+              className="block text-right font-mono-display text-[10px] uppercase tracking-[0.28em] text-slate-500"
+            >
+              AI Provider
+            </label>
+            <select
+              id="ai-provider"
+              value={provider}
+              disabled={isLoading}
+              onChange={(event) => onProviderChange?.(event.target.value)}
+              className="mt-2 min-w-[230px] rounded-xl border border-white/10 bg-[#0b1324]/90 px-3 py-2 font-mono-display text-xs text-slate-200 outline-none transition focus:border-[rgba(0,245,255,0.45)] focus:bg-[rgba(0,245,255,0.08)] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {AI_PROVIDERS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="group relative mt-1">

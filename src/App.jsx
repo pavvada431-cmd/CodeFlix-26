@@ -36,6 +36,18 @@ const DEMOS = [
   'A satellite orbits Earth at altitude 400km.',
 ]
 
+const AI_PROVIDER_STORAGE_KEY = 'simusolve.aiProvider'
+const AI_PROVIDERS = ['anthropic', 'openai', 'gemini', 'groq']
+
+function getInitialProvider() {
+  if (typeof window === 'undefined') {
+    return 'anthropic'
+  }
+
+  const storedValue = window.localStorage.getItem(AI_PROVIDER_STORAGE_KEY)
+  return AI_PROVIDERS.includes(storedValue) ? storedValue : 'anthropic'
+}
+
 function LoadingOverlay({ isVisible }) {
   const messageIndexRef = useRef(0)
   const intervalRef = useRef(null)
@@ -233,7 +245,12 @@ export default function App() {
   const [slideshowIndex, setSlideshowIndex] = useState(0)
   const [isCrossfading, setIsCrossfading] = useState(false)
   const [prevSimulationType, setPrevSimulationType] = useState(null)
+  const [aiProvider, setAiProvider] = useState(getInitialProvider)
   
+  useEffect(() => {
+    window.localStorage.setItem(AI_PROVIDER_STORAGE_KEY, aiProvider)
+  }, [aiProvider])
+
   const slideshowIntervalRef = useRef(null)
   const frameLoopRef = useRef(null)
 
@@ -274,8 +291,8 @@ export default function App() {
 
   const handleProblemSolved = useCallback((parsedData) => {
     session.logProblem(parsedData?.type || 'unknown', parsedData)
-    simulation.solve(parsedData)
-  }, [simulation, session])
+    simulation.solve(parsedData, aiProvider)
+  }, [aiProvider, simulation, session])
 
   const handleSelectSimulation = useCallback((simulationType) => {
     const demoMap = {
@@ -297,9 +314,9 @@ export default function App() {
       electromagnetic: 'An electron moves at 1e6 m/s through a 0.5T magnetic field.',
     }
     const problemText = demoMap[simulationType] || 'A physics simulation.'
-    simulation.solve(problemText)
+    simulation.solve(problemText, aiProvider)
     setShowLibrary(false)
-  }, [simulation])
+  }, [aiProvider, simulation])
 
   const handleDemoMode = useCallback(() => {
     const demo = getRandomDemo()
@@ -311,10 +328,10 @@ export default function App() {
     setTimeout(() => {
       const nextIndex = (slideshowIndex + 1) % DEMOS.length
       setSlideshowIndex(nextIndex)
-      simulation.solve(DEMOS[nextIndex])
+      simulation.solve(DEMOS[nextIndex], aiProvider)
       setIsCrossfading(false)
     }, 400)
-  }, [slideshowIndex, simulation])
+  }, [aiProvider, slideshowIndex, simulation])
 
   useEffect(() => {
     if (isSlideshowMode) {
@@ -348,9 +365,9 @@ export default function App() {
           setIsSlideshowMode(prev => !prev)
           if (!isSlideshowMode) {
             setSlideshowIndex(0)
-            simulation.solve(DEMOS[0])
-          }
-          break
+              simulation.solve(DEMOS[0], aiProvider)
+            }
+            break
         case 'KeyF':
           setShowFormulaSheet(prev => !prev)
           break
@@ -369,7 +386,7 @@ export default function App() {
           if (DEMOS[num]) {
             setIsCrossfading(true)
             setTimeout(() => {
-              simulation.solve(DEMOS[num])
+              simulation.solve(DEMOS[num], aiProvider)
               setIsCrossfading(false)
             }, 400)
           }
@@ -382,7 +399,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [simulation, isSlideshowMode])
+  }, [aiProvider, simulation, isSlideshowMode])
 
   const hasSolved = !!simulation.parsedData
   const accentColor = useMemo(() => 
@@ -439,7 +456,12 @@ export default function App() {
             <div className={`transition-all duration-500 ${
               hasSolved ? 'lg:max-h-[280px] lg:overflow-hidden' : ''
             }`}>
-              <ProblemInput onSolved={handleProblemSolved} isLoading={simulation.isLoading} />
+              <ProblemInput
+                onSolved={handleProblemSolved}
+                isLoading={simulation.isLoading}
+                provider={aiProvider}
+                onProviderChange={setAiProvider}
+              />
             </div>
 
             <div className={`transition-all duration-500 ${
