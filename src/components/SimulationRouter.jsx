@@ -3,6 +3,7 @@ import InclinedPlane from '../simulations/InclinedPlane'
 import ProjectileMotion from '../simulations/ProjectileMotion'
 import Pendulum from '../simulations/Pendulum'
 import SpringMass from '../simulations/SpringMass'
+import CircularMotion from '../simulations/CircularMotion'
 import { SUPPORTED_SIMULATION_TYPES, SIMULATION_DISPLAY_NAMES } from '../hooks/useSimulation'
 
 function SimulationNotSupported({ simulationType }) {
@@ -182,6 +183,14 @@ export default function SimulationRouter({
           isPlaying,
         }
 
+      case 'circular_motion':
+        return {
+          radius: variables.radius ?? 2,
+          mass: variables.mass ?? 1,
+          angularVelocity: variables.angularVelocity ?? variables.omega ?? 2,
+          isPlaying,
+        }
+
       default:
         return {}
     }
@@ -201,7 +210,7 @@ export default function SimulationRouter({
 
   const commonProps = {
     key: simulationKey,
-    onDataPoint: (simulationType === 'pendulum' || simulationType === 'spring_mass') ? onDataPoint : undefined,
+    onDataPoint: (simulationType === 'pendulum' || simulationType === 'spring_mass' || simulationType === 'circular_motion') ? onDataPoint : undefined,
   }
 
   switch (simulationType) {
@@ -216,6 +225,9 @@ export default function SimulationRouter({
 
     case 'spring_mass':
       return <SpringMass {...simulationProps} {...commonProps} />
+
+    case 'circular_motion':
+      return <CircularMotion {...simulationProps} {...commonProps} />
 
     default:
       return <SimulationNotSupported simulationType={simulationType} />

@@ -129,6 +129,7 @@ export const SUPPORTED_SIMULATION_TYPES = [
   'projectile',
   'pendulum',
   'spring_mass',
+  'circular_motion',
 ]
 
 export const SIMULATION_DISPLAY_NAMES = {
@@ -136,6 +137,7 @@ export const SIMULATION_DISPLAY_NAMES = {
   projectile: 'Projectile Motion',
   pendulum: 'Simple Pendulum',
   spring_mass: 'Spring-Mass System',
+  circular_motion: 'Circular Motion',
   circuit: 'Electric Circuit',
   titration: 'Titration',
   combustion: 'Combustion',

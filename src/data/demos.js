@@ -133,6 +133,38 @@ export const DEMO_PROBLEMS = [
     },
   },
   {
+    id: 'circular-motion-demo',
+    label: 'Circular Motion',
+    problemText: 'A 1kg mass moves in a circular path with radius 2m at angular velocity 3 rad/s. Find the centripetal force required.',
+    parsedData: {
+      domain: 'physics',
+      type: 'circular_motion',
+      variables: {
+        radius: 2,
+        mass: 1,
+        angularVelocity: 3,
+      },
+      units: {
+        radius: 'm',
+        mass: 'kg',
+        angularVelocity: 'rad/s',
+      },
+      formula: 'Fc = mω²r = 1 × 3² × 2 = 18 N',
+      steps: [
+        'Linear speed: v = ωr = 3 × 2 = 6 m/s',
+        'Centripetal acceleration: ac = v²/r = 6²/2 = 18 m/s²',
+        'Centripetal force: Fc = mac = 1 × 18 = 18 N',
+        'The force always points toward the center of the circle',
+        'Period: T = 2π/ω = 2π/3 = 2.09 s',
+      ],
+      answer: {
+        value: 18,
+        unit: 'N',
+        explanation: 'The centripetal force required is 18 N, always directed toward the center of the circular path.',
+      },
+    },
+  },
+  {
     id: 'inclined-friction',
     label: 'Incline with Friction',
     problemText: 'A 5kg block slides down a 25-degree incline with coefficient of friction 0.3. Find the acceleration.',
