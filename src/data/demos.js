@@ -165,6 +165,43 @@ export const DEMO_PROBLEMS = [
     },
   },
   {
+    id: 'elastic-collision',
+    label: 'Elastic Collision',
+    problemText: 'A 2kg ball moving at 5 m/s collides elastically with a stationary 2kg ball. Find their velocities after collision.',
+    parsedData: {
+      domain: 'physics',
+      type: 'collisions',
+      variables: {
+        mass1: 2,
+        mass2: 2,
+        velocity1: 5,
+        velocity2: 0,
+        collisionType: 'elastic',
+      },
+      units: {
+        mass1: 'kg',
+        mass2: 'kg',
+        velocity1: 'm/s',
+        velocity2: 'm/s',
+      },
+      formula: 'v1\' = 0, v2\' = 5 m/s (equal mass exchange)',
+      steps: [
+        'Initial momentum: p = 2×5 + 2×0 = 10 kg·m/s',
+        'Initial KE: KE = ½×2×5² + ½×2×0² = 25 J',
+        'For equal masses in elastic collision: velocities swap',
+        'Final velocity of ball 1: v1\' = 0 m/s',
+        'Final velocity of ball 2: v2\' = 5 m/s',
+        'Total momentum conserved: 10 = 10 kg·m/s ✓',
+        'Total KE conserved: 25 = 25 J ✓',
+      ],
+      answer: {
+        value: 5,
+        unit: 'm/s',
+        explanation: 'In an elastic collision between equal masses, they exchange velocities. The moving ball stops and the stationary ball moves off with the original velocity.',
+      },
+    },
+  },
+  {
     id: 'inclined-friction',
     label: 'Incline with Friction',
     problemText: 'A 5kg block slides down a 25-degree incline with coefficient of friction 0.3. Find the acceleration.',
