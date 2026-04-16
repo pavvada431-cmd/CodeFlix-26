@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect, useState } from 'react'
+import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
 import { Canvas } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -74,26 +74,32 @@ function TransverseWave({ amplitude, frequency, wavelength, time }) {
 function LongitudinalWave({ amplitude, frequency, wavelength, time }) {
   const k = (2 * PI) / wavelength
   const omega = 2 * PI * frequency
+  const baseSpacing = 8 / (LONGITUDINAL_POINTS - 1)
 
   const slabRefs = useRef([])
 
   useEffect(() => {
     slabRefs.current.forEach((ref, idx) => {
       if (ref) {
-        const baseX = (idx / (LONGITUDINAL_POINTS - 1) - 0.5) * 8
-        const displacement = amplitude * Math.sin(k * baseX - omega * time)
+        const i = idx
+        const displacement = amplitude * Math.sin(k * i * baseSpacing - omega * time)
         const scaleX = 0.3 + 0.7 * (1 + displacement / amplitude)
         ref.scale.x = scaleX
-        ref.material.color.setHSL(0.55 - (displacement / amplitude) * 0.1, 0.8, 0.5)
+        ref.material.color.setHSL(0.1 - (displacement / amplitude) * 0.1, 0.8, 0.5 + Math.abs(displacement / amplitude) * 0.2)
+        ref.material.emissive.setHSL(0.1, 0.5, Math.abs(displacement / amplitude) * 0.3)
+        ref.material.emissiveIntensity = Math.abs(displacement / amplitude)
       }
     })
-  }, [time, amplitude, k, omega])
+  }, [time, amplitude, k, omega, baseSpacing])
 
-  const getXPosition = (idx) => {
-    const baseX = (idx / (LONGITUDINAL_POINTS - 1) - 0.5) * 8
-    const displacement = amplitude * Math.sin(k * baseX - omega * time)
-    return baseX + displacement * 0.5
-  }
+  const getXPosition = useCallback((idx) => {
+    let x = 0
+    for (let i = 0; i < idx; i++) {
+      const displacement = amplitude * Math.sin(k * i * baseSpacing - omega * time)
+      x += baseSpacing * (1 + displacement / amplitude * 0.3)
+    }
+    return (x / LONGITUDINAL_POINTS) * 8 - 4
+  }, [amplitude, k, omega, time, baseSpacing])
 
   return (
     <group>
@@ -101,11 +107,13 @@ function LongitudinalWave({ amplitude, frequency, wavelength, time }) {
         <mesh
           key={i}
           ref={el => slabRefs.current[i] = el}
-          position={[getXPosition(i), 0, 0]}
+          position={[(i / (LONGITUDINAL_POINTS - 1) - 0.5) * 8, 0, 0]}
         >
           <boxGeometry args={[0.15, 0.4, 0.4]} />
           <meshStandardMaterial
             color="#ff8800"
+            emissive="#ff4400"
+            emissiveIntensity={0.2}
             metalness={0.6}
             roughness={0.3}
           />
@@ -120,10 +128,12 @@ function StandingWave({ amplitude, frequency, wavelength, time }) {
   const omega = 2 * PI * frequency
 
   const nodes = []
-  const numNodes = Math.floor(8 / (wavelength / 2))
+  const numNodes = Math.floor(8 / (wavelength / 2)) + 1
   for (let n = 0; n < numNodes; n++) {
-    const x = (n - numNodes / 2) * (wavelength / 2)
-    nodes.push(x)
+    const x = -4 + n * (wavelength / 2)
+    if (x >= -4 && x <= 4) {
+      nodes.push(x)
+    }
   }
 
   const sphereRefs = useRef([])
@@ -151,7 +161,7 @@ function StandingWave({ amplitude, frequency, wavelength, time }) {
 
     nodeRefs.current.forEach((ref) => {
       if (ref) {
-        ref.material.opacity = 0.3 + 0.7 * Math.abs(Math.sin(omega * time))
+        ref.material.opacity = 0.3 + 0.7 * (1 - Math.abs(Math.sin(omega * time)))
       }
     })
   }, [time, amplitude, k, omega, positions])
@@ -181,13 +191,13 @@ function StandingWave({ amplitude, frequency, wavelength, time }) {
           ref={el => nodeRefs.current[i] = el}
           position={[x, 0, 0]}
         >
-          <sphereGeometry args={[0.15, 16, 16]} />
+          <sphereGeometry args={[0.12, 16, 16]} />
           <meshStandardMaterial
             color="#ff0000"
             emissive="#ff0000"
-            emissiveIntensity={1}
+            emissiveIntensity={1.5}
             transparent
-            opacity={0.5}
+            opacity={0.7}
           />
         </mesh>
       ))}
@@ -225,8 +235,8 @@ function InterferenceWave({ amplitude, frequency, wavelength, time }) {
         const normalizedDisplacement = y / (2 * amplitude)
         const hue = 0.5 - normalizedDisplacement * 0.15
         const lightness = 0.3 + Math.abs(normalizedDisplacement) * 0.4
-        ref.material.color.setHSL(hue, 0.8, lightness)
-        ref.material.emissive.setHSL(hue, 0.8, 0.3)
+        ref.material.color.setHSL(Math.max(0, hue), 0.8, lightness)
+        ref.material.emissive.setHSL(Math.max(0, hue), 0.8, 0.3)
         ref.material.emissiveIntensity = Math.abs(normalizedDisplacement)
       }
     })
@@ -253,11 +263,20 @@ function InterferenceWave({ amplitude, frequency, wavelength, time }) {
 
       <mesh position={[source1X, 0.5, 0]}>
         <sphereGeometry args={[0.15, 16, 16]} />
-        <meshStandardMaterial color="#ffff00" emissive="#ffff00" emissiveIntensity={1} />
+        <meshStandardMaterial color="#ffff00" emissive="#ffff00" emissiveIntensity={2} />
       </mesh>
       <mesh position={[source2X, 0.5, 0]}>
         <sphereGeometry args={[0.15, 16, 16]} />
-        <meshStandardMaterial color="#ffff00" emissive="#ffff00" emissiveIntensity={1} />
+        <meshStandardMaterial color="#ffff00" emissive="#ffff00" emissiveIntensity={2} />
+      </mesh>
+
+      <mesh position={[source1X, -0.5, 0]} rotation={[0, 0, 0]}>
+        <ringGeometry args={[0.05, 0.15 + Math.abs(Math.sin(omega * time)) * 0.2, 32]} />
+        <meshBasicMaterial color="#ffff00" transparent opacity={0.3} />
+      </mesh>
+      <mesh position={[source2X, -0.5, 0]} rotation={[0, 0, 0]}>
+        <ringGeometry args={[0.05, 0.15 + Math.abs(Math.sin(omega * time)) * 0.2, 32]} />
+        <meshBasicMaterial color="#ffff00" transparent opacity={0.3} />
       </mesh>
     </group>
   )
@@ -288,7 +307,8 @@ function WaveHeatmap({ amplitude, frequency, wavelength, time, waveType }) {
       let displacement = 0
 
       switch (waveType) {
-        case 'transverse': {
+        case 'transverse':
+        case 'longitudinal': {
           displacement = amplitude * Math.sin(k * x - omega * time)
           break
         }
@@ -308,7 +328,7 @@ function WaveHeatmap({ amplitude, frequency, wavelength, time, waveType }) {
       }
 
       const maxAmp = waveType === 'standing' ? 2 * amplitude : 2 * amplitude
-      const normalized = displacement / maxAmp
+      const normalized = displacement / (maxAmp || 1)
 
       for (let py = 0; py < height; py++) {
         const idx = (py * width + px) * 4
@@ -316,13 +336,15 @@ function WaveHeatmap({ amplitude, frequency, wavelength, time, waveType }) {
         const intensity = Math.max(0, 1 - distFromCenter)
 
         if (normalized < 0) {
-          imageData.data[idx] = Math.floor(255 * intensity * (-normalized) * 0.5)
-          imageData.data[idx + 1] = Math.floor(255 * intensity * (-normalized) * 0.5)
+          const intensityFactor = (-normalized) * intensity
+          imageData.data[idx] = Math.floor(50 * intensityFactor)
+          imageData.data[idx + 1] = Math.floor(100 * intensityFactor)
           imageData.data[idx + 2] = Math.floor(255 * intensity)
         } else {
+          const intensityFactor = normalized * intensity
           imageData.data[idx] = Math.floor(255 * intensity)
-          imageData.data[idx + 1] = Math.floor(255 * intensity * (1 - normalized) * 0.5)
-          imageData.data[idx + 2] = Math.floor(255 * intensity * (1 - normalized) * 0.5)
+          imageData.data[idx + 1] = Math.floor(100 * intensityFactor)
+          imageData.data[idx + 2] = Math.floor(50 * intensityFactor)
         }
         imageData.data[idx + 3] = 255
       }
@@ -337,6 +359,150 @@ function WaveHeatmap({ amplitude, frequency, wavelength, time, waveType }) {
       className="absolute bottom-16 left-1/2 -translate-x-1/2 rounded-lg border border-[rgba(0,245,255,0.3)]"
       style={{ width: 400, height: 60 }}
     />
+  )
+}
+
+function GraphPanel({ mode, amplitude, frequency, wavelength, time, waveType }) {
+  const canvasRef = useRef(null)
+  const dataHistoryRef = useRef([])
+
+  const k = (2 * PI) / wavelength
+  const omega = 2 * PI * frequency
+
+  useEffect(() => {
+    let disp = 0
+    switch (waveType) {
+      case 'transverse':
+      case 'longitudinal':
+        disp = amplitude * Math.sin(-omega * time)
+        break
+      case 'standing':
+        disp = 2 * amplitude * Math.cos(0) * Math.sin(omega * time)
+        break
+      case 'interference': {
+        const d1 = Math.abs(0 - (-2))
+        const d2 = Math.abs(0 - 2)
+        disp = amplitude * (Math.sin(k * d1 - omega * time) + Math.sin(k * d2 - omega * time))
+        break
+      }
+      default:
+        disp = amplitude * Math.sin(-omega * time)
+    }
+    dataHistoryRef.current = [...dataHistoryRef.current.slice(-100), { t: time, y: disp }]
+  }, [time, amplitude, frequency, wavelength, waveType, k, omega])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    const width = canvas.width
+    const height = canvas.height
+    const padding = 30
+
+    ctx.fillStyle = '#0a0a0f'
+    ctx.fillRect(0, 0, width, height)
+
+    ctx.strokeStyle = '#333'
+    ctx.lineWidth = 1
+    for (let i = 1; i < 4; i++) {
+      const y = padding + (height - 2 * padding) * i / 4
+      ctx.beginPath()
+      ctx.moveTo(padding, y)
+      ctx.lineTo(width - padding, y)
+      ctx.stroke()
+    }
+
+    if (mode === 'displacementPosition') {
+      ctx.fillStyle = '#666'
+      ctx.font = '10px monospace'
+      ctx.fillText('Displacement vs Position', padding + 5, 18)
+
+      ctx.strokeStyle = '#00f5ff'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+
+      for (let px = padding; px < width - padding; px++) {
+        const x = ((px - padding) / (width - 2 * padding) - 0.5) * 8
+        let y = 0
+
+        switch (waveType) {
+          case 'transverse':
+          case 'longitudinal':
+            y = amplitude * Math.sin(k * x - omega * time)
+            break
+          case 'standing':
+            y = 2 * amplitude * Math.cos(k * x) * Math.sin(omega * time)
+            break
+          case 'interference': {
+            const d1 = Math.abs(x - (-2))
+            const d2 = Math.abs(x - 2)
+            y = amplitude * (Math.sin(k * d1 - omega * time) + Math.sin(k * d2 - omega * time))
+            break
+          }
+          default:
+            y = amplitude * Math.sin(k * x - omega * time)
+        }
+
+        const maxAmp = waveType === 'standing' ? 2 * amplitude : 2 * amplitude
+        const screenY = height / 2 - (y / (maxAmp || 1)) * (height / 2 - padding)
+
+        if (px === padding) {
+          ctx.moveTo(px, screenY)
+        } else {
+          ctx.lineTo(px, screenY)
+        }
+      }
+      ctx.stroke()
+
+      ctx.fillStyle = '#888'
+      ctx.fillText('x →', width - padding - 15, height - 5)
+      ctx.fillText('y →', padding, padding - 10)
+    }
+
+    if (mode === 'displacementTime') {
+      ctx.fillStyle = '#666'
+      ctx.font = '10px monospace'
+      ctx.fillText('Displacement vs Time (x=0)', padding + 5, 18)
+
+      const data = dataHistoryRef.current
+      if (data.length > 1) {
+        const tMin = data[0].t
+        const tMax = data[data.length - 1].t
+        const tRange = Math.max(tMax - tMin, 0.001)
+
+        ctx.strokeStyle = '#ff8800'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+
+        data.forEach((point, i) => {
+          const px = padding + ((point.t - tMin) / tRange) * (width - 2 * padding)
+          const maxAmp = waveType === 'standing' ? 2 * amplitude : 2 * amplitude
+          const py = height / 2 - (point.y / (maxAmp || 1)) * (height / 2 - padding)
+          if (i === 0) {
+            ctx.moveTo(px, py)
+          } else {
+            ctx.lineTo(px, py)
+          }
+        })
+        ctx.stroke()
+      }
+
+      ctx.fillStyle = '#888'
+      ctx.fillText('t →', width - padding - 15, height - 5)
+      ctx.fillText('y →', padding, padding - 10)
+    }
+  }, [time, amplitude, frequency, wavelength, waveType, mode, k, omega])
+
+  return (
+    <div style={{
+      backgroundColor: '#0a0a0f',
+      border: '1px solid #333',
+      borderRadius: '6px',
+      overflow: 'hidden'
+    }}>
+      <canvas ref={canvasRef} width={280} height={160} />
+    </div>
   )
 }
 
@@ -370,7 +536,7 @@ function WaveScene({
 
   const infoTextures = useMemo(() => ({
     equation: createLabelTexture(waveEquation, '#00f5ff'),
-    params: createLabelTexture(`A=${amplitude}m f=${frequency}Hz λ=${wavelength}m v=${waveSpeed}m/s`, '#ffff00'),
+    params: createLabelTexture(`A=${amplitude.toFixed(2)}m f=${frequency.toFixed(1)}Hz λ=${wavelength.toFixed(1)}m v=${waveSpeed}m/s`, '#ffff00'),
     type: createLabelTexture(`Type: ${waveType.toUpperCase()}`, '#ff88ff'),
   }), [waveEquation, waveSpeed, amplitude, frequency, wavelength, waveType])
 
@@ -383,7 +549,8 @@ function WaveScene({
     let dispX0 = 0, dispXHalf = 0, energy = 0
 
     switch (waveType) {
-      case 'transverse': {
+      case 'transverse':
+      case 'longitudinal': {
         dispX0 = amplitude * Math.sin(-omega * time)
         dispXHalf = amplitude * Math.sin(k * xHalf - omega * time)
         energy = 0.5 * amplitude * amplitude * frequency * 100
@@ -466,196 +633,24 @@ function WaveScene({
   )
 }
 
-function PositionGraph({ amplitude, frequency, wavelength, time, waveType }) {
-  const canvasRef = useRef(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-    const width = 300
-    const height = 150
-    canvas.width = width
-    canvas.height = height
-
-    ctx.fillStyle = 'rgba(10, 15, 30, 0.9)'
-    ctx.fillRect(0, 0, width, height)
-
-    ctx.strokeStyle = 'rgba(0, 245, 255, 0.3)'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.moveTo(0, height / 2)
-    ctx.lineTo(width, height / 2)
-    ctx.stroke()
-
-    ctx.beginPath()
-    ctx.moveTo(width / 2, 0)
-    ctx.lineTo(width / 2, height)
-    ctx.stroke()
-
-    ctx.strokeStyle = '#00f5ff'
-    ctx.lineWidth = 2
-    ctx.beginPath()
-
-    const k = (2 * Math.PI) / wavelength
-    const omega = 2 * Math.PI * frequency
-
-    for (let px = 0; px < width; px++) {
-      const x = (px / width - 0.5) * 8
-      let y = 0
-
-      switch (waveType) {
-        case 'transverse':
-          y = amplitude * Math.sin(k * x - omega * time)
-          break
-        case 'standing':
-          y = 2 * amplitude * Math.cos(k * x) * Math.sin(omega * time)
-          break
-        case 'interference': {
-          const d1 = Math.abs(x - (-2))
-          const d2 = Math.abs(x - 2)
-          y = amplitude * (Math.sin(k * d1 - omega * time) + Math.sin(k * d2 - omega * time))
-          break
-        }
-        default:
-          y = amplitude * Math.sin(k * x - omega * time)
-      }
-
-      const maxAmp = waveType === 'standing' ? 2 * amplitude : 2 * amplitude
-      const screenY = height / 2 - (y / maxAmp) * (height / 2 - 10)
-
-      if (px === 0) {
-        ctx.moveTo(px, screenY)
-      } else {
-        ctx.lineTo(px, screenY)
-      }
-    }
-    ctx.stroke()
-
-    ctx.fillStyle = '#ffffff'
-    ctx.font = '10px Arial'
-    ctx.fillText('Position', width / 2, height - 5)
-    ctx.save()
-    ctx.translate(10, height / 2)
-    ctx.rotate(-Math.PI / 2)
-    ctx.fillText('y', 0, 0)
-    ctx.restore()
-  }, [time, amplitude, frequency, wavelength, waveType])
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="absolute top-16 left-4 rounded-lg border border-[rgba(0,245,255,0.3)]"
-      style={{ width: 300, height: 150 }}
-    />
-  )
-}
-
-function OscillationGraph({ amplitude, frequency, wavelength, time, waveType }) {
-  const canvasRef = useRef(null)
-  const dataRef = useRef([])
-
-  useEffect(() => {
-    const k = (2 * Math.PI) / wavelength
-    const omega = 2 * Math.PI * frequency
-
-    let disp = 0
-    switch (waveType) {
-      case 'transverse':
-        disp = amplitude * Math.sin(-omega * time)
-        break
-      case 'standing':
-        disp = 2 * amplitude * Math.cos(0) * Math.sin(omega * time)
-        break
-      case 'interference': {
-        const d1 = Math.abs(0 - (-2))
-        const d2 = Math.abs(0 - 2)
-        disp = amplitude * (Math.sin(k * d1 - omega * time) + Math.sin(k * d2 - omega * time))
-        break
-      }
-      default:
-        disp = amplitude * Math.sin(-omega * time)
-    }
-
-    dataRef.current = [...dataRef.current.slice(-100), { t: time, y: disp }]
-    if (dataRef.current.length > 100) {
-      dataRef.current = dataRef.current.slice(-100)
-    }
-  }, [time, amplitude, frequency, wavelength, waveType])
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-    const width = 300
-    const height = 150
-    canvas.width = width
-    canvas.height = height
-
-    ctx.fillStyle = 'rgba(10, 15, 30, 0.9)'
-    ctx.fillRect(0, 0, width, height)
-
-    ctx.strokeStyle = 'rgba(0, 245, 255, 0.3)'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.moveTo(0, height / 2)
-    ctx.lineTo(width, height / 2)
-    ctx.stroke()
-
-    ctx.strokeStyle = '#ff8800'
-    ctx.lineWidth = 2
-    ctx.beginPath()
-
-    const data = dataRef.current
-    if (data.length > 1) {
-      const tMin = data[0].t
-      const tMax = data[data.length - 1].t
-      const tRange = Math.max(tMax - tMin, 0.001)
-
-      data.forEach((point, i) => {
-        const px = ((point.t - tMin) / tRange) * width
-        const maxAmp = waveType === 'standing' ? 2 * amplitude : 2 * amplitude
-        const py = height / 2 - (point.y / maxAmp) * (height / 2 - 10)
-        if (i === 0) {
-          ctx.moveTo(px, py)
-        } else {
-          ctx.lineTo(px, py)
-        }
-      })
-    }
-    ctx.stroke()
-
-    ctx.fillStyle = '#ffffff'
-    ctx.font = '10px Arial'
-    ctx.fillText('Time', width / 2, height - 5)
-    ctx.fillText('x=0', 5, 15)
-  }, [time, amplitude, wavelength, waveType])
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="absolute top-16 right-4 rounded-lg border border-[rgba(255,136,0,0.3)]"
-      style={{ width: 300, height: 150 }}
-    />
-  )
-}
-
 export default function WaveMotion({
   amplitude = 0.5,
   frequency = 1,
   wavelength = 2,
+  waveSpeed: providedSpeed,
   waveType = 'transverse',
   isPlaying = false,
   onDataPoint,
 }) {
   const [time, setTime] = useState(0)
   const [lastDataTime, setLastDataTime] = useState(0)
+  const [graphMode, setGraphMode] = useState('displacementPosition')
   const startTimeRef = useRef(0)
   const animationRef = useRef(null)
 
-  const waveTypes = ['transverse', 'longitudinal', 'standing', 'interference']
+  const k = (2 * PI) / wavelength
+  const omega = 2 * PI * frequency
+  const waveSpeed = providedSpeed || (omega / k).toFixed(2)
 
   useEffect(() => {
     if (!isPlaying) {
@@ -721,24 +716,47 @@ export default function WaveMotion({
         waveType={waveType}
       />
 
-      <PositionGraph
-        amplitude={amplitude}
-        frequency={frequency}
-        wavelength={wavelength}
-        time={time}
-        waveType={waveType}
-      />
-
-      <OscillationGraph
-        amplitude={amplitude}
-        frequency={frequency}
-        wavelength={wavelength}
-        time={time}
-        waveType={waveType}
-      />
+      <div className="absolute bottom-20 right-4">
+        <div className="mb-2 font-mono-display text-xs text-slate-400">
+          GRAPH: {graphMode === 'displacementPosition' ? 'Displacement vs Position' : 'Displacement vs Time'}
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setGraphMode('displacementPosition')}
+              className={`rounded px-3 py-1 font-mono-display text-[10px] transition ${
+                graphMode === 'displacementPosition'
+                  ? 'bg-[rgba(0,245,255,0.2)] text-[#00f5ff]'
+                  : 'bg-[rgba(50,50,50,0.3)] text-slate-500'
+              }`}
+            >
+              y vs x
+            </button>
+            <button
+              onClick={() => setGraphMode('displacementTime')}
+              className={`rounded px-3 py-1 font-mono-display text-[10px] transition ${
+                graphMode === 'displacementTime'
+                  ? 'bg-[rgba(255,136,0,0.2)] text-[#ff8800]'
+                  : 'bg-[rgba(50,50,50,0.3)] text-slate-500'
+              }`}
+            >
+              y vs t
+            </button>
+          </div>
+          <GraphPanel
+            mode={graphMode}
+            amplitude={amplitude}
+            frequency={frequency}
+            wavelength={wavelength}
+            time={time}
+            waveType={waveType}
+          />
+        </div>
+      </div>
 
       <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
-        {waveTypes.map(type => (
+        <div className="font-mono-display text-xs text-slate-400">TYPE:</div>
+        {['transverse', 'longitudinal', 'standing', 'interference'].map(type => (
           <button
             key={type}
             onClick={() => {}}
@@ -753,8 +771,48 @@ export default function WaveMotion({
         ))}
       </div>
 
+      <div className="absolute right-4 top-4 flex flex-col gap-2">
+        <div className="rounded-lg border border-[rgba(0,245,255,0.3)] bg-[rgba(10,15,30,0.9)] p-3">
+          <div className="mb-2 font-mono-display text-xs text-slate-400">LIVE DATA</div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono-display text-[10px]">
+            <span className="text-[#00f5ff]">A:</span>
+            <span className="text-white">{amplitude.toFixed(2)} m</span>
+            <span className="text-[#ff8800]">f:</span>
+            <span className="text-white">{frequency.toFixed(1)} Hz</span>
+            <span className="text-[#88ff88]">λ:</span>
+            <span className="text-white">{wavelength.toFixed(1)} m</span>
+            <span className="text-[#ff88ff]">v:</span>
+            <span className="text-white">{waveSpeed} m/s</span>
+            <span className="text-[#ffff00]">T:</span>
+            <span className="text-white">{(1 / frequency).toFixed(3)} s</span>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-[rgba(255,136,0,0.3)] bg-[rgba(10,15,30,0.9)] p-3">
+          <div className="mb-2 font-mono-display text-xs text-[#ff8800]">EQUATION</div>
+          <div className="font-mono-display text-[10px] text-white">
+            {waveType === 'transverse' && `y = ${amplitude}·sin(${k.toFixed(2)}x - ${omega.toFixed(2)}t)`}
+            {waveType === 'longitudinal' && `x = x₀ + ${amplitude}·sin(${k.toFixed(2)}x₀ - ${omega.toFixed(2)}t)`}
+            {waveType === 'standing' && `y = ${(2*amplitude).toFixed(2)}·cos(${k.toFixed(2)}x)·sin(${omega.toFixed(2)}t)`}
+            {waveType === 'interference' && `y = A·sin(kd₁-ωt) + A·sin(kd₂-ωt)`}
+          </div>
+        </div>
+      </div>
+
+      {waveType === 'standing' && (
+        <div className="absolute left-4 top-4 rounded-lg border border-[rgba(255,0,255,0.5)] bg-[rgba(0,0,0,0.7)] p-2 font-mono-display text-xs text-[#ff00ff]">
+          Red spheres = Nodes (zero displacement)
+        </div>
+      )}
+
+      {waveType === 'interference' && (
+        <div className="absolute left-4 top-4 rounded-lg border border-[rgba(255,255,0,0.5)] bg-[rgba(0,0,0,0.7)] p-2 font-mono-display text-xs text-[#ffff00]">
+          Yellow sources | Bright = constructive | Dark = destructive
+        </div>
+      )}
+
       <div className="absolute bottom-4 right-4 rounded-full border border-[rgba(0,245,255,0.3)] bg-[rgba(0,0,0,0.7)] px-4 py-2 font-mono-display text-xs text-[#00f5ff]">
-        T = {(1 / frequency).toFixed(3)}s
+        k = {k.toFixed(2)} rad/m | ω = {omega.toFixed(2)} rad/s
       </div>
     </div>
   )

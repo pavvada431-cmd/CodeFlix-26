@@ -19,20 +19,32 @@ SimuSolve/
 │   │   ├── Navbar.jsx
 │   │   ├── ProblemInput.jsx
 │   │   ├── SolutionPanel.jsx
-│   │   ├── GraphPanel.jsx
+│   │   ├── GraphPanel.jsx       # Enhanced with AI analysis
 │   │   ├── SimulationRouter.jsx
 │   │   ├── SplashScreen.jsx
 │   │   └── Toast.jsx
 │   ├── simulations/         # Physics simulations
+│   │   ├── CircularMotion.jsx   # Orbital dynamics
+│   │   ├── Collisions.jsx      # Elastic/inelastic collisions
+│   │   ├── ElectricFields.jsx   # Coulomb force visualization
+│   │   ├── FluidMechanics.jsx  # Archimedes & Bernoulli
+│   │   ├── GravitationalOrbits.jsx
 │   │   ├── InclinedPlane.jsx
+│   │   ├── Optics.jsx          # Lenses & mirrors
+│   │   ├── Pendulum.jsx
 │   │   ├── ProjectileMotion.jsx
-│   │   └── Pendulum.jsx
+│   │   ├── RadioactiveDecay.jsx
+│   │   ├── RotationalMechanics.jsx
+│   │   ├── SpringMass.jsx
+│   │   ├── Thermodynamics.jsx   # Maxwell-Boltzmann
+│   │   └── WaveMotion.jsx      # Standing & traveling waves
 │   ├── hooks/               # Custom React hooks
 │   │   └── useSimulation.js
 │   ├── data/                # Demo problems
 │   └── utils/               # Utilities
 │       ├── share.js         # URL encoding/decoding
 │       └── toast.js         # Toast notifications
+├── server.js                 # Claude API proxy server
 ├── index.html
 ├── vite.config.js
 └── package.json
@@ -51,20 +63,22 @@ SimuSolve/
 │                    │  └────────────┘ │                      │
 │                    └────────────────┘                      │
 │  ┌──────────────────────┐  ┌──────────────────────────────┐│
-│  │    SolutionPanel     │  │       SimulationRouter       ││
+│  │    SolutionPanel      │  │       SimulationRouter       ││
 │  │  ┌────────────────┐  │  │  ┌────────────────────────┐  ││
-│  │  │ Step-by-Step   │  │  │  │   3D Canvas (R3F)      │  ││
+│  │  │ Step-by-Step   │  │  │  │   3D Canvas (R3F)    │  ││
 │  │  │ Solution       │  │  │  │  ┌──────────────────┐  │  ││
-│  │  └────────────────┘  │  │  │  │ InclinedPlane    │  │  ││
-│  │  ┌────────────────┐  │  │  │  │ ProjectileMotion │  │  ││
-│  │  │ GraphPanel     │  │  │  │  │ Pendulum         │  │  ││
-│  │  │ (Recharts)     │  │  │  │  └──────────────────┘  │  ││
-│  │  └────────────────┘  │  │  └────────────────────────┘  ││
+│  │  └────────────────┘  │  │  │ All 16 Simulations │  │  ││
+│  │  ┌────────────────┐  │  │  └──────────────────┘  │  ││
+│  │  │ GraphPanel     │  │  │  + AI Physics Tutor    │  ││
+│  │  │ + AI Analysis  │  │  └────────────────────────┘  ││
+│  │  │ + Quiz Mode    │  │                               ││
+│  │  │ + Compare Mode │  │                               ││
+│  │  └────────────────┘  │                               ││
 │  └──────────────────────┘  └──────────────────────────────┘│
-│                          useSimulation Hook                 │
+│                          useSimulation Hook                   │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │              Physics Engine (Matter.js)              │  │
-│  │              Scene Manager (Three.js)                │  │
+│  │              Physics Engine (Matter.js)                 │  │
+│  │              Scene Manager (Three.js)                  │  │
 │  └──────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -77,6 +91,53 @@ npm run dev
 ```
 
 Open http://localhost:5173
+
+## AI-Powered Analysis (Optional)
+
+To enable AI-powered physics tutoring and quiz generation:
+
+```bash
+# Install API dependencies
+npm install cors express
+
+# Set your Anthropic API key
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Run both servers
+npm run dev:all
+```
+
+The GraphPanel will automatically:
+1. Analyze simulation data after 5 seconds
+2. Generate physics insights (principle, insight, application, experiment)
+3. Create quiz questions based on the data
+4. Detect energy conservation anomalies (highlights in red if >5% drift)
+
+If the API is unavailable, local fallback analysis is used.
+
+## Simulations
+
+16 physics simulations covering:
+
+| Category | Simulations |
+|----------|------------|
+| **Mechanics** | Inclined Plane, Projectile Motion, Pendulum, Circular Motion, Rotational Mechanics |
+| **Energy** | Spring-Mass, Gravitational Orbits, Collisions |
+| **Waves** | Wave Motion (Transverse, Longitudinal, Standing, Interference) |
+| **Thermodynamics** | Ideal Gas, Maxwell-Boltzmann Distribution |
+| **Electromagnetism** | Electric Fields, Equipotential Lines |
+| **Optics** | Lenses, Mirrors, Dispersion, Total Internal Reflection |
+| **Fluids** | Buoyancy, Bernoulli's Principle |
+| **Nuclear** | Radioactive Decay, Chain Decay |
+
+## GraphPanel Features
+
+- **Real-time telemetry**: Live data visualization with Recharts
+- **Compare mode**: Overlay two simulation runs with different variables
+- **Energy conservation detection**: Highlights anomalies in red
+- **CSV export**: Download full data stream
+- **AI Physics Tutor**: 4-card analysis (principle, insight, application, experiment)
+- **Quiz Mode**: Multiple-choice questions generated from simulation data
 
 ## Demo Problems
 
@@ -111,3 +172,4 @@ cp .env.example .env
 | Variable       | Description                  | Default                |
 |---------------|------------------------------|------------------------|
 | `VITE_API_URL`| Backend API endpoint         | `http://localhost:3001`|
+| `ANTHROPIC_API_KEY` | Claude API key (optional) | -                      |
