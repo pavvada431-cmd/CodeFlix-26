@@ -647,39 +647,52 @@ export default function GraphPanel({
   variables = {},
   compareData = null,
   onQuizAnswer = null,
+  accentColor = '#00f5ff',
 }) {
   const [analysis, setAnalysis] = useState(null)
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const [quiz, setQuiz] = useState(null)
   const [showQuiz, setShowQuiz] = useState(false)
   const analysisTimeoutRef = useRef(null)
+  const lastRenderRef = useRef(0)
+  const [throttledData, setThrottledData] = useState([])
+  
+  useEffect(() => {
+    const now = performance.now()
+    const minInterval = 1000 / 30
+    
+    if (now - lastRenderRef.current >= minInterval) {
+      setThrottledData(dataStream)
+      lastRenderRef.current = now
+    }
+  }, [dataStream])
   
   const currentTime = useMemo(() => {
-    if (dataStream.length > 0) return dataStream[dataStream.length - 1].t || 0
+    if (throttledData.length > 0) return throttledData[throttledData.length - 1].t || 0
     return 0
-  }, [dataStream])
+  }, [throttledData])
   
   const { anomalousData, drift } = useMemo(() => {
     const conservativeTypes = ['pendulum', 'circular_motion', 'projectile']
     if (!conservativeTypes.includes(simulationType)) {
       return { anomalousData: [], drift: 0 }
     }
-    return detectEnergyAnomalies(dataStream)
-  }, [simulationType, dataStream])
+    return detectEnergyAnomalies(throttledData)
+  }, [simulationType, throttledData])
   
   useEffect(() => {
     if (analysisTimeoutRef.current) {
       clearTimeout(analysisTimeoutRef.current)
     }
     
-    if (dataStream.length > 50 || currentTime > 5) {
+    if (throttledData.length > 50 || currentTime > 5) {
       analysisTimeoutRef.current = setTimeout(async () => {
         setAnalysisLoading(true)
         
         const prompt = `You are a physics tutor. Given this simulation data for a ${simulationType} simulation with variables ${JSON.stringify(variables)}:
         
 Data samples (first 20 and last 20):
-${JSON.stringify([...dataStream.slice(0, 20), ...dataStream.slice(-20)])}
+${JSON.stringify([...throttledData.slice(0, 20), ...throttledData.slice(-20)])}
 
 Identify: (1) the key physics principle demonstrated, (2) one surprising or counterintuitive insight a student might miss, (3) a real-world application of this exact scenario, (4) one follow-up experiment the student should try.
 
@@ -698,10 +711,10 @@ Return as JSON: {"principle": "...", "insight": "...", "application": "...", "ex
             }
           } catch (e) {
             console.warn('Failed to parse AI response, using local analysis:', e)
-            setAnalysis(getLocalAnalysis(simulationType, dataStream, variables))
+            setAnalysis(getLocalAnalysis(simulationType, throttledData, variables))
           }
         } else {
-          setAnalysis(getLocalAnalysis(simulationType, dataStream, variables))
+          setAnalysis(getLocalAnalysis(simulationType, throttledData, variables))
         }
         
         setAnalysisLoading(false)
@@ -713,14 +726,14 @@ Return as JSON: {"principle": "...", "insight": "...", "application": "...", "ex
         clearTimeout(analysisTimeoutRef.current)
       }
     }
-  }, [dataStream, simulationType, currentTime])
+  }, [throttledData, simulationType, currentTime])
   
   const generateQuiz = useCallback(async () => {
     setShowQuiz(true)
     
     const prompt = `Generate a multiple choice question based on this simulation data for ${simulationType}.
     
-Data: ${JSON.stringify(dataStream.slice(-50))}
+Data: ${JSON.stringify(throttledData.slice(-50))}
 Variables: ${JSON.stringify(variables)}
 
 Create a question with 4 options where only one is correct. Return JSON: {"question": "...", "options": ["A", "B", "C", "D"], "correctIndex": 0, "explanation": "..."}`
@@ -741,24 +754,8 @@ Create a question with 4 options where only one is correct. Return JSON: {"quest
       }
     }
     
-    setQuiz(generateLocalQuiz(simulationType, dataStream, variables))
-      } catch (e) {
-        setQuiz({
-          question: `At t=${currentTime.toFixed(1)}s, what is the current value?`,
-          options: ['Option A', 'Option B', 'Option C', 'Option D'],
-          correctIndex: 0,
-          explanation: 'This is a fallback question.'
-        })
-      }
-    } else {
-      setQuiz({
-        question: `At t=${currentTime.toFixed(1)}s, what is the current value?`,
-        options: ['Option A', 'Option B', 'Option C', 'Option D'],
-        correctIndex: 0,
-        explanation: 'Fallback question.'
-      })
-    }
-  }, [dataStream, simulationType, currentTime, variables])
+    setQuiz(generateLocalQuiz(simulationType, throttledData, variables))
+  }, [throttledData, simulationType, currentTime, variables])
   
   const handleQuizAnswer = useCallback((selectedIndex, correctIndex) => {
     const isCorrect = selectedIndex === correctIndex
@@ -773,21 +770,21 @@ Create a question with 4 options where only one is correct. Return JSON: {"quest
     
     switch (simulationType) {
       case 'projectile':
-        return <ProjectileCharts dataStream={dataStream} currentTime={currentTime} anomalousData={anomalousData} />
+        return <ProjectileCharts dataStream={throttledData} currentTime={currentTime} anomalousData={anomalousData} />
       case 'pendulum':
-        return <PendulumCharts dataStream={dataStream} currentTime={currentTime} anomalousData={anomalousData} />
+        return <PendulumCharts dataStream={throttledData} currentTime={currentTime} anomalousData={anomalousData} />
       case 'circular_motion':
       case 'energy':
-        return <EnergyCharts dataStream={dataStream} currentTime={currentTime} anomalousData={anomalousData} />
+        return <EnergyCharts dataStream={throttledData} currentTime={currentTime} anomalousData={anomalousData} />
       case 'inclined_plane':
       default:
-        return <InclinedPlaneCharts dataStream={dataStream} currentTime={currentTime} anomalousData={anomalousData} />
+        return <InclinedPlaneCharts dataStream={throttledData} currentTime={currentTime} anomalousData={anomalousData} />
     }
-  }, [simulationType, dataStream, currentTime, anomalousData, compareData])
+  }, [simulationType, throttledData, currentTime, anomalousData, compareData])
   
   const handleExportCSV = useCallback(() => {
-    exportToCSV(dataStream, `${simulationType}_data.csv`)
-  }, [dataStream, simulationType])
+    exportToCSV(throttledData, `${simulationType}_data.csv`)
+  }, [throttledData, simulationType])
 
   return (
     <section className="flex flex-col gap-2">
@@ -806,14 +803,14 @@ Create a question with 4 options where only one is correct. Return JSON: {"quest
           )}
           <button
             onClick={generateQuiz}
-            disabled={dataStream.length < 10}
+            disabled={throttledData.length < 10}
             className="rounded-lg border border-purple-500/50 bg-purple-500/10 px-3 py-1 font-mono-display text-xs text-purple-400 transition-all hover:bg-purple-500/20 disabled:opacity-40"
           >
             🧠 Quiz Me
           </button>
-          {dataStream.length > 0 && (
+          {throttledData.length > 0 && (
             <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono-display text-xs text-slate-300">
-              {dataStream.length} samples
+              {throttledData.length} samples
             </div>
           )}
         </div>

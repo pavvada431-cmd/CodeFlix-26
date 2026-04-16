@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { encodeProblemToURL, encodeDemoToURL, copyToClipboard } from '../utils/share'
 import { showSuccess, showError } from '../utils/toast'
 
-function Navbar({ activeDomain, onDomainChange, onDemoMode, parsedData, demoId }) {
+function Navbar({ activeDomain, onDomainChange, onDemoMode, parsedData, demoId, onOpenLibrary, onSelectSimulation, onToggleFormula, onTogglePresentation, isPresentationMode }) {
   const [isSharing, setIsSharing] = useState(false)
 
   const handleShare = async () => {
@@ -75,6 +75,40 @@ function Navbar({ activeDomain, onDomainChange, onDemoMode, parsedData, demoId }
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={onOpenLibrary}
+            className="hidden items-center gap-2 rounded-full border border-[rgba(136,0,255,0.3)] bg-[rgba(136,0,255,0.1)] px-4 py-2 font-mono-display text-xs uppercase tracking-[0.2em] text-[#8800ff] transition hover:border-[rgba(136,0,255,0.5)] hover:bg-[rgba(136,0,255,0.2)] lg:inline-flex"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            Library
+          </button>
+
+          <button
+            onClick={onToggleFormula}
+            className="hidden items-center gap-2 rounded-full border border-[rgba(0,255,136,0.3)] bg-[rgba(0,255,136,0.1)] px-4 py-2 font-mono-display text-xs uppercase tracking-[0.2em] text-[#00ff88] transition hover:border-[rgba(0,255,136,0.5)] hover:bg-[rgba(0,255,136,0.2)] lg:inline-flex"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            Formulas
+          </button>
+
+          <button
+            onClick={onTogglePresentation}
+            className={`hidden items-center gap-2 rounded-full border px-4 py-2 font-mono-display text-xs uppercase tracking-[0.2em] transition hover:border-[rgba(255,136,0,0.5)] lg:inline-flex ${
+              isPresentationMode
+                ? 'border-[rgba(255,136,0,0.5)] bg-[rgba(255,136,0,0.2)] text-[#ff8800]'
+                : 'border-[rgba(255,136,0,0.3)] bg-[rgba(255,136,0,0.1)] text-[#ff8800]'
+            }`}
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            {isPresentationMode ? 'Exit' : 'Present'}
+          </button>
+
           <button
             onClick={onDemoMode}
             className="hidden rounded-full border border-[rgba(0,245,255,0.25)] bg-[rgba(0,245,255,0.08)] px-4 py-2 font-mono-display text-xs uppercase tracking-[0.2em] text-[#00f5ff] transition hover:border-[rgba(0,245,255,0.4)] hover:bg-[rgba(0,245,255,0.15)] lg:inline-flex"

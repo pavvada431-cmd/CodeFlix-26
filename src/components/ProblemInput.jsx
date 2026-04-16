@@ -7,22 +7,62 @@ const EXAMPLES = [
   {
     label: 'Inclined Plane',
     text: 'A 10kg block slides down a 30-degree frictionless incline. Find its acceleration and the normal force.',
+    type: 'inclined_plane',
   },
   {
     label: 'Projectile Motion',
     text: 'A ball is launched at 20 m/s at an angle of 45 degrees from the ground. Find the range and time of flight.',
+    type: 'projectile',
   },
   {
     label: 'Pendulum',
     text: "A simple pendulum has length 2 m. Calculate its period near Earth's surface.",
+    type: 'pendulum',
   },
   {
-    label: 'Simple Circuit',
-    text: 'A 12 V battery is connected to a 6 ohm resistor. Find the current and power dissipated by the resistor.',
+    label: 'Spring-Mass',
+    text: 'A 2kg mass attached to a spring with k=100 N/m is pulled 0.5m and released. Find the oscillation period.',
+    type: 'spring_mass',
   },
   {
-    label: 'Acid-Base Titration',
-    text: 'How much 0.1 M NaOH is needed to neutralize 25 mL of 0.2 M HCl?',
+    label: 'Circular Motion',
+    text: 'A car of mass 1000kg travels at 20 m/s around a circular track of radius 50m. Find the centripetal force.',
+    type: 'circular_motion',
+  },
+  {
+    label: 'Collision',
+    text: 'Two balls with masses 2kg and 3kg collide head-on at velocities 5 m/s and -3 m/s respectively. Calculate final velocities for elastic collision.',
+    type: 'collisions',
+  },
+  {
+    label: 'Wave Motion',
+    text: 'A wave travels with amplitude 0.3m, frequency 2Hz, and wavelength 1.5m. Visualize transverse wave propagation.',
+    type: 'wave_motion',
+  },
+  {
+    label: 'Rotational Mechanics',
+    text: 'A solid disk of mass 5kg and radius 0.5m rotates from rest under a 20N force applied at the rim. Find angular acceleration.',
+    type: 'rotational_mechanics',
+  },
+  {
+    label: 'Orbital Mechanics',
+    text: 'A satellite of mass 500kg orbits Earth at altitude 400km with circular velocity. Calculate orbital period and velocity.',
+    type: 'orbital',
+  },
+  {
+    label: 'Buoyancy',
+    text: 'A wooden block with density 600 kg/m³ and volume 0.001 m³ floats in water. Will it sink or float? Find the buoyant force.',
+    type: 'buoyancy',
+  },
+  {
+    label: 'Thermodynamics',
+    text: 'An ideal gas container holds 100 particles at 300K in a volume of 8 m³. Calculate pressure and average kinetic energy.',
+    type: 'ideal_gas',
+  },
+  {
+    label: 'Radioactive Decay',
+    text: 'A sample contains 1000 atoms of Carbon-14 with half-life of 5730 years. Simulate exponential decay over time.',
+    type: 'radioactive_decay',
   },
 ]
 
@@ -127,7 +167,7 @@ function ProblemInput({ onSolved, isLoading = false }) {
 
         <div>
           <p className="font-mono-display text-[10px] uppercase tracking-[0.28em] text-slate-500">
-            Try an example
+            Try an example (click to load)
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {EXAMPLES.map((example) => (

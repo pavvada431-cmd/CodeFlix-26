@@ -10,16 +10,126 @@ const ANTHROPIC_VERSION =
 
 const MODEL_NAME = 'claude-sonnet-4-20250514'
 
-const BASE_SYSTEM_PROMPT = `You are a physics and chemistry problem parser. Extract all variables and identify the problem type from the user's input. Return ONLY a valid JSON object with no markdown, no explanation. The JSON must follow this schema:
+const VARIABLE_SCHEMAS = {
+  inclined_plane: {
+    required: ['mass', 'angle'],
+    optional: ['friction', 'height'],
+    units: { mass: 'kg', angle: 'degrees', friction: 'coefficient', height: 'm' },
+  },
+  projectile: {
+    required: ['velocity', 'angle'],
+    optional: ['height', 'gravity'],
+    units: { velocity: 'm/s', angle: 'degrees', height: 'm', gravity: 'm/s²' },
+  },
+  pendulum: {
+    required: ['length'],
+    optional: ['mass', 'angle', 'gravity', 'damping'],
+    units: { length: 'm', mass: 'kg', angle: 'degrees', gravity: 'm/s²', damping: 'coefficient' },
+  },
+  spring_mass: {
+    required: ['k', 'mass'],
+    optional: ['displacement', 'damping'],
+    units: { k: 'N/m', mass: 'kg', displacement: 'm', damping: 'coefficient' },
+  },
+  circular_motion: {
+    required: ['radius'],
+    optional: ['mass', 'angularVelocity', 'frequency'],
+    units: { radius: 'm', mass: 'kg', angularVelocity: 'rad/s', frequency: 'Hz' },
+  },
+  collisions: {
+    required: ['mass1', 'mass2', 'velocity1', 'velocity2'],
+    optional: ['elasticity'],
+    units: { mass1: 'kg', mass2: 'kg', velocity1: 'm/s', velocity2: 'm/s', elasticity: 'coefficient' },
+  },
+  wave_motion: {
+    required: ['amplitude', 'frequency'],
+    optional: ['wavelength', 'waveType'],
+    units: { amplitude: 'm', frequency: 'Hz', wavelength: 'm' },
+    waveTypes: ['transverse', 'longitudinal', 'standing', 'interference'],
+  },
+  rotational_mechanics: {
+    required: ['mass', 'radius'],
+    optional: ['force', 'forcePosition', 'objectType'],
+    units: { mass: 'kg', radius: 'm', force: 'N', forcePosition: 'degrees' },
+    objectTypes: ['disk', 'rod', 'ring', 'sphere'],
+  },
+  orbital: {
+    required: ['centralMass', 'orbitingMass', 'distance'],
+    optional: ['velocity', 'orbitType'],
+    units: { centralMass: 'kg', orbitingMass: 'kg', distance: 'm', velocity: 'm/s' },
+    orbitTypes: ['circular', 'elliptical', 'escape'],
+  },
+  buoyancy: {
+    required: ['fluidDensity', 'objectDensity', 'volume'],
+    optional: ['objectShape', 'gravity'],
+    units: { fluidDensity: 'kg/m³', objectDensity: 'kg/m³', volume: 'm³', gravity: 'm/s²' },
+    objectShapes: ['sphere', 'cube', 'cylinder'],
+  },
+  ideal_gas: {
+    required: ['temperature', 'volume'],
+    optional: ['pressure', 'moles', 'numParticles'],
+    units: { temperature: 'K', volume: 'm³', pressure: 'Pa', moles: 'mol' },
+  },
+  electric_field: {
+    required: ['charge1'],
+    optional: ['charge2', 'distance', 'chargeMagnitude'],
+    units: { charge1: 'C', charge2: 'C', distance: 'm' },
+  },
+  optics_lens: {
+    required: ['focalLength', 'objectDistance'],
+    optional: ['lensType', 'objectHeight'],
+    units: { focalLength: 'm', objectDistance: 'm', objectHeight: 'm' },
+    lensTypes: ['convex', 'concave', 'plano-convex'],
+  },
+  optics_mirror: {
+    required: ['focalLength', 'objectDistance'],
+    optional: ['mirrorType', 'objectHeight'],
+    units: { focalLength: 'm', objectDistance: 'm', objectHeight: 'm' },
+    mirrorTypes: ['plane', 'concave', 'convex'],
+  },
+  radioactive_decay: {
+    required: ['initialAtoms', 'halfLife'],
+    optional: ['decayType'],
+    units: { initialAtoms: 'count', halfLife: 's' },
+    decayTypes: ['alpha', 'beta', 'gamma'],
+  },
+  electromagnetic: {
+    required: ['charge', 'velocity', 'magneticField'],
+    optional: ['electricField'],
+    units: { charge: 'C', velocity: 'm/s', magneticField: 'T', electricField: 'N/C' },
+  },
+}
+
+const BASE_SYSTEM_PROMPT = `You are a physics problem parser. Extract all variables and identify the problem type from the user's input. Return ONLY a valid JSON object with no markdown, no explanation. The JSON must follow this schema:
 {
   domain: 'physics' | 'chemistry',
-  type: 'inclined_plane' | 'projectile' | 'circuit' | 'pendulum' | 'titration' | 'combustion',
-  variables: { [key: string]: number },
+  type: string,  // Must be one of: ${Object.keys(VARIABLE_SCHEMAS).join(' | ')},
+  variables: { [key: string]: number | string },
   units: { [key: string]: string },
   formula: string,
   steps: string[],
   answer: { value: number, unit: string, explanation: string }
-}`
+}
+
+VARIABLE SCHEMAS (use these to extract correct variables):
+${Object.entries(VARIABLE_SCHEMAS).map(([type, schema]) => `
+${type}:
+  - Required variables: ${schema.required.join(', ')}
+  - Optional variables: ${schema.optional.join(', ')}
+  - Units: ${Object.entries(schema.units).map(([k, v]) => `${k}=${v}`).join(', ')}
+  ${schema.waveTypes ? `- waveTypes: ${schema.waveTypes.join(', ')}` : ''}
+  ${schema.objectTypes ? `- objectTypes: ${schema.objectTypes.join(', ')}` : ''}
+  ${schema.orbitTypes ? `- orbitTypes: ${schema.orbitTypes.join(', ')}` : ''}
+  ${schema.objectShapes ? `- objectShapes: ${schema.objectShapes.join(', ')}` : ''}
+  ${schema.lensTypes ? `- lensTypes: ${schema.lensTypes.join(', ')}` : ''}
+  ${schema.decayTypes ? `- decayTypes: ${schema.decayTypes.join(', ')}` : ''}
+`).join('\n')}
+
+EXAMPLES:
+- "A 2kg mass on a spring with k=100 N/m" → type: "spring_mass", variables: {mass: 2, k: 100}
+- "Electron moving at 1e6 m/s in 0.5T magnetic field" → type: "electromagnetic", variables: {charge: 1.6e-19, velocity: 1e6, magneticField: 0.5}
+- "Uranium-238 with half-life of 4.5 billion years" → type: "radioactive_decay", variables: {initialAtoms: 100, halfLife: 1.42e17}
+- "Light passing through a convex lens with f=10cm, object at 30cm" → type: "optics_lens", variables: {focalLength: 0.1, objectDistance: 0.3, lensType: "convex"}`
 
 const STRICT_SYSTEM_PROMPT = `${BASE_SYSTEM_PROMPT}
 
@@ -171,3 +281,5 @@ export async function parseProblem(problemText) {
 
   return parseWithRetry(problemText, BASE_SYSTEM_PROMPT, 2)
 }
+
+export { VARIABLE_SCHEMAS }

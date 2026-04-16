@@ -344,7 +344,7 @@ function BernoulliPipe() {
     for (let i = 0; i < particleCount; i++) {
       const t = i / particleCount
       const x = (t - 0.5) * 12
-      const narrowFactor = 1 - 0.6 * Math.exp(-((t - 0.5) * 12) ** 2 / 2)
+      const narrowFactor = 1 - 0.6 * Math.exp(-(((t - 0.5) * 12) ** 2) / 2)
       const y = (Math.random() - 0.5) * narrowFactor * 1.5
       const z = (Math.random() - 0.5) * 0.5
       positions.push({ x, y, z, baseX: x, narrowFactor })
@@ -389,7 +389,6 @@ function BernoulliPipe() {
               Array.from({ length: 50 }, (_, i) => {
                 const t = i / 49
                 const x = (t - 0.5) * 12
-                const narrowFactor = 1 - 0.6 * Math.exp(-((t - 0.5) * 12) ** 2 / 2)
                 return new THREE.Vector3(x, 0, 0)
               }),
               50,
@@ -399,7 +398,7 @@ function BernoulliPipe() {
             32,
             (i) => {
               const t = (i / 32)
-              const narrowFactor = 1 - 0.6 * Math.exp(-((t - 0.5) * 6) ** 2)
+              const narrowFactor = 1 - 0.6 * Math.exp(-(((t - 0.5) * 6) ** 2))
               return narrowFactor * 1.5
             },
             true

@@ -1,13 +1,21 @@
-import { useMemo } from 'react'
-import InclinedPlane from '../simulations/InclinedPlane'
-import ProjectileMotion from '../simulations/ProjectileMotion'
-import Pendulum from '../simulations/Pendulum'
-import SpringMass from '../simulations/SpringMass'
-import CircularMotion from '../simulations/CircularMotion'
-import Collisions from '../simulations/Collisions'
-import WaveMotion from '../simulations/WaveMotion'
-import RotationalMechanics from '../simulations/RotationalMechanics'
+import { Suspense, lazy, useMemo } from 'react'
 import { SUPPORTED_SIMULATION_TYPES, SIMULATION_DISPLAY_NAMES } from '../hooks/useSimulation'
+
+const InclinedPlane = lazy(() => import('../simulations/InclinedPlane'))
+const ProjectileMotion = lazy(() => import('../simulations/ProjectileMotion'))
+const Pendulum = lazy(() => import('../simulations/Pendulum'))
+const SpringMass = lazy(() => import('../simulations/SpringMass'))
+const CircularMotion = lazy(() => import('../simulations/CircularMotion'))
+const Collisions = lazy(() => import('../simulations/Collisions'))
+const WaveMotion = lazy(() => import('../simulations/WaveMotion'))
+const RotationalMechanics = lazy(() => import('../simulations/RotationalMechanics'))
+const GravitationalOrbits = lazy(() => import('../simulations/GravitationalOrbits'))
+const FluidMechanics = lazy(() => import('../simulations/FluidMechanics'))
+const Thermodynamics = lazy(() => import('../simulations/Thermodynamics'))
+const ElectricFields = lazy(() => import('../simulations/ElectricFields'))
+const Optics = lazy(() => import('../simulations/Optics'))
+const RadioactiveDecay = lazy(() => import('../simulations/RadioactiveDecay'))
+const MagneticFields = lazy(() => import('../simulations/MagneticFields'))
 
 function SimulationNotSupported({ simulationType }) {
   return (
@@ -105,7 +113,7 @@ function LoadingSimulation() {
         </div>
       </div>
       <h3 className="mb-2 font-heading text-xl font-semibold text-white">
-        Initializing Simulation
+        Loading Simulation
       </h3>
       <p className="text-sm text-slate-400">Setting up physics engine...</p>
     </div>
@@ -147,6 +155,8 @@ export default function SimulationRouter({
   simulationKey,
   onDataPoint,
   isLoading,
+  particleMultiplier = 1,
+  accentColor = '#00f5ff',
 }) {
   const simulationProps = useMemo(() => {
     if (!variables) return {}
@@ -218,8 +228,75 @@ export default function SimulationRouter({
           objectType: variables.objectType ?? 'disk',
           mass: variables.mass ?? 2,
           radius: variables.radius ?? 1,
-          appliedForce: variables.appliedForce ?? 10,
+          appliedForce: variables.force ?? variables.appliedForce ?? 10,
           forcePosition: variables.forcePosition ?? 90,
+          isPlaying,
+        }
+
+      case 'orbital':
+        return {
+          centralMass: variables.centralMass ?? 100,
+          orbitingMass: variables.orbitingMass ?? 1,
+          initialDistance: variables.distance ?? variables.initialDistance ?? 5,
+          initialVelocity: variables.velocity ?? variables.initialVelocity ?? 1,
+          isPlaying,
+        }
+
+      case 'buoyancy':
+        return {
+          fluidDensity: variables.fluidDensity ?? 1000,
+          objectDensity: variables.objectDensity ?? 800,
+          objectVolume: variables.volume ?? 0.125,
+          objectShape: variables.objectShape ?? 'sphere',
+          isPlaying,
+        }
+
+      case 'ideal_gas':
+        return {
+          numParticles: variables.numParticles ?? 50,
+          temperature: variables.temperature ?? 300,
+          volume: variables.volume ?? 8,
+          isPlaying,
+        }
+
+      case 'electric_field':
+        return {
+          charges: variables.charges ?? [{ x: -1, y: 0, q: 1e-6 }, { x: 1, y: 0, q: -1e-6 }],
+          isPlaying,
+        }
+
+      case 'optics_lens':
+        return {
+          lensType: variables.lensType ?? 'convex',
+          focalLength: variables.focalLength ?? 2,
+          objectDistance: variables.objectDistance ?? 4,
+          objectHeight: variables.objectHeight ?? 1,
+          isPlaying,
+        }
+
+      case 'optics_mirror':
+        return {
+          lensType: 'mirror',
+          focalLength: variables.focalLength ?? 2,
+          objectDistance: variables.objectDistance ?? 4,
+          objectHeight: variables.objectHeight ?? 1,
+          isPlaying,
+        }
+
+      case 'radioactive_decay':
+        return {
+          initialAtoms: variables.initialAtoms ?? 100,
+          halfLife: variables.halfLife ?? 5,
+          decayType: variables.decayType ?? 'alpha',
+          isPlaying,
+        }
+
+      case 'electromagnetic':
+        return {
+          charge: variables.charge ?? 1.6e-19,
+          velocity: variables.velocity ?? 1e6,
+          magneticField: variables.magneticField ?? 0.5,
+          electricField: variables.electricField ?? 0,
           isPlaying,
         }
 
@@ -242,37 +319,54 @@ export default function SimulationRouter({
 
   const commonProps = {
     key: simulationKey,
-    onDataPoint: (simulationType === 'pendulum' || simulationType === 'spring_mass' || simulationType === 'circular_motion' || simulationType === 'collisions' || simulationType === 'wave_motion' || simulationType === 'rotational_mechanics') ? onDataPoint : undefined,
+    onDataPoint,
+    particleMultiplier,
+    accentColor,
   }
 
-  switch (simulationType) {
-    case 'inclined_plane':
-      return <InclinedPlane {...simulationProps} {...commonProps} />
-
-    case 'projectile':
-      return <ProjectileMotion {...simulationProps} {...commonProps} />
-
-    case 'pendulum':
-      return <Pendulum {...simulationProps} {...commonProps} />
-
-    case 'spring_mass':
-      return <SpringMass {...simulationProps} {...commonProps} />
-
-    case 'circular_motion':
-      return <CircularMotion {...simulationProps} {...commonProps} />
-
-    case 'collisions':
-      return <Collisions {...simulationProps} {...commonProps} />
-
-    case 'wave_motion':
-      return <WaveMotion {...simulationProps} {...commonProps} />
-
-    case 'rotational_mechanics':
-      return <RotationalMechanics {...simulationProps} {...commonProps} />
-
-    default:
-      return <SimulationNotSupported simulationType={simulationType} />
+  const renderSimulation = () => {
+    switch (simulationType) {
+      case 'inclined_plane':
+        return <InclinedPlane {...simulationProps} {...commonProps} />
+      case 'projectile':
+        return <ProjectileMotion {...simulationProps} {...commonProps} />
+      case 'pendulum':
+        return <Pendulum {...simulationProps} {...commonProps} />
+      case 'spring_mass':
+        return <SpringMass {...simulationProps} {...commonProps} />
+      case 'circular_motion':
+        return <CircularMotion {...simulationProps} {...commonProps} />
+      case 'collisions':
+        return <Collisions {...simulationProps} {...commonProps} />
+      case 'wave_motion':
+        return <WaveMotion {...simulationProps} {...commonProps} />
+      case 'rotational_mechanics':
+        return <RotationalMechanics {...simulationProps} {...commonProps} />
+      case 'orbital':
+        return <GravitationalOrbits {...simulationProps} {...commonProps} />
+      case 'buoyancy':
+        return <FluidMechanics {...simulationProps} {...commonProps} />
+      case 'ideal_gas':
+        return <Thermodynamics {...simulationProps} {...commonProps} />
+      case 'electric_field':
+        return <ElectricFields {...simulationProps} {...commonProps} />
+      case 'optics_lens':
+      case 'optics_mirror':
+        return <Optics {...simulationProps} {...commonProps} />
+      case 'radioactive_decay':
+        return <RadioactiveDecay {...simulationProps} {...commonProps} />
+      case 'electromagnetic':
+        return <MagneticFields {...simulationProps} {...commonProps} />
+      default:
+        return <SimulationNotSupported simulationType={simulationType} />
+    }
   }
+
+  return (
+    <Suspense fallback={<LoadingSimulation />}>
+      {renderSimulation()}
+    </Suspense>
+  )
 }
 
 SimulationRouter.SUPPORTED_TYPES = SUPPORTED_SIMULATION_TYPES

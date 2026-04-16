@@ -133,6 +133,14 @@ export const SUPPORTED_SIMULATION_TYPES = [
   'collisions',
   'wave_motion',
   'rotational_mechanics',
+  'orbital',
+  'buoyancy',
+  'ideal_gas',
+  'electric_field',
+  'optics_lens',
+  'optics_mirror',
+  'radioactive_decay',
+  'electromagnetic',
 ]
 
 export const SIMULATION_DISPLAY_NAMES = {
@@ -144,7 +152,63 @@ export const SIMULATION_DISPLAY_NAMES = {
   collisions: 'Collision Simulation',
   wave_motion: 'Wave Motion',
   rotational_mechanics: 'Rotational Mechanics',
+  orbital: 'Gravitational Orbits',
+  buoyancy: 'Buoyancy & Fluids',
+  ideal_gas: 'Ideal Gas / Thermodynamics',
+  electric_field: 'Electric Fields',
+  optics_lens: 'Optics - Lenses',
+  optics_mirror: 'Optics - Mirrors',
+  radioactive_decay: 'Radioactive Decay',
+  electromagnetic: 'Electromagnetic',
   circuit: 'Electric Circuit',
   titration: 'Titration',
   combustion: 'Combustion',
+}
+
+export const SIMULATION_ICONS = {
+  inclined_plane: '📐',
+  projectile: '🎯',
+  pendulum: '⏱️',
+  spring_mass: '🔄',
+  circular_motion: '🔵',
+  collisions: '💥',
+  wave_motion: '🌊',
+  rotational_mechanics: '⚙️',
+  orbital: '🪐',
+  buoyancy: '🫧',
+  ideal_gas: '🌡️',
+  electric_field: '⚡',
+  optics_lens: '🔍',
+  optics_mirror: '🪞',
+  radioactive_decay: '☢️',
+  electromagnetic: '🧲',
+}
+
+export const SIMULATION_CATEGORIES = {
+  'Mechanics': ['inclined_plane', 'projectile', 'pendulum', 'circular_motion', 'collisions', 'rotational_mechanics'],
+  'Energy & Springs': ['spring_mass', 'orbital'],
+  'Waves': ['wave_motion'],
+  'Fluids & Thermodynamics': ['buoyancy', 'ideal_gas'],
+  'Electricity & Magnetism': ['electric_field', 'electromagnetic'],
+  'Optics': ['optics_lens', 'optics_mirror'],
+  'Nuclear': ['radioactive_decay'],
+}
+
+export const SIMULATION_COLORS = {
+  inclined_plane: '#00f5ff',
+  projectile: '#ff8800',
+  pendulum: '#88ff88',
+  spring_mass: '#ff88ff',
+  circular_motion: '#ffff00',
+  collisions: '#ff4444',
+  wave_motion: '#00ffff',
+  rotational_mechanics: '#ff6b35',
+  orbital: '#4488ff',
+  buoyancy: '#0088ff',
+  ideal_gas: '#ff4400',
+  electric_field: '#ffff00',
+  optics_lens: '#ff00ff',
+  optics_mirror: '#c0c0c0',
+  radioactive_decay: '#00ff00',
+  electromagnetic: '#ff0088',
 }
