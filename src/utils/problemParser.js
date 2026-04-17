@@ -93,16 +93,55 @@ const VARIABLE_SCHEMAS = {
   },
 }
 
-const BASE_SYSTEM_PROMPT = `You are a physics problem parser. Extract all variables and identify the problem type from the user's input. Return ONLY a valid JSON object with no markdown, no explanation. The JSON must follow this schema:
+const MULTI_CONCEPT_PROMPT = `IMPORTANT: This problem may involve MULTIPLE physics concepts happening sequentially.
+
+If the problem involves multiple stages or transitions (e.g., "slides down then becomes projectile"), return:
+{
+  domain: 'physics',
+  isMultiConcept: true,
+  stages: [
+    {
+      type: string,
+      variables: { [key: string]: number | string },
+      units: { [key: string]: string }
+    }
+  ],
+  transitions: [
+    {
+      from: number,
+      to: number,
+      condition: "position_threshold" | "velocity_change" | "time_based",
+      conditionValue: number
+    }
+  ],
+  formula: string,
+  steps: string[],
+  answer: { value: number, unit: string, explanation: string }
+}
+
+If the problem is SINGLE concept only, return:
 {
   domain: 'physics' | 'chemistry',
-  type: string,  // Must be one of: ${Object.keys(VARIABLE_SCHEMAS).join(' | ')},
+  isMultiConcept: false,
+  type: string,
   variables: { [key: string]: number | string },
   units: { [key: string]: string },
   formula: string,
   steps: string[],
   answer: { value: number, unit: string, explanation: string }
-}
+}`
+
+const BASE_SYSTEM_PROMPT = `You are a physics problem parser. Extract all variables and identify the problem type(s) from the user's input. Return ONLY a valid JSON object with no markdown, no explanation.
+
+${MULTI_CONCEPT_PROMPT}
+
+AVAILABLE TYPES: ${Object.keys(VARIABLE_SCHEMAS).join(' | ')}
+
+For MULTI-CONCEPT problems, identify the sequence of physics concepts and how they transition.
+EXAMPLES of transitions:
+- "slides down incline then becomes projectile" → inclined_plane → projectile (transition when velocity becomes horizontal)
+- "ball bounces multiple times" → collisions repeated (transition on each bounce)
+- "pendulum released then swings up ramp" → pendulum → inclined_plane
 
 VARIABLE SCHEMAS (use these to extract correct variables):
 ${Object.entries(VARIABLE_SCHEMAS).map(([type, schema]) => `
@@ -200,14 +239,27 @@ async function requestProblemParse(problemText, systemPrompt, provider) {
 
   let response
   try {
-    response = await fetch(AI_PROXY_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestPayload),
-    })
+    // Add timeout to prevent hanging requests
+    const controller = new AbortController()
+    const timeoutMs = 30000 // 30 seconds
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+    try {
+      response = await fetch(AI_PROXY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestPayload),
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timeoutId)
+    }
   } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('API request timeout - the service took too long to respond')
+    }
     throw new Error(`Failed to reach API: ${error?.message ?? 'Unknown network error'}`)
   }
 
@@ -229,7 +281,9 @@ async function requestProblemParse(problemText, systemPrompt, provider) {
     throw new Error('AI provider returned an invalid response payload')
   }
 
-  const responseText = typeof payload?.content === 'string' ? payload.content.trim() : ''
+  // Extract content from nested response structure (backend returns { success, data, timestamp })
+  const responseText = typeof payload?.data?.content === 'string' ? payload.data.content.trim() : 
+                       typeof payload?.content === 'string' ? payload.content.trim() : ''
   if (!responseText) {
     throw new Error('AI provider returned an empty response')
   }
@@ -273,7 +327,7 @@ async function parseWithRetry(problemText, systemPrompt, provider, maxRetries = 
   )
 }
 
-export async function parseProblem(problemText, provider = 'anthropic') {
+export async function parseProblem(problemText, provider = 'openai') {
   if (typeof problemText !== 'string' || problemText.trim().length === 0) {
     throw new Error('problemText must be a non-empty string')
   }

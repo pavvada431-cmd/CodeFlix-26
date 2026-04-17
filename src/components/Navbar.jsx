@@ -1,157 +1,73 @@
-import { useState } from 'react'
-import { encodeProblemToURL, encodeDemoToURL, copyToClipboard } from '../utils/share'
-import { showSuccess, showError } from '../utils/toast'
+import { useNavigate, useLocation } from 'react-router-dom'
+import Button from './ui/Button'
+import Badge from './ui/Badge'
+import { ArrowLeft } from 'lucide-react'
 
-function Navbar({ activeDomain, onDomainChange, onDemoMode, parsedData, demoId, onOpenLibrary, onSelectSimulation, onToggleFormula, onTogglePresentation, isPresentationMode }) {
-  const [isSharing, setIsSharing] = useState(false)
-
-  const handleShare = async () => {
-    setIsSharing(true)
-
-    try {
-      let url
-      if (demoId) {
-        url = encodeDemoToURL(demoId)
-      } else if (parsedData) {
-        const problemText = parsedData.steps?.join(' ') || ''
-        url = encodeProblemToURL(problemText)
-      }
-
-      if (url) {
-        const success = await copyToClipboard(url)
-        if (success) {
-          showSuccess('Link copied to clipboard!')
-        } else {
-          showError('Failed to copy link')
-        }
-      }
-    } catch {
-      showError('Failed to generate share link')
-    } finally {
-      setIsSharing(false)
-    }
-  }
+export default function Navbar({
+  mode = 'physics',
+  onModeChange,
+  apiConnected = true,
+  onOpenSettings,
+}) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isSimulator = location.pathname === '/app'
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0a0f1e]/80 backdrop-blur-xl">
-      <div className="relative mx-auto flex max-w-[1800px] flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-        <div className="flex items-center gap-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[rgba(0,245,255,0.3)] bg-[rgba(0,245,255,0.1)] shadow-[0_0_20px_rgba(0,245,255,0.12)]">
-            <span className="font-heading text-2xl font-bold text-[#00f5ff]">S</span>
-          </div>
-          <div>
-            <p className="font-heading text-2xl font-bold leading-none tracking-tight text-white">
-              SimuSolve
-            </p>
-            <p className="mt-1 font-mono-display text-[10px] uppercase tracking-[0.34em] text-[rgba(0,245,255,0.6)]">
-              Interactive Physics Workspace
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 lg:absolute lg:left-1/2 lg:-translate-x-1/2">
-          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+    <header className="fixed inset-x-0 top-0 z-40 border-b border-[#1f2937] bg-[#0b0f17]/95 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-[1700px] items-center justify-between px-4 sm:px-6">
+        <div className="flex items-center gap-2">
+          {isSimulator && (
             <button
-              onClick={() => onDomainChange('physics')}
-              className={`rounded-full px-4 py-1.5 font-mono-display text-xs uppercase tracking-[0.2em] transition-all ${
-                activeDomain === 'physics'
-                  ? 'bg-[rgba(0,245,255,0.2)] text-[#00f5ff] shadow-[0_0_16px_rgba(0,245,255,0.2)]'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              onClick={() => navigate('/')}
+              className="mr-4 p-1 rounded-lg hover:bg-[#1f2937] transition-colors text-[#9ca3af] hover:text-[#e5e7eb]"
+              aria-label="Back to home"
             >
-              Physics
-            </button>
-            <button
-              onClick={() => onDomainChange('chemistry')}
-              className={`rounded-full px-4 py-1.5 font-mono-display text-xs uppercase tracking-[0.2em] transition-all ${
-                activeDomain === 'chemistry'
-                  ? 'bg-[rgba(0,245,255,0.2)] text-[#00f5ff] shadow-[0_0_16px_rgba(0,245,255,0.2)]'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Chemistry
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onOpenLibrary}
-            className="hidden items-center gap-2 rounded-full border border-[rgba(136,0,255,0.3)] bg-[rgba(136,0,255,0.1)] px-4 py-2 font-mono-display text-xs uppercase tracking-[0.2em] text-[#8800ff] transition hover:border-[rgba(136,0,255,0.5)] hover:bg-[rgba(136,0,255,0.2)] lg:inline-flex"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            Library
-          </button>
-
-          <button
-            onClick={onToggleFormula}
-            className="hidden items-center gap-2 rounded-full border border-[rgba(0,255,136,0.3)] bg-[rgba(0,255,136,0.1)] px-4 py-2 font-mono-display text-xs uppercase tracking-[0.2em] text-[#00ff88] transition hover:border-[rgba(0,255,136,0.5)] hover:bg-[rgba(0,255,136,0.2)] lg:inline-flex"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-            Formulas
-          </button>
-
-          <button
-            onClick={onTogglePresentation}
-            className={`hidden items-center gap-2 rounded-full border px-4 py-2 font-mono-display text-xs uppercase tracking-[0.2em] transition hover:border-[rgba(255,136,0,0.5)] lg:inline-flex ${
-              isPresentationMode
-                ? 'border-[rgba(255,136,0,0.5)] bg-[rgba(255,136,0,0.2)] text-[#ff8800]'
-                : 'border-[rgba(255,136,0,0.3)] bg-[rgba(255,136,0,0.1)] text-[#ff8800]'
-            }`}
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            {isPresentationMode ? 'Exit' : 'Present'}
-          </button>
-
-          <button
-            onClick={onDemoMode}
-            className="hidden rounded-full border border-[rgba(0,245,255,0.25)] bg-[rgba(0,245,255,0.08)] px-4 py-2 font-mono-display text-xs uppercase tracking-[0.2em] text-[#00f5ff] transition hover:border-[rgba(0,245,255,0.4)] hover:bg-[rgba(0,245,255,0.15)] lg:inline-flex"
-          >
-            Demo Mode
-          </button>
-
-          {(parsedData || demoId) && (
-            <button
-              onClick={handleShare}
-              disabled={isSharing}
-              className="flex items-center gap-2 rounded-full border border-[rgba(0,245,255,0.25)] bg-[rgba(0,245,255,0.08)] px-4 py-2 font-mono-display text-xs uppercase tracking-[0.2em] text-[#00f5ff] transition hover:border-[rgba(0,245,255,0.4)] hover:bg-[rgba(0,245,255,0.15)] disabled:opacity-50"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-              </svg>
-              Share
+              <ArrowLeft className="h-5 w-5" />
             </button>
           )}
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-[#22d3ee] to-[#06b6d4] text-xs font-semibold text-[#0b0f17]">
+            ℂ
+          </div>
+          <span className="text-xl font-semibold text-[#e5e7eb]">CodeFlix</span>
+        </div>
 
-          <a
-            href="https://github.com/pavvada431-cmd/CodeFlix-26"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
-            aria-label="View on GitHub"
-          >
-            <svg
-              className="h-5 w-5"
-              fill="currentColor"
-              viewBox="0 0 24 24"
+        {isSimulator && (
+          <div className="hidden items-center gap-2 md:flex">
+            <Button
+              variant={mode === 'physics' ? 'primary' : 'secondary'}
+              className="min-w-[96px]"
+              onClick={() => onModeChange?.('physics')}
             >
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"
-              />
-            </svg>
-          </a>
+              Physics
+            </Button>
+            <Button
+              variant={mode === 'chemistry' ? 'primary' : 'secondary'}
+              className="min-w-[96px]"
+              onClick={() => onModeChange?.('chemistry')}
+            >
+              Chemistry
+            </Button>
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          {isSimulator && (
+            <Badge variant={apiConnected ? 'success' : 'error'} className="gap-2">
+              <span className={`h-2 w-2 rounded-full ${apiConnected ? 'bg-[#22c55e]' : 'bg-[#ef4444]'}`} />
+              API {apiConnected ? 'Connected' : 'Error'}
+            </Badge>
+          )}
+          {isSimulator && (
+            <Button variant="ghost" className="h-9 w-9 p-0" onClick={onOpenSettings} aria-label="Open settings">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317a1 1 0 011.35-.936l.83.34a1 1 0 00.79 0l.83-.34a1 1 0 011.35.936l.083.906a1 1 0 00.516.794l.782.45a1 1 0 01.371 1.371l-.446.774a1 1 0 000 .816l.446.774a1 1 0 01-.371 1.37l-.782.452a1 1 0 00-.516.793l-.083.906a1 1 0 01-1.35.936l-.83-.34a1 1 0 00-.79 0l-.83.34a1 1 0 01-1.35-.936l-.083-.906a1 1 0 00-.516-.793l-.782-.451a1 1 0 01-.371-1.37l.446-.775a1 1 0 000-.816l-.446-.774a1 1 0 01.371-1.37l.782-.452a1 1 0 00.516-.794l.083-.906z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+              </svg>
+            </Button>
+          )}
         </div>
       </div>
     </header>
   )
 }
-
-export default Navbar

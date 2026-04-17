@@ -419,10 +419,6 @@ function SimulationCanvasContent({
     }
 
     if (resolvedIsPlaying) {
-      // Store accumulated deltaTime for smooth physics
-      let accumulatedTime = 0
-      let lastTimestamp = performance.now()
-
       const tick = (timestamp) => {
         const sceneManager = sceneManagerRef.current
 
@@ -430,14 +426,14 @@ function SimulationCanvasContent({
           return
         }
 
-        // Calculate delta with clamping to prevent large jumps
-        const deltaMs = Math.max(Math.min(timestamp - lastTimestamp, 50), 0)
-        const deltaSeconds = Math.min(deltaMs / 1000, 0.016) // Cap at 16ms
-        lastTimestamp = timestamp
+        if (lastFrameTimeRef.current === 0) {
+          lastFrameTimeRef.current = timestamp
+        }
 
-        // Apply playback speed to accumulated time
-        accumulatedTime += deltaSeconds * resolvedPlaybackSpeed
-        simulationTimeRef.current = accumulatedTime
+        const deltaMs = Math.max(timestamp - lastFrameTimeRef.current, 0)
+        const deltaSeconds = deltaMs / 1000
+        lastFrameTimeRef.current = timestamp
+        simulationTimeRef.current += deltaSeconds * resolvedPlaybackSpeed
 
         const states = getCurrentBodyStates()
 
@@ -471,8 +467,6 @@ function SimulationCanvasContent({
       physicsEngine.startLoop()
       lastFrameTimeRef.current = 0
       lastHudUpdateRef.current = 0
-      lastTimestamp = performance.now()
-      accumulatedTime = simulationTimeRef.current
       stopSyncLoop()
       syncFrameRef.current = window.requestAnimationFrame(tick)
       return () => {

@@ -1,18 +1,21 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Navbar from './components/Navbar'
-import Sidebar from './components/Sidebar'
-import SimulationCard from './components/SimulationCard'
-import RightPanel from './components/RightPanel'
-import GraphPanel from './components/GraphPanel'
-import ToastContainer from './components/Toast'
-import PhysicsLibrary from './components/PhysicsLibrary'
-import FormulaSheet from './components/FormulaSheet'
-import SessionSummary from './components/SessionSummary'
-import useSimulation from './hooks/useSimulation'
-import usePerformanceMonitor from './hooks/usePerformanceMonitor'
-import useSession from './hooks/useSession'
-import { decodeDemoFromURL } from './utils/share'
-import { getRandomDemo } from './data/demos'
+import { useSearchParams } from 'react-router-dom'
+import Navbar from '../components/Navbar'
+import Sidebar from '../components/Sidebar'
+import SimulationCard from '../components/SimulationCard'
+import RightPanel from '../components/RightPanel'
+import GraphPanel from '../components/GraphPanel'
+import ToastContainer from '../components/Toast'
+import PhysicsLibrary from '../components/PhysicsLibrary'
+import FormulaSheet from '../components/FormulaSheet'
+import SessionSummary from '../components/SessionSummary'
+import OnboardingTour from '../components/OnboardingTour'
+import EmptyState from '../components/EmptyState'
+import useSimulation from '../hooks/useSimulation'
+import usePerformanceMonitor from '../hooks/usePerformanceMonitor'
+import useSession from '../hooks/useSession'
+import { decodeDemoFromURL } from '../utils/share'
+import { getRandomDemo } from '../data/demos'
 
 const DEMOS = [
   'A 10kg block slides down a 30-degree frictionless incline.',
@@ -27,6 +30,7 @@ const DEMOS = [
 ]
 
 const AI_PROVIDER_STORAGE_KEY = 'simusolve.aiProvider'
+const ONBOARDING_KEY = 'codeflix.onboarding-done'
 const AI_PROVIDERS = ['openai', 'anthropic', 'gemini', 'groq', 'ollama']
 
 function getInitialProvider() {
@@ -35,41 +39,66 @@ function getInitialProvider() {
   return AI_PROVIDERS.includes(storedValue) ? storedValue : 'openai'
 }
 
-function LoadingOverlay({ isVisible }) {
+function LoadingOverlay({ isVisible, message = 'Parsing problem...' }) {
   if (!isVisible) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0f17]/70">
-      <div className="rounded-xl border border-[#1f2937] bg-[#111827] p-6 shadow-lg">
-        <div className="mb-3 h-5 w-5 animate-spin rounded-full border-2 border-[#1f2937] border-t-[#22d3ee]" />
-        <p className="text-sm text-[#e5e7eb]">Parsing problem...</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0f17]/70 backdrop-blur-sm">
+      <div className="rounded-xl border border-[#1f2937] bg-[#111827] p-8 shadow-2xl max-w-sm">
+        <div className="mb-4 flex justify-center">
+          <div className="relative h-8 w-8">
+            <div className="absolute inset-0 rounded-full border-2 border-[#1f2937]" />
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#22d3ee] animate-spin" />
+          </div>
+        </div>
+        <p className="text-center text-sm text-[#e5e7eb]">{message}</p>
+        <p className="mt-2 text-center text-xs text-[#6b7280]">This may take a few moments...</p>
       </div>
     </div>
   )
 }
 
-export default function App() {
+export default function SimulatorApp() {
   const simulation = useSimulation()
   const { particleMultiplier, measureFrame } = usePerformanceMonitor()
   const session = useSession()
   const frameLoopRef = useRef(null)
+  const [searchParams] = useSearchParams()
 
   const [showLibrary, setShowLibrary] = useState(false)
   const [showFormulaSheet, setShowFormulaSheet] = useState(false)
   const [showSessionSummary, setShowSessionSummary] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const [aiProvider, setAiProvider] = useState(getInitialProvider)
   const [mode, setMode] = useState('physics')
   const [apiConnected, setApiConnected] = useState(true)
+  const [loadingMessage, setLoadingMessage] = useState('Parsing problem...')
+
+  // Check if first time user
+  useEffect(() => {
+    const hasSeenOnboarding = window.localStorage.getItem(ONBOARDING_KEY)
+    if (!hasSeenOnboarding) {
+      setShowOnboarding(true)
+      window.localStorage.setItem(ONBOARDING_KEY, 'true')
+    }
+  }, [])
 
   useEffect(() => {
     window.localStorage.setItem(AI_PROVIDER_STORAGE_KEY, aiProvider)
   }, [aiProvider])
 
+  // Check for demo in URL
   useEffect(() => {
-    const demoFromURL = decodeDemoFromURL()
-    if (demoFromURL) simulation.solve(demoFromURL.parsedData)
-  }, [simulation])
+    const demoProblem = searchParams.get('demo')
+    if (demoProblem) {
+      simulation.solve(demoProblem)
+    } else {
+      const demoFromURL = decodeDemoFromURL()
+      if (demoFromURL) simulation.solve(demoFromURL.parsedData)
+    }
+  }, [simulation, searchParams])
 
+  // Performance measurement loop
   useEffect(() => {
     const measureLoop = () => {
       measureFrame()
@@ -83,6 +112,7 @@ export default function App() {
 
   const handleProblemSolved = useCallback((parsedData) => {
     session.logProblem(parsedData?.type || 'unknown', parsedData)
+    setLoadingMessage('Building simulation...')
     simulation.solve(parsedData, aiProvider)
   }, [aiProvider, session, simulation])
 
@@ -105,12 +135,14 @@ export default function App() {
       radioactive_decay: 'A sample of 1000 Carbon-14 atoms decays.',
       electromagnetic: 'An electron moves at 1e6 m/s through a 0.5T magnetic field.',
     }
+    setLoadingMessage('Building simulation...')
     simulation.solve(demoMap[simulationType] || 'A physics simulation.', aiProvider)
     setShowLibrary(false)
   }, [aiProvider, simulation])
 
   const handleDemoMode = useCallback(() => {
     const demo = getRandomDemo()
+    setLoadingMessage('Building simulation...')
     simulation.solve(demo.parsedData)
   }, [simulation])
 
@@ -131,7 +163,10 @@ export default function App() {
         case 'Digit4': case 'Digit5': case 'Digit6':
         case 'Digit7': case 'Digit8': case 'Digit9': {
           const num = parseInt(e.code.replace('Digit', ''), 10) - 1
-          if (DEMOS[num]) simulation.solve(DEMOS[num], aiProvider)
+          if (DEMOS[num]) {
+            setLoadingMessage('Building simulation...')
+            simulation.solve(DEMOS[num], aiProvider)
+          }
           break
         }
       }
@@ -150,7 +185,7 @@ export default function App() {
         onOpenSettings={() => setShowFormulaSheet(true)}
       />
 
-      <LoadingOverlay isVisible={simulation.isLoading} />
+      <LoadingOverlay isVisible={simulation.isLoading} message={loadingMessage} />
 
       <div className="pt-16">
         <main className="flex min-h-[calc(100vh-64px)]">
@@ -166,18 +201,29 @@ export default function App() {
           />
 
           <section className="flex-1 overflow-auto p-6">
-            <div className="mx-auto max-w-[1200px] space-y-6">
-              <SimulationCard simulation={simulation} particleMultiplier={particleMultiplier} />
-              <GraphPanel
-                simulationType={simulation.activeSimulation}
-                dataStream={simulation.dataStream}
-                variables={simulation.currentVariables}
-                accentColor="#22d3ee"
+            {!simulation.activeSimulation ? (
+              <EmptyState
+                onOpenLibrary={() => setShowLibrary(true)}
+                onTryDemo={handleDemoMode}
               />
-            </div>
+            ) : (
+              <div className="mx-auto max-w-[1200px] space-y-6">
+                <SimulationCard simulation={simulation} particleMultiplier={particleMultiplier} />
+                <GraphPanel
+                  simulationType={simulation.activeSimulation}
+                  dataStream={simulation.dataStream}
+                  variables={simulation.currentVariables}
+                  accentColor="#22d3ee"
+                />
+              </div>
+            )}
           </section>
 
-          <RightPanel parsedData={simulation.parsedData} onVariableChange={simulation.updateVariable} />
+          <RightPanel 
+            parsedData={simulation.parsedData} 
+            onVariableChange={simulation.updateVariable}
+            isEmpty={!simulation.activeSimulation}
+          />
         </main>
       </div>
 
@@ -196,6 +242,11 @@ export default function App() {
         isOpen={showSessionSummary}
         onClose={() => setShowSessionSummary(false)}
         summary={session.getSummary()}
+      />
+
+      <OnboardingTour
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
       />
 
       <ToastContainer />

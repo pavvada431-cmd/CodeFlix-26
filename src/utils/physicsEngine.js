@@ -9,6 +9,8 @@ import {
 } from 'matter-js'
 
 const FIXED_DELTA_MS = 1000 / 60
+const MAX_VELOCITY = 100 // Prevent extreme velocities
+const VELOCITY_THRESHOLD = 0.001 // Consider velocity below this as zero
 
 function cloneBodyOptions(options = {}) {
   return {
@@ -113,6 +115,10 @@ export class PhysicsEngine {
     }
 
     Runner.tick(this.runner, this.engine, performance.now())
+    
+    // Apply velocity clamping and stability fixes
+    this.applyStabilityFixes()
+    
     return this.getBodyPositions()
   }
 
@@ -331,6 +337,39 @@ export class PhysicsEngine {
 
     if (clearForceArrows) {
       this.forceArrows.clear()
+    }
+  }
+
+  /**
+   * Apply stability fixes to prevent jitter and extreme velocities
+   */
+  applyStabilityFixes() {
+    if (!this.engine) return
+
+    for (const body of this.engine.world.bodies) {
+      // Clamp velocity to prevent extreme values
+      const vx = body.velocity.x
+      const vy = body.velocity.y
+      const speed = Math.hypot(vx, vy)
+
+      if (speed > MAX_VELOCITY) {
+        const scale = MAX_VELOCITY / speed
+        Body.setVelocity(body, {
+          x: vx * scale,
+          y: vy * scale,
+        })
+      }
+
+      // Set near-zero velocities to exactly zero
+      if (speed < VELOCITY_THRESHOLD) {
+        Body.setVelocity(body, { x: 0, y: 0 })
+        Body.setAngularVelocity(body, 0)
+      }
+
+      // Prevent numerical drift in angular velocity
+      if (Math.abs(body.angularVelocity) < VELOCITY_THRESHOLD) {
+        Body.setAngularVelocity(body, 0)
+      }
     }
   }
 

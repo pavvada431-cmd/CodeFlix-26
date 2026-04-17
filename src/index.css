@@ -1,22 +1,26 @@
 @import 'tailwindcss';
 
 @theme {
-  --font-heading: 'Syne', sans-serif;
-  --font-mono-display: 'Space Mono', monospace;
-  --color-navy-950: #0a0f1e;
-  --color-navy-900: #0f172a;
-  --color-navy-800: #16213a;
-  --color-cyan-400: #00f5ff;
-  --color-cyan-500: #00cedb;
+  --font-heading: 'Inter', sans-serif;
+  --font-mono-display: 'Inter', sans-serif;
+  --color-saas-bg: #0b0f17;
+  --color-saas-surface: #111827;
+  --color-saas-border: #1f2937;
+  --color-saas-text: #e5e7eb;
+  --color-saas-muted: #9ca3af;
+  --color-saas-accent: #22d3ee;
 }
 
 :root {
-  color: #edf7ff;
-  background-color: #0a0f1e;
+  color: #e5e7eb;
+  background-color: #0b0f17;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
 }
 
 * {
@@ -30,11 +34,8 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top right, rgba(0, 245, 255, 0.16), transparent 22%),
-    radial-gradient(circle at bottom left, rgba(0, 245, 255, 0.08), transparent 28%),
-    linear-gradient(180deg, #10192f 0%, #0a0f1e 100%);
-  color: #edf7ff;
+  background-color: #0b0f17;
+  color: #e5e7eb;
 }
 
 button,
@@ -45,25 +46,53 @@ textarea {
 
 #root {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 ::selection {
-  background: rgba(0, 245, 255, 0.28);
-  color: #f8feff;
+  background: rgba(34, 211, 238, 0.3);
+  color: #e5e7eb;
 }
 
 canvas {
   touch-action: none;
+  display: block;
 }
 
-@keyframes solution-panel-reveal {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
+/* Smooth transitions */
+button,
+a,
+input,
+select,
+textarea {
+  transition: all 0.2s ease-out;
+}
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
+/* Professional scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.4);
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

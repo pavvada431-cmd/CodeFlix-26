@@ -18,7 +18,7 @@ export default function useSimulation() {
   const dataStreamIntervalRef = useRef(null)
   const lastDataTimeRef = useRef(0)
 
-  const solve = useCallback(async (problemInput, provider = 'anthropic') => {
+  const solve = useCallback(async (problemInput, provider = 'openai') => {
     setIsLoading(true)
     setError(null)
 

@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef, useState, useCallback } from 'react'
 
 const FPS_THRESHOLD = 30
 const SAMPLE_SIZE = 60
@@ -6,13 +6,17 @@ const REDUCTION_FACTOR = 0.5
 
 export function usePerformanceMonitor() {
   const frameTimesRef = useRef([])
-  const lastFrameRef = useRef(performance.now())
+  const lastFrameRef = useRef(0)
   const [fps, setFps] = useState(60)
   const [isPerformanceMode, setIsPerformanceMode] = useState(false)
   const [particleMultiplier, setParticleMultiplier] = useState(1)
   
   const measureFrame = useCallback(() => {
     const now = performance.now()
+    if (lastFrameRef.current === 0) {
+      lastFrameRef.current = now
+      return 0
+    }
     const delta = now - lastFrameRef.current
     lastFrameRef.current = now
     

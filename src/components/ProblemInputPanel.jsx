@@ -1,4 +1,4 @@
-import { startTransition } from 'react'
+import { startTransition, useCallback } from 'react'
 import SolutionTimeline from './SolutionTimeline'
 import TrajectoryChart from './TrajectoryChart'
 import { defaultProblem, showcaseProblem } from '../simulations/projectileMath'
@@ -58,20 +58,20 @@ const highlights = [
 ]
 
 function ProblemInputPanel({ problem, setProblem, solution }) {
-  const updateField = (key) => (event) => {
+  const updateField = useCallback((key) => (event) => {
     const nextValue = Number(event.target.value)
 
     setProblem((current) => ({
       ...current,
       [key]: Number.isFinite(nextValue) ? nextValue : current[key],
     }))
-  }
+  }, [setProblem])
 
-  const applyPreset = (preset) => {
+  const applyPreset = useCallback((preset) => {
     startTransition(() => {
       setProblem(preset)
     })
-  }
+  }, [setProblem])
 
   return (
     <aside className="flex min-h-[760px] flex-col overflow-hidden rounded-[30px] border border-white/10 bg-white/5 shadow-[0_24px_80px_rgba(2,8,23,0.55)] backdrop-blur-xl">

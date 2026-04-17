@@ -239,6 +239,47 @@ export function validateParsedProblem(problem) {
     }
   }
 
+  // Check for multi-concept format
+  if (problem.isMultiConcept === true) {
+    // Validate multi-concept structure
+    if (!Array.isArray(problem.stages) || problem.stages.length < 1) {
+      errors.push('Multi-concept problems must have at least one stage')
+    } else {
+      // Validate each stage
+      problem.stages.forEach((stage, idx) => {
+        if (!ALLOWED_TYPES.has(stage.type)) {
+          errors.push(`Stage ${idx}: type "${stage.type}" is not supported`)
+        }
+        if (!isPlainObject(stage.variables)) {
+          errors.push(`Stage ${idx}: variables must be an object`)
+        }
+      })
+
+      // Validate transitions
+      if (Array.isArray(problem.transitions)) {
+        problem.transitions.forEach((transition, idx) => {
+          if (!Number.isFinite(transition.from) || !Number.isFinite(transition.to)) {
+            errors.push(`Transition ${idx}: from and to must be valid stage indices`)
+          }
+          if (transition.from >= problem.stages.length || transition.to >= problem.stages.length) {
+            errors.push(`Transition ${idx}: stage indices out of range`)
+          }
+        })
+      }
+    }
+
+    // Validate common fields
+    if (typeof problem.domain !== 'string' || !ALLOWED_DOMAINS.has(problem.domain)) {
+      errors.push('domain must be "physics" or "chemistry"')
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    }
+  }
+
+  // Single-concept validation (existing logic)
   if (!ALLOWED_DOMAINS.has(problem.domain)) {
     errors.push('domain must be either "physics" or "chemistry"')
   }

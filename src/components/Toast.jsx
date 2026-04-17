@@ -16,17 +16,17 @@ function ToastItem({ toast, onRemove }) {
   }, [toast, onRemove])
 
   const typeStyles = {
-    info: 'border-[rgba(0,245,255,0.3)] bg-[rgba(0,245,255,0.1)]',
-    warning: 'border-[rgba(251,191,36,0.3)] bg-[rgba(251,191,36,0.1)]',
-    error: 'border-[rgba(248,113,113,0.3)] bg-[rgba(248,113,113,0.1)]',
-    success: 'border-[rgba(34,197,94,0.3)] bg-[rgba(34,197,94,0.1)]',
+    info: 'border-[#1f2937] bg-[#111827]',
+    warning: 'border-amber-900/60 bg-amber-500/10',
+    error: 'border-red-900/60 bg-red-500/10',
+    success: 'border-emerald-900/60 bg-emerald-500/10',
   }
 
   const iconStyles = {
-    info: 'text-[#00f5ff]',
-    warning: 'text-[#fbbf24]',
-    error: 'text-[#f87171]',
-    success: 'text-[#22c55e]',
+    info: 'text-[#22d3ee]',
+    warning: 'text-amber-300',
+    error: 'text-red-300',
+    success: 'text-emerald-300',
   }
 
   const icons = {
@@ -61,13 +61,13 @@ function ToastItem({ toast, onRemove }) {
       <span className={iconStyles[toast.type] || iconStyles.info}>
         {icons[toast.type] || icons.info}
       </span>
-      <p className="flex-1 text-sm text-white">{toast.message}</p>
+      <p className="flex-1 text-sm text-[#e5e7eb]">{toast.message}</p>
       <button
         onClick={() => {
           setIsExiting(true)
           setTimeout(() => onRemove(toast.id), 300)
         }}
-        className="text-slate-400 transition hover:text-white"
+        className="text-[#9ca3af] transition hover:text-[#e5e7eb]"
       >
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

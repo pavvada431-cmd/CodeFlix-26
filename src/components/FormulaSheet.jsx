@@ -130,7 +130,7 @@ function FormulaCard({ name, formula, color }) {
   )
 }
 
-export default function FormulaSheet({ isOpen, onClose, activeSimulation }) {
+export default function FormulaSheet({ isOpen, onClose }) {
   const [selectedCategory, setSelectedCategory] = useState('All')
   
   const categories = ['All', ...Object.keys(SIMULATION_FORMULAS)]
