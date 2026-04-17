@@ -1,4 +1,6 @@
-import { DEMO_PROBLEMS } from '../data/demos'
+import { PHYSICS_DEMOS, CHEMISTRY_DEMOS } from '../data/demos'
+
+const ALL_DEMOS = [...PHYSICS_DEMOS, ...CHEMISTRY_DEMOS]
 
 export function encodeProblemToURL(problemText) {
   try {
@@ -36,7 +38,7 @@ export function decodeDemoFromURL() {
     const demoId = url.searchParams.get('demo')
     if (!demoId) return null
 
-    return DEMO_PROBLEMS.find(d => d.id === demoId) || null
+    return ALL_DEMOS.find(d => d.id === demoId) || null
   } catch {
     return null
   }
