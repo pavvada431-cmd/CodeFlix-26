@@ -67,6 +67,36 @@ function SimulationNotSupported({ simulationType }) {
   )
 }
 
+function detectWebGLAvailability() {
+  if (typeof document === 'undefined') return true
+  try {
+    const canvas = document.createElement('canvas')
+    const gl =
+      canvas.getContext('webgl2', { alpha: true }) ||
+      canvas.getContext('webgl', { alpha: true }) ||
+      canvas.getContext('experimental-webgl', { alpha: true })
+    const isAvailable = Boolean(gl)
+
+    const loseContext = gl?.getExtension?.('WEBGL_lose_context')
+    loseContext?.loseContext?.()
+
+    return isAvailable
+  } catch {
+    return false
+  }
+}
+
+function WebGLUnavailable() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-amber-400/20 bg-[#07111f]/80 p-8 text-center">
+      <h3 className="mb-2 font-heading text-xl font-semibold text-white">WebGL Context Unavailable</h3>
+      <p className="max-w-md text-sm text-slate-400">
+        Your browser could not create a stable 3D context right now. Try closing other heavy tabs/apps and reload.
+      </p>
+    </div>
+  )
+}
+
 function toTelemetry(state, totalTime, stageIndex) {
   const position = state?.position || {}
   const velocity = state?.velocity || {}
@@ -492,6 +522,7 @@ export default function SimulationRouter({
   particleMultiplier = 1,
   accentColor = '#00f5ff',
 }) {
+  const [webglAvailable] = useState(detectWebGLAvailability)
   const resolvedSimulationType = parsedData?.type ?? simulationType
   const resolvedVariables = variables ?? parsedData?.variables
 
@@ -506,6 +537,10 @@ export default function SimulationRouter({
 
   if (!parsedData) {
     return <div style={{ color: 'red' }}>No simulation data available</div>
+  }
+
+  if (!webglAvailable) {
+    return <WebGLUnavailable />
   }
 
   if (parsedData.isMultiConcept === true && Array.isArray(parsedData.stages) && parsedData.stages.length > 0) {

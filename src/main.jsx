@@ -13,7 +13,9 @@ console.error = function (...args) {
     message.includes('is undefined') ||
     message.includes('cannot read property') ||
     message.includes('can\'t access property') ||
-    message.includes('getShaderPrecisionFormat')
+    message.includes('getShaderPrecisionFormat') ||
+    message.includes('getContextAttributes') ||
+    message.includes('alpha')
   ) {
     return
   }
@@ -26,7 +28,10 @@ window.addEventListener('unhandledrejection', (event) => {
     message.includes('__r3f') ||
     message.includes('is undefined') ||
     message.includes('cannot read property') ||
-    message.includes('getShaderPrecisionFormat')
+    message.includes('can\'t access property') ||
+    message.includes('getShaderPrecisionFormat') ||
+    message.includes('getContextAttributes') ||
+    message.includes('alpha')
   ) {
     event.preventDefault()
     return

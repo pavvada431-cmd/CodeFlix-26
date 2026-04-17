@@ -3,6 +3,7 @@ import { Component } from 'react'
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
+    this.internalRecoveryAttempts = 0
     this.state = {
       hasError: false,
       error: null,
@@ -27,12 +28,27 @@ class ErrorBoundary extends Component {
       error?.message?.includes('__r3f') ||
       error?.message?.includes('is undefined') ||
       error?.message?.includes('cannot read property') ||
+      error?.message?.includes('can\'t access property') ||
+      error?.message?.includes('getContextAttributes') ||
+      error?.message?.includes('getContext') ||
+      error?.message?.includes('alpha') ||
       error?.stack?.includes('__r3f') ||
+      error?.stack?.includes('WebGLRenderer') ||
       error?.message?.includes('getShaderPrecisionFormat') ||
       error?.message?.includes('precision') ||
       error?.message?.includes('WebGL')
     
     if (isInternalR3FError) {
+      this.internalRecoveryAttempts += 1
+      if (this.internalRecoveryAttempts > 3) {
+        this.setState({
+          hasError: true,
+          error,
+          errorInfo,
+          errorCode: 'WEBGL_CONTEXT',
+        })
+        return
+      }
       // Reset the error state to allow recovery
       this.setState({
         hasError: false,
@@ -69,6 +85,7 @@ class ErrorBoundary extends Component {
   }
 
   handleReset = () => {
+    this.internalRecoveryAttempts = 0
     this.setState({
       hasError: false,
       error: null,
@@ -81,6 +98,7 @@ class ErrorBoundary extends Component {
   }
 
   handleTryDifferent = () => {
+    this.internalRecoveryAttempts = 0
     this.setState({
       hasError: false,
       error: null,
@@ -118,7 +136,9 @@ class ErrorBoundary extends Component {
             </h2>
 
             <p className="mb-4 max-w-md text-sm text-slate-400">
-              We encountered an error while rendering this simulation. Please try a different problem or refresh the page.
+              {this.state.errorCode === 'WEBGL_CONTEXT'
+                ? 'The 3D context became unstable. Try closing other GPU-heavy tabs/apps and reload this page.'
+                : 'We encountered an error while rendering this simulation. Please try a different problem or refresh the page.'}
             </p>
 
             {isDev && this.state.error && (

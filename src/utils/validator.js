@@ -23,6 +23,11 @@ const ALLOWED_TYPES = new Set([
   'circuit',
   'titration',
   'combustion',
+  'organic_chemistry',
+  'stoichiometry',
+  'atomic_structure',
+  'gas_laws',
+  'chemical_bonding',
 ])
 
 const DOMAIN_TYPES = {
@@ -47,7 +52,15 @@ const DOMAIN_TYPES = {
     'electromagnetic',
     'circuit',
   ]),
-  chemistry: new Set(['titration', 'combustion']),
+  chemistry: new Set([
+    'titration',
+    'combustion',
+    'organic_chemistry',
+    'stoichiometry',
+    'atomic_structure',
+    'gas_laws',
+    'chemical_bonding',
+  ]),
 }
 
 const WARNINGS = []
@@ -377,25 +390,51 @@ export function validateParsedProblem(problem) {
 
   if (isPlainObject(problem.variables) && isPlainObject(problem.units)) {
     for (const [key, value] of Object.entries(problem.variables)) {
-      if (!isFiniteNumber(value)) {
-        errors.push(`variables.${key} must be a finite number`)
+      if (isFiniteNumber(value)) {
+        if (!(key in problem.units)) {
+          errors.push(`units.${key} is required`)
+          continue
+        }
+
+        if (
+          typeof problem.units[key] !== 'string' ||
+          problem.units[key].trim().length === 0
+        ) {
+          errors.push(`units.${key} must be a non-empty string`)
+          continue
+        }
+
+        validateVariableRange(key, value, problem.units[key], errors)
         continue
       }
 
-      if (!(key in problem.units)) {
-        errors.push(`units.${key} is required`)
+      // Chemistry and categorical simulation variables may be non-numeric.
+      if (typeof value === 'string') {
+        if (value.trim().length === 0) {
+          errors.push(`variables.${key} must be a non-empty string`)
+        }
         continue
       }
 
-      if (
-        typeof problem.units[key] !== 'string' ||
-        problem.units[key].trim().length === 0
-      ) {
-        errors.push(`units.${key} must be a non-empty string`)
+      if (typeof value === 'boolean') {
         continue
       }
 
-      validateVariableRange(key, value, problem.units[key], errors)
+      if (Array.isArray(value)) {
+        if (value.length === 0) {
+          errors.push(`variables.${key} array must not be empty`)
+        }
+        continue
+      }
+
+      if (isPlainObject(value)) {
+        if (Object.keys(value).length === 0) {
+          errors.push(`variables.${key} object must not be empty`)
+        }
+        continue
+      }
+
+      errors.push(`variables.${key} must be a finite number, non-empty string, boolean, array, or object`)
     }
 
     for (const [key, value] of Object.entries(problem.units)) {
@@ -437,6 +476,15 @@ function attemptProblemRecovery(problem) {
   if (!problem || typeof problem !== 'object') return null
 
   const recovered = { ...problem }
+
+  // Align domain with known type families when possible.
+  if (typeof recovered.type === 'string') {
+    const normalizedType = recovered.type.trim()
+    const inferredDomain = Object.entries(DOMAIN_TYPES).find(([, allowed]) => allowed.has(normalizedType))?.[0]
+    if (inferredDomain && recovered.domain !== inferredDomain) {
+      recovered.domain = inferredDomain
+    }
+  }
 
   // Fix missing/invalid answer
   if (!recovered.answer || typeof recovered.answer !== 'object') {
