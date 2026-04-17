@@ -240,7 +240,9 @@ function DustParticle({ position, velocity, opacity }) {
       meshRef.current.position.y += velocity.y * 0.016;
       meshRef.current.position.z += velocity.z * 0.016;
       meshRef.current.position.y -= 0.002;
-      meshRef.current.material.opacity = opacity;
+      if (meshRef.current?.material?.opacity !== undefined) {
+        meshRef.current.material.opacity = opacity;
+      }
     }
   });
 

@@ -156,7 +156,7 @@ function Charge({ position, q, onDrag }) {
   const emissive = q > 0 ? '#ff0000' : '#0066ff'
 
   useFrame(() => {
-    if (meshRef.current && !isDragging) {
+    if (meshRef.current?.position && !isDragging) {
       meshRef.current.position.x = position.x
       meshRef.current.position.z = position.y
     }
@@ -335,32 +335,36 @@ function TestCharge({ charges, isActive, onPositionUpdate }) {
     const q = 0.001 * 1e-6
     const m = 1e-10
 
-    const { Ex, Ey } = calculateElectricField(charges, positionRef.current.x, positionRef.current.y)
-    const ax = q * Ex / m
-    const ay = q * Ey / m
+    if (positionRef.current && velocityRef.current) {
+      const { Ex, Ey } = calculateElectricField(charges, positionRef.current.x, positionRef.current.y)
+      const ax = q * Ex / m
+      const ay = q * Ey / m
 
-    velocityRef.current.x += ax * dt * 0.01
-    velocityRef.current.y += ay * dt * 0.01
+      velocityRef.current.x += ax * dt * 0.01
+      velocityRef.current.y += ay * dt * 0.01
 
-    const damping = 0.98
-    velocityRef.current.x *= damping
-    velocityRef.current.y *= damping
+      const damping = 0.98
+      velocityRef.current.x *= damping
+      velocityRef.current.y *= damping
 
-    positionRef.current.x += velocityRef.current.x * dt
-    positionRef.current.y += velocityRef.current.y * dt
+      positionRef.current.x += velocityRef.current.x * dt
+      positionRef.current.y += velocityRef.current.y * dt
 
-    if (meshRef.current?.position) {
-      meshRef.current.position.x = positionRef.current.x
-      meshRef.current.position.z = positionRef.current.y
+      if (meshRef.current?.position) {
+        meshRef.current.position.x = positionRef.current.x
+        meshRef.current.position.z = positionRef.current.y
+      }
+
+      if (trailRef.current) {
+        trailRef.current = [...trailRef.current.slice(-99), { x: positionRef.current.x, y: positionRef.current.y }]
+        if (trailMeshRef.current?.geometry && trailRef.current.length > 1) {
+          const positions = new Float32Array(trailRef.current.flatMap(p => [p.x, 0, p.y]))
+          trailMeshRef.current.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+        }
+      }
+
+      onPositionUpdate?.(positionRef.current)
     }
-
-    trailRef.current = [...trailRef.current.slice(-99), { x: positionRef.current.x, y: positionRef.current.y }]
-    if (trailMeshRef.current?.geometry && trailRef.current.length > 1) {
-      const positions = new Float32Array(trailRef.current.flatMap(p => [p.x, 0, p.y]))
-      trailMeshRef.current.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-    }
-
-    onPositionUpdate?.(positionRef.current)
   })
 
   if (!isActive) return null

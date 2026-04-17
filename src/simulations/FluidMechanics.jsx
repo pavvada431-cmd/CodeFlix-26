@@ -301,7 +301,8 @@ function FluidParticles() {
   useFrame((state, delta) => {
     if (!particlesRef.current?.geometry?.attributes?.position?.array) return
 
-    const posArray = particlesRef.current.geometry.attributes.position.array
+    const posArray = particlesRef.current?.geometry?.attributes?.position?.array
+    if (!posArray) return
 
     for (let i = 0; i < particleCount; i++) {
       const vel = velocities.current[i]
@@ -317,7 +318,9 @@ function FluidParticles() {
       if (posArray[i * 3] < -TANK_WIDTH / 2) posArray[i * 3] = TANK_WIDTH / 2
     }
 
-    particlesRef.current.geometry.attributes.position.needsUpdate = true
+    if (particlesRef.current?.geometry?.attributes?.position) {
+      particlesRef.current.geometry.attributes.position.needsUpdate = true
+    }
   })
 
   return (
@@ -362,7 +365,8 @@ function BernoulliPipe() {
   useFrame((state, delta) => {
     if (!particlesRef.current?.geometry?.attributes?.position?.array) return
 
-    const posArray = particlesRef.current.geometry.attributes.position.array
+    const posArray = particlesRef.current?.geometry?.attributes?.position?.array
+    if (!posArray) return
 
     for (let i = 0; i < particleCount; i++) {
       const p = pipePositions[i]
@@ -377,7 +381,9 @@ function BernoulliPipe() {
       }
     }
 
-    particlesRef.current.geometry.attributes.position.needsUpdate = true
+    if (particlesRef.current?.geometry?.attributes?.position) {
+      particlesRef.current.geometry.attributes.position.needsUpdate = true
+    }
   })
 
   return (
