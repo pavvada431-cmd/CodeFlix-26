@@ -41,7 +41,7 @@ export default function SimulationCard({ simulation, particleMultiplier }) {
       subtitle={simulation.activeSimulation || 'No simulation selected'}
       action={simulation.error ? <Badge variant="error">Error</Badge> : <Badge variant="neutral">Ready</Badge>}
     >
-      <div className="h-[600px] overflow-hidden rounded-xl border border-[#1f2937] bg-[#0b0f17]">
+      <div className="h-auto max-h-[800px] overflow-y-auto rounded-xl border border-[#1f2937] bg-[#0b0f17]">
         <ErrorBoundary onReset={simulation.reset}>
           <SimulationRouter
             parsedData={simulation.parsedData}

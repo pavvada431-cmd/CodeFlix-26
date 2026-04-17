@@ -20,6 +20,10 @@ const EXAMPLES = [
   { label: 'Projectile', text: 'A ball is launched at 20 m/s at 45 degrees. Find range and flight time.' },
   { label: 'Pendulum', text: 'A simple pendulum has length 2 m. Calculate period near Earth.' },
   { label: 'Spring-Mass', text: 'A 2kg mass attached to a spring with k=100 N/m is displaced and released.' },
+  { label: 'Circular Motion', text: 'A 1kg mass moves in a circle with radius 2m at 3 rad/s. Find centripetal force.' },
+  { label: 'Collision', text: 'Two 2kg balls collide elastically. Ball 1 at 5 m/s hits stationary Ball 2.' },
+  { label: 'Wave Motion', text: 'A wave has frequency 5 Hz and wavelength 2 m. Calculate wave speed.' },
+  { label: 'Free Fall', text: 'A ball is dropped from height 45 m. Find time to fall and final velocity.' },
 ]
 
 export default function ProblemInput({

@@ -273,3 +273,37 @@ export const getRandomDemo = () => {
   const index = Math.floor(Math.random() * DEMO_PROBLEMS.length)
   return DEMO_PROBLEMS[index]
 }
+
+// Add more demo problems for common physics concepts
+const ADDITIONAL_DEMOS = [
+  {
+    id: 'wave-motion-demo',
+    label: 'Wave Motion',
+    problemText: 'A wave has frequency 5 Hz and wavelength 2 m. Calculate wave speed and period.',
+    parsedData: {
+      domain: 'physics',
+      type: 'wave_motion',
+      variables: { frequency: 5, wavelength: 2, amplitude: 0.5 },
+      units: { frequency: 'Hz', wavelength: 'm', amplitude: 'm' },
+      formula: 'v = f × λ = 5 × 2 = 10 m/s',
+      steps: ['v = frequency × wavelength', 'v = 5 Hz × 2 m = 10 m/s', 'T = 1/f = 0.2 s'],
+      answer: { value: 10, unit: 'm/s', explanation: 'Wave speed is 10 m/s.' },
+    },
+  },
+  {
+    id: 'free-fall-demo',
+    label: 'Free Fall',
+    problemText: 'A ball drops from 45 m. Find time to fall and final velocity.',
+    parsedData: {
+      domain: 'physics',
+      type: 'projectile',
+      variables: { height: 45, angle: 90, velocity: 0 },
+      units: { height: 'm', angle: 'degrees', velocity: 'm/s' },
+      formula: 't = √(2h/g), v = gt',
+      steps: ['h = ½gt²', '45 = ½(9.81)t²', 't = 3.03 s', 'v = 29.7 m/s'],
+      answer: { value: 29.7, unit: 'm/s', explanation: 'Final velocity is 29.7 m/s.' },
+    },
+  },
+];
+
+DEMO_PROBLEMS.push(...ADDITIONAL_DEMOS);

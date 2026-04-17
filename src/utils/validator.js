@@ -354,22 +354,25 @@ export function validateParsedProblem(problem) {
   if (!isPlainObject(problem.answer)) {
     errors.push('answer must be an object')
   } else {
-    if (!isFiniteNumber(problem.answer.value)) {
-      errors.push('answer.value must be a finite number')
+    // Allow undefined/null and provide defaults
+    if (problem.answer.value !== undefined && problem.answer.value !== null && !isFiniteNumber(problem.answer.value)) {
+      errors.push('answer.value must be a finite number if provided')
     }
 
     if (
-      typeof problem.answer.unit !== 'string' ||
-      problem.answer.unit.trim().length === 0
+      problem.answer.unit !== undefined &&
+      problem.answer.unit !== null &&
+      (typeof problem.answer.unit !== 'string' || problem.answer.unit.trim().length === 0)
     ) {
-      errors.push('answer.unit must be a non-empty string')
+      errors.push('answer.unit must be a non-empty string if provided')
     }
 
     if (
-      typeof problem.answer.explanation !== 'string' ||
-      problem.answer.explanation.trim().length === 0
+      problem.answer.explanation !== undefined &&
+      problem.answer.explanation !== null &&
+      (typeof problem.answer.explanation !== 'string' || problem.answer.explanation.trim().length === 0)
     ) {
-      errors.push('answer.explanation must be a non-empty string')
+      errors.push('answer.explanation must be a non-empty string if provided')
     }
   }
 

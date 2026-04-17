@@ -52,6 +52,15 @@ export default function Navbar({
         )}
 
         <div className="flex items-center gap-3">
+          {!isSimulator && (
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/formulas')}
+              className="text-sm"
+            >
+              Formulas
+            </Button>
+          )}
           {isSimulator && (
             <Badge variant={apiConnected ? 'success' : 'error'} className="gap-2">
               <span className={`h-2 w-2 rounded-full ${apiConnected ? 'bg-[#22c55e]' : 'bg-[#ef4444]'}`} />
