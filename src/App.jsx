@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMediaQuery } from 'react-responsive'
 import Navbar from './components/Navbar'
 import MobileLayout from './components/MobileLayout'
@@ -6,6 +6,8 @@ import PhysicsPage from './pages/PhysicsPage'
 import ChemistryPage from './pages/ChemistryPage'
 import SettingsModal from './components/SettingsModal'
 import SessionSummary from './components/SessionSummary'
+import Onboarding, { ONBOARDING_STORAGE_KEY } from './components/Onboarding'
+import GuidedTour from './components/GuidedTour'
 import useSession from './hooks/useSession'
 import { useTheme } from './contexts/ThemeContext'
 
@@ -14,6 +16,7 @@ function DesktopLayout({
   onPageChange,
   apiConnected,
   onOpenSettings,
+  onOpenTour,
   sidebarWidth,
   onSidebarWidthChange,
   rightPanelWidth,
@@ -26,6 +29,7 @@ function DesktopLayout({
         apiConnected={apiConnected}
         onPageChange={onPageChange}
         currentPage={currentPage}
+        onOpenTour={onOpenTour}
       />
 
       <div className="pt-16">
@@ -55,6 +59,7 @@ function AppContent({
   apiConnected,
   onApiStatusChange,
   onOpenSettings,
+  onOpenTour,
   sidebarWidth,
   onSidebarWidthChange,
   rightPanelWidth,
@@ -66,6 +71,7 @@ function AppContent({
     return (
       <MobileLayout
         onOpenSettings={onOpenSettings}
+        onOpenTour={onOpenTour}
         apiConnected={apiConnected}
         onApiStatusChange={onApiStatusChange}
       />
@@ -78,6 +84,7 @@ function AppContent({
       onPageChange={onPageChange}
       apiConnected={apiConnected}
       onOpenSettings={onOpenSettings}
+      onOpenTour={onOpenTour}
       sidebarWidth={sidebarWidth}
       onSidebarWidthChange={onSidebarWidthChange}
       rightPanelWidth={rightPanelWidth}
@@ -94,6 +101,17 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [showSession, setShowSession] = useState(false)
   const [apiConnected, setApiConnected] = useState(true)
+  const [showOnboarding, setShowOnboarding] = useState(
+    () => typeof window !== 'undefined' && window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== 'true'
+  )
+  const [showGuidedTour, setShowGuidedTour] = useState(false)
+
+  const runExampleFromOnboarding = (text) => {
+    setCurrentPage('physics')
+    window.dispatchEvent(new CustomEvent('codeflix:run-example', {
+      detail: { text, domain: 'physics' },
+    }))
+  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
@@ -103,18 +121,39 @@ export default function App() {
         apiConnected={apiConnected}
         onApiStatusChange={setApiConnected}
         onOpenSettings={() => setShowSettings(true)}
+        onOpenTour={() => setShowGuidedTour(true)}
         sidebarWidth={sidebarWidth}
         onSidebarWidthChange={updateSidebarWidth}
         rightPanelWidth={rightPanelWidth}
         onRightPanelWidthChange={updateRightPanelWidth}
       />
 
-      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        onShowOnboarding={() => {
+          setShowSettings(false)
+          setShowOnboarding(true)
+        }}
+      />
 
       <SessionSummary
         isOpen={showSession}
         onClose={() => setShowSession(false)}
         summary={session.getSummary()}
+      />
+
+      <Onboarding
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onComplete={() => setShowOnboarding(false)}
+        onRunExample={runExampleFromOnboarding}
+        onPickSubject={(subject) => setCurrentPage(subject)}
+      />
+
+      <GuidedTour
+        isOpen={showGuidedTour}
+        onClose={() => setShowGuidedTour(false)}
       />
     </div>
   )

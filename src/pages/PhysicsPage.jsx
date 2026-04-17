@@ -4,6 +4,7 @@ import SimulationCard from '../components/SimulationCard'
 import GraphPanel from '../components/GraphPanel'
 import ResizableRightPanel from '../components/ResizableRightPanel'
 import PhysicsLibrary from '../components/PhysicsLibrary'
+import EmptyState from '../components/EmptyState'
 import useSimulation from '../hooks/useSimulation'
 import usePerformanceMonitor from '../hooks/usePerformanceMonitor'
 import useSession from '../hooks/useSession'
@@ -82,6 +83,10 @@ export default function PhysicsPage({ sidebarWidth, onSidebarWidthChange, rightP
     simulation.solve(demo.parsedData, aiProvider)
   }, [aiProvider, simulation])
 
+  const handleQuickExample = useCallback((problemText) => {
+    simulation.solve(problemText, aiProvider)
+  }, [aiProvider, simulation])
+
   return (
     <div className="flex min-h-[calc(100vh-64px)]">
       <LoadingOverlay isVisible={simulation.isLoading} />
@@ -97,6 +102,7 @@ export default function PhysicsPage({ sidebarWidth, onSidebarWidthChange, rightP
         onOpenLibrary={() => setShowLibrary(true)}
         onDemoMode={handleDemoMode}
         onShowSession={() => setShowSession(true)}
+        domain="physics"
       />
 
       <main className="flex-1 overflow-auto p-6" style={{ backgroundColor: 'var(--color-bg)' }}>
@@ -110,7 +116,18 @@ export default function PhysicsPage({ sidebarWidth, onSidebarWidthChange, rightP
             </p>
           </div>
 
-          <SimulationCard simulation={simulation} particleMultiplier={particleMultiplier} />
+          {simulation.activeSimulation ? (
+            <SimulationCard simulation={simulation} particleMultiplier={particleMultiplier} />
+          ) : (
+            <EmptyState
+              onSelectExample={handleQuickExample}
+              examples={[
+                'A ball is thrown at 25 m/s at 60 degrees',
+                'A 5kg block slides down a 35 degree ramp with friction 0.2',
+                'Two carts collide elastically: m1=2kg at 4m/s, m2=3kg at rest',
+              ]}
+            />
+          )}
           
           <GraphPanel
             simulationType={simulation.activeSimulation}

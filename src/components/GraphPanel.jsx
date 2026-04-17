@@ -106,7 +106,7 @@ export default function GraphPanel({
 
   if (mobile) {
     return (
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+      <div data-tour="graph-panel" className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
         <div className="mb-3 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold">Graph</h2>
@@ -157,38 +157,40 @@ export default function GraphPanel({
   }
 
   return (
-    <Panel
-      title="Graphs"
-      subtitle={`Telemetry for ${simulationType || 'simulation'}`}
-      action={<Badge variant="neutral">{dataStream.length} samples</Badge>}
-    >
-      {!dataStream.length ? (
-        <EmptyGraphState />
-      ) : (
-        <div className="grid gap-4 xl:grid-cols-2">
-          <div className="rounded-xl border border-[#1f2937] bg-[#0b0f17] p-3">
-            <p className="mb-2 text-xs text-[#9ca3af]">{primaryKey} vs time</p>
-            <ChartSurface
-              dataStream={dataStream}
-              dataKey={primaryKey}
-              latestTime={latestTime}
-              accentColor={accentColor}
-              height={260}
-            />
-          </div>
+    <div data-tour="graph-panel">
+      <Panel
+        title="Graphs"
+        subtitle={`Telemetry for ${simulationType || 'simulation'}`}
+        action={<Badge variant="neutral">{dataStream.length} samples</Badge>}
+      >
+        {!dataStream.length ? (
+          <EmptyGraphState />
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-2">
+            <div className="rounded-xl border border-[#1f2937] bg-[#0b0f17] p-3">
+              <p className="mb-2 text-xs text-[#9ca3af]">{primaryKey} vs time</p>
+              <ChartSurface
+                dataStream={dataStream}
+                dataKey={primaryKey}
+                latestTime={latestTime}
+                accentColor={accentColor}
+                height={260}
+              />
+            </div>
 
-          <div className="rounded-xl border border-[#1f2937] bg-[#0b0f17] p-3">
-            <p className="mb-2 text-xs text-[#9ca3af]">{secondaryKey} vs time</p>
-            <ChartSurface
-              dataStream={dataStream}
-              dataKey={secondaryKey}
-              latestTime={latestTime}
-              accentColor="#94a3b8"
-              height={260}
-            />
+            <div className="rounded-xl border border-[#1f2937] bg-[#0b0f17] p-3">
+              <p className="mb-2 text-xs text-[#9ca3af]">{secondaryKey} vs time</p>
+              <ChartSurface
+                dataStream={dataStream}
+                dataKey={secondaryKey}
+                latestTime={latestTime}
+                accentColor="#94a3b8"
+                height={260}
+              />
+            </div>
           </div>
-        </div>
-      )}
-    </Panel>
+        )}
+      </Panel>
+    </div>
   )
 }

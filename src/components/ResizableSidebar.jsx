@@ -15,6 +15,7 @@ export default function ResizableSidebar({
   onOpenLibrary,
   onDemoMode,
   onShowSession,
+  domain = 'physics',
 }) {
   const [isDragging, setIsDragging] = useState(false)
   const sidebarRef = useRef(null)
@@ -74,6 +75,7 @@ export default function ResizableSidebar({
             provider={provider}
             onProviderChange={onProviderChange}
             onApiStatusChange={onApiStatusChange}
+            domain={domain}
           />
 
           <div className="mt-4">

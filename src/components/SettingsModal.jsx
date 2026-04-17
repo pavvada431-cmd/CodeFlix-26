@@ -1,7 +1,7 @@
 import { X } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 
-export default function SettingsModal({ isOpen, onClose }) {
+export default function SettingsModal({ isOpen, onClose, onShowOnboarding }) {
   const { theme, toggleTheme, sidebarWidth, updateSidebarWidth, rightPanelWidth, updateRightPanelWidth } = useTheme()
 
   if (!isOpen) return null
@@ -147,6 +147,15 @@ export default function SettingsModal({ isOpen, onClose }) {
                 Learn physics and chemistry through interactive 3D simulations. 
                 Built with React, Three.js, and Tailwind CSS.
               </p>
+
+              <button
+                type="button"
+                onClick={onShowOnboarding}
+                className="mt-4 rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:bg-black/10"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+              >
+                Show Onboarding
+              </button>
             </div>
           </section>
         </div>

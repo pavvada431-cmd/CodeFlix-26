@@ -430,7 +430,7 @@ export default function SolutionPanel({
   ];
 
   return (
-    <div className="solution-panel-scroll h-full overflow-y-auto pr-1 text-[var(--color-text)]">
+    <div data-tour="solution-panel" className="solution-panel-scroll h-full overflow-y-auto pr-1 text-[var(--color-text)]">
       <style>{`
         .solution-panel-scroll::-webkit-scrollbar{width:8px}
         .solution-panel-scroll::-webkit-scrollbar-track{background:transparent}

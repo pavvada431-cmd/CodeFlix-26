@@ -26,6 +26,7 @@ function getInitialProvider() {
 
 export default function MobileLayout({
   onOpenSettings,
+  onOpenTour,
   apiConnected = true,
   onApiStatusChange,
 }) {
@@ -101,7 +102,7 @@ export default function MobileLayout({
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
-      <Navbar isMobile onOpenSettings={onOpenSettings} apiConnected={apiConnected} />
+      <Navbar isMobile onOpenSettings={onOpenSettings} onOpenTour={onOpenTour} apiConnected={apiConnected} />
 
       <main className="pt-16">
         <div className="relative h-[calc(100vh-64px-var(--mobile-bottom-nav-height)-env(safe-area-inset-bottom))] overflow-hidden">

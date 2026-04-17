@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Sun, Moon, Settings, Zap, FlaskConical, ArrowLeft, Check, X } from 'lucide-react'
+import { Sun, Moon, Settings, Zap, FlaskConical, ArrowLeft, Check, CircleHelp } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 
 export default function Navbar({
@@ -8,6 +8,7 @@ export default function Navbar({
   onPageChange,
   currentPage = 'physics',
   isMobile = false,
+  onOpenTour,
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -37,19 +38,34 @@ export default function Navbar({
             <span className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>SeeTheScience</span>
           </div>
 
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            className="rounded-xl p-2 transition-all"
-            style={{
-              backgroundColor: 'var(--color-bg)',
-              color: 'var(--color-text-muted)',
-              border: '1px solid var(--color-border)',
-            }}
-            aria-label="Open settings"
-          >
-            <Settings className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onOpenTour}
+              className="rounded-xl p-2 transition-all"
+              style={{
+                backgroundColor: 'var(--color-bg)',
+                color: 'var(--color-text-muted)',
+                border: '1px solid var(--color-border)',
+              }}
+              aria-label="Open guided tour"
+            >
+              <CircleHelp className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="rounded-xl p-2 transition-all"
+              style={{
+                backgroundColor: 'var(--color-bg)',
+                color: 'var(--color-text-muted)',
+                border: '1px solid var(--color-border)',
+              }}
+              aria-label="Open settings"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </header>
     )
@@ -173,6 +189,19 @@ export default function Navbar({
             ) : (
               <Moon className="h-5 w-5" />
             )}
+          </button>
+
+          <button
+            onClick={onOpenTour}
+            className="rounded-xl p-2 transition-all hover:scale-110"
+            style={{ 
+              backgroundColor: 'var(--color-bg)',
+              color: 'var(--color-text-muted)',
+              border: '1px solid var(--color-border)'
+            }}
+            aria-label="Open guided tour"
+          >
+            <CircleHelp className="h-5 w-5" />
           </button>
 
           <button

@@ -14,6 +14,7 @@ import {
 function SimulationControls({ isPlaying, onPlayPause, onReset, speed, onSpeedChange }) {
   return (
     <div
+      data-tour="playback-controls"
       className="mt-4 flex flex-wrap items-center gap-3 border-t pt-4"
       style={{ borderColor: 'var(--color-border)' }}
     >
@@ -195,6 +196,7 @@ function FullscreenButton() {
 function MobileFloatingControls({ simulation }) {
   return (
     <div
+      data-tour="playback-controls"
       className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex items-end justify-between px-4"
       style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
     >
@@ -253,6 +255,7 @@ function SimulationViewport({
 }) {
   return (
     <div
+      data-tour="simulation-canvas"
       className="relative w-full overflow-hidden border"
       style={{
         height: mobile ? '100%' : '650px',

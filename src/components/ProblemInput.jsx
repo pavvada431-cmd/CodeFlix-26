@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { parseProblem } from '../utils/problemParser'
 import { sanitizeInput } from '../utils/validator'
@@ -70,6 +70,7 @@ export default function ProblemInput({
   onProviderChange,
   onApiStatusChange,
   mobile = false,
+  domain = 'physics',
 }) {
   const textareaRef = useRef(null)
   const [problemText, setProblemText] = useState('')
@@ -91,16 +92,8 @@ export default function ProblemInput({
     textareaRef.current?.focus()
   }
 
-  const handleSolve = async () => {
-    const trimmedProblem = sanitizedText.trim()
-
-    if (!trimmedProblem) {
-      setError('Please describe a physics or chemistry problem first!')
-      setSuccess(false)
-      textareaRef.current?.focus()
-      return
-    }
-
+  const submitProblemText = useCallback(async (rawText) => {
+    const trimmedProblem = sanitizeInput(rawText).trim()
     setLoading(true)
     setError('')
     setSuccess(false)
@@ -130,7 +123,35 @@ export default function ProblemInput({
     } finally {
       setLoading(false)
     }
+  }, [onApiStatusChange, onSolved, provider])
+
+  const handleSolve = async () => {
+    const trimmedProblem = sanitizedText.trim()
+    if (!trimmedProblem) {
+      setError('Please describe a physics or chemistry problem first!')
+      setSuccess(false)
+      textareaRef.current?.focus()
+      return
+    }
+
+    await submitProblemText(trimmedProblem)
   }
+
+  useEffect(() => {
+    const handler = (event) => {
+      const text = event?.detail?.text
+      const requestedDomain = event?.detail?.domain
+      if (typeof text !== 'string' || text.trim().length === 0) return
+      if (requestedDomain && requestedDomain !== 'both' && requestedDomain !== domain) return
+
+      const cleaned = sanitizeInput(text).slice(0, MAX_INPUT_LENGTH)
+      setProblemText(cleaned)
+      submitProblemText(cleaned)
+    }
+
+    window.addEventListener('codeflix:run-example', handler)
+    return () => window.removeEventListener('codeflix:run-example', handler)
+  }, [domain, submitProblemText])
 
   const content = (
     <div className={`space-y-4 ${mobile ? 'pb-20' : ''}`}>
@@ -140,6 +161,7 @@ export default function ProblemInput({
             <button
               type="button"
               onClick={() => setShowProviderSelector((previous) => !previous)}
+              data-tour="ai-provider"
               className="flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-xs"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
             >
@@ -149,6 +171,7 @@ export default function ProblemInput({
             {showProviderSelector ? (
               <Select
                 id="ai-provider-mobile"
+                data-tour="ai-provider"
                 value={provider}
                 disabled={isBusy}
                 onChange={(event) => onProviderChange?.(event.target.value)}
@@ -166,6 +189,7 @@ export default function ProblemInput({
             </label>
             <Select
               id="ai-provider"
+              data-tour="ai-provider"
               value={provider}
               disabled={isBusy}
               onChange={(event) => onProviderChange?.(event.target.value)}
@@ -184,6 +208,7 @@ export default function ProblemInput({
         </label>
         <Textarea
           id={mobile ? 'problem-input-mobile' : 'problem-input'}
+          data-tour="problem-input"
           ref={textareaRef}
           value={problemText}
           onChange={(event) => {
@@ -231,6 +256,7 @@ export default function ProblemInput({
         >
           <Button
             variant="primary"
+            data-tour="solve-button"
             className="h-12 w-full text-base"
             onClick={handleSolve}
             disabled={isBusy || !sanitizedText.trim()}
@@ -241,6 +267,7 @@ export default function ProblemInput({
       ) : (
         <Button
           variant="primary"
+          data-tour="solve-button"
           className="w-full py-3 text-base"
           onClick={handleSolve}
           disabled={isBusy || !sanitizedText.trim()}
@@ -281,7 +308,7 @@ export default function ProblemInput({
 
   if (mobile) {
     return (
-      <div>
+      <div data-tour="problem-input">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Describe Your Problem</h2>
           <Badge variant={connected ? 'success' : 'error'}>
@@ -297,6 +324,7 @@ export default function ProblemInput({
     <Panel
       title="✨ Describe Your Problem"
       subtitle="Type naturally or click an example!"
+      className="relative"
       action={<Badge variant={connected ? 'success' : 'error'}>
         {connected ? '🟢 Online' : '🔴 Offline'}
       </Badge>}

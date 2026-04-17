@@ -4,6 +4,7 @@ import SimulationCard from '../components/SimulationCard'
 import GraphPanel from '../components/GraphPanel'
 import ResizableRightPanel from '../components/ResizableRightPanel'
 import ChemistryLibrary from '../components/ChemistryLibrary'
+import EmptyState from '../components/EmptyState'
 import useSimulation from '../hooks/useSimulation'
 import usePerformanceMonitor from '../hooks/usePerformanceMonitor'
 import useSession from '../hooks/useSession'
@@ -82,6 +83,10 @@ export default function ChemistryPage({ sidebarWidth, onSidebarWidthChange, righ
     simulation.solve(demo.parsedData, aiProvider)
   }, [aiProvider, simulation])
 
+  const handleQuickExample = useCallback((problemText) => {
+    simulation.solve(problemText, aiProvider)
+  }, [aiProvider, simulation])
+
   return (
     <div className="flex min-h-[calc(100vh-64px)]">
       <LoadingOverlay isVisible={simulation.isLoading} />
@@ -97,6 +102,7 @@ export default function ChemistryPage({ sidebarWidth, onSidebarWidthChange, righ
         onOpenLibrary={() => setShowLibrary(true)}
         onDemoMode={handleDemoMode}
         onShowSession={() => setShowSession(true)}
+        domain="chemistry"
       />
 
       <main className="flex-1 overflow-auto p-6" style={{ backgroundColor: 'var(--color-bg)' }}>
@@ -110,7 +116,18 @@ export default function ChemistryPage({ sidebarWidth, onSidebarWidthChange, righ
             </p>
           </div>
 
-          <SimulationCard simulation={simulation} particleMultiplier={particleMultiplier} />
+          {simulation.activeSimulation ? (
+            <SimulationCard simulation={simulation} particleMultiplier={particleMultiplier} />
+          ) : (
+            <EmptyState
+              onSelectExample={handleQuickExample}
+              examples={[
+                'Balance CH4 + O2 -> CO2 + H2O and estimate product moles',
+                '0.1M HCl titrated with 0.1M NaOH, find equivalence behavior',
+                'Show sodium chloride ionic bonding and electron transfer',
+              ]}
+            />
+          )}
           
           <GraphPanel
             simulationType={simulation.activeSimulation}
