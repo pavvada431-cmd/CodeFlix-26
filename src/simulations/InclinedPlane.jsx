@@ -1,360 +1,236 @@
-import * as THREE from 'three'
-import { useCallback, useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { Environment, Grid, Html, Line, OrbitControls } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import { createInclinedPlaneWorld } from '../utils/physicsEngine'
-import { SceneManager } from '../utils/sceneManager'
-import { formatNumber } from '../utils/formatters'
 
-const GRAVITY = 9.81
+const SCENE_SCALE = 0.01
 const RAMP_LENGTH = 460
 const RAMP_THICKNESS = 24
 const RAMP_CENTER_X = 400
 const RAMP_CENTER_Y = 320
-const GROUND_Y = -470
-const GROUND_WIDTH = 1080
-const CAMERA_POSITION = [400, -250, 760]
-const CAMERA_TARGET = [395, -290, 0]
 const BLOCK_ID = 'inclined-plane-block'
+const GRAVITY = 9.81
 
-function toRadians(degrees) {
-  return (degrees * Math.PI) / 180
+function FrostedLabel({ position, color = '#00f5ff', children }) {
+  return (
+    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
+      <div
+        style={{
+          background: 'rgba(10, 15, 30, 0.86)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid ${color}40`,
+          borderRadius: '8px',
+          padding: '4px 10px',
+          color,
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          fontWeight: 700,
+          boxShadow: `0 4px 18px ${color}25`,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {children}
+      </div>
+    </Html>
+  )
 }
 
 function normalizeInputs(variables = {}) {
   return {
     mass: Number.isFinite(variables.mass) && variables.mass > 0 ? variables.mass : 10,
     angle: Number.isFinite(variables.angle) ? variables.angle : 30,
-    friction:
-      Number.isFinite(variables.friction) && variables.friction >= 0
-        ? variables.friction
-        : 0,
+    friction: Number.isFinite(variables.friction) && variables.friction >= 0 ? variables.friction : 0,
   }
 }
 
-function buildInclinedPlaneDefinition(variables = {}) {
-  const normalized = normalizeInputs(variables)
-  const rampAngle = toRadians(normalized.angle)
-  const blockSize = Math.max(28, Math.min(64, Math.sqrt(normalized.mass) * 14))
-  const blockOffset = RAMP_LENGTH * 0.32
-  const blockX = RAMP_CENTER_X - Math.cos(rampAngle) * blockOffset
-  const blockY =
-    RAMP_CENTER_Y - Math.sin(rampAngle) * blockOffset - blockSize * 0.95
-  const completionThresholdX =
-    RAMP_CENTER_X + Math.cos(rampAngle) * (RAMP_LENGTH / 2 - blockSize * 0.85)
+function InclinedScene({ mass, angle, friction, isPlaying, onComplete }) {
+  const [blockState, setBlockState] = useState({ x: 0, y: 0, angle: 0, velocity: 0 })
+  const [trail, setTrail] = useState([])
+  const [completed, setCompleted] = useState(false)
+  const engineRef = useRef(null)
+  const cleanupRef = useRef(null)
+  const onCompleteRef = useRef(onComplete)
 
-  return {
-    variables: normalized,
-    meta: {
-      blockSize,
-      rampAngle,
-      completionThresholdX,
-      cameraPosition: CAMERA_POSITION,
-      cameraTarget: CAMERA_TARGET,
-    },
-    sceneConfig: {
-      backgroundColor: '#07111f',
-      showGrid: false,
-      objects: [
-        {
-          id: 'inclined-plane-ground',
-          type: 'plane',
-          size: [GROUND_WIDTH, 360],
-          color: '#101c33',
-          position: [RAMP_CENTER_X, GROUND_Y - 70, -52],
-          rotation: [0, 0, 0],
-          body: false,
-        },
-        {
-          id: 'inclined-plane-ramp',
-          type: 'box',
-          size: [RAMP_LENGTH, RAMP_THICKNESS, 28],
-          color: '#8f99a8',
-          position: [RAMP_CENTER_X, -RAMP_CENTER_Y, 0],
-          rotation: [0, 0, -rampAngle],
-          body: false,
-        },
-        {
-          id: BLOCK_ID,
-          type: 'box',
-          size: [blockSize, blockSize, blockSize],
-          color: '#00f5ff',
-          position: [blockX, -blockY, 12],
-          rotation: [0, 0, -rampAngle],
-          body: false,
-        },
-        {
-          id: 'ground-strip',
-          type: 'box',
-          size: [GROUND_WIDTH, 18, 20],
-          color: '#203457',
-          position: [RAMP_CENTER_X, GROUND_Y, -8],
-          rotation: [0, 0, 0],
-          body: false,
-        },
-      ],
-    },
-  }
-}
+  useEffect(() => {
+    onCompleteRef.current = onComplete
+  }, [onComplete])
 
-function toSceneBodyState(state) {
-  return {
-    id: state.id,
-    x: state.x,
-    y: -state.y,
-    angle: state.angle,
-  }
-}
+  const rampAngle = (angle * Math.PI) / 180
+  const blockSize = Math.max(28, Math.min(64, Math.sqrt(mass) * 14))
+  const completionThresholdX = RAMP_CENTER_X + Math.cos(rampAngle) * (RAMP_LENGTH / 2 - blockSize * 0.85)
 
-function projectToScreen(sceneManager, worldPosition) {
-  if (!sceneManager?.camera || !sceneManager?.canvasElement) {
-    return null
-  }
+  useEffect(() => {
+    const engine = createInclinedPlaneWorld(mass, angle, friction)
+    engine.stopLoop()
+    engineRef.current = engine
+    setCompleted(false)
+    setTrail([])
 
-  const projected = worldPosition.clone().project(sceneManager.camera)
-  const bounds = sceneManager.canvasElement.getBoundingClientRect()
+    cleanupRef.current = engine.onStep((states) => {
+      const blockStateRaw = states.find((s) => s.id === BLOCK_ID)
+      const blockBody = engine.findBodyById(BLOCK_ID)
+      if (!blockStateRaw || !blockBody) return
+      const velocity = Math.hypot(blockBody.velocity.x, blockBody.velocity.y)
+      setBlockState({
+        x: blockStateRaw.x,
+        y: blockStateRaw.y,
+        angle: blockStateRaw.angle,
+        velocity,
+      })
+      setTrail((prev) => [...prev.slice(-119), [blockStateRaw.x * SCENE_SCALE, -blockStateRaw.y * SCENE_SCALE + 0.2, 0.15]])
 
-  return {
-    x: ((projected.x + 1) / 2) * bounds.width,
-    y: ((1 - projected.y) / 2) * bounds.height,
-  }
-}
+      if (!completed && blockStateRaw.x >= completionThresholdX) {
+        setCompleted(true)
+        onCompleteRef.current?.(velocity)
+      }
+    })
 
-function updateVelocityLabelElement(labelElement, sceneManager, position, value) {
-  if (!labelElement || !sceneManager) {
-    return
-  }
+    return () => {
+      cleanupRef.current?.()
+      engine.destroy()
+      engineRef.current = null
+    }
+  }, [mass, angle, friction, completionThresholdX, completed])
 
-  const screenPosition = projectToScreen(sceneManager, position)
+  useEffect(() => {
+    const engine = engineRef.current
+    if (!engine) return
+    if (isPlaying) {
+      engine.startLoop()
+      return () => engine.stopLoop()
+    }
+    engine.stopLoop()
+    return undefined
+  }, [isPlaying])
 
-  if (!screenPosition) {
-    labelElement.style.opacity = '0'
-    return
-  }
+  useFrame(() => {
+    const engine = engineRef.current
+    if (!engine || isPlaying) return
+    engine.step()
+  })
 
-  labelElement.style.opacity = '1'
-  labelElement.style.transform = `translate(${screenPosition.x}px, ${screenPosition.y}px) translate(-50%, -50%)`
-  labelElement.textContent = `v = ${formatNumber(value)} m/s`
+  const blockPos = [blockState.x * SCENE_SCALE, -blockState.y * SCENE_SCALE, 0.15]
+  const rampPos = [RAMP_CENTER_X * SCENE_SCALE, -RAMP_CENTER_Y * SCENE_SCALE, 0]
+
+  const sinA = Math.sin(rampAngle)
+  const cosA = Math.cos(rampAngle)
+  const gForce = mass * GRAVITY
+  const nForce = gForce * cosA
+  const netForce = Math.max(gForce * sinA - friction * nForce, 0)
+
+  return (
+    <>
+      <fog attach="fog" args={['#08121f', 8, 28]} />
+      <Environment preset="city" intensity={0.16} />
+      <ambientLight intensity={0.28} color="#9ab8e0" />
+      <directionalLight position={[6, 7, 5]} intensity={1.05} />
+      <pointLight position={[-4, 2, 3]} intensity={0.55} color="#00f5ff" />
+      <pointLight position={[4, 2, -3]} intensity={0.35} color="#ff9a5a" />
+
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[4, -4.8, 0]}>
+        <planeGeometry args={[18, 18]} />
+        <meshPhysicalMaterial color="#0c1626" metalness={0.45} roughness={0.3} />
+      </mesh>
+      <Grid
+        position={[4, -4.75, 0]}
+        args={[18, 18]}
+        cellSize={0.35}
+        cellThickness={0.5}
+        sectionSize={1.75}
+        sectionThickness={1}
+        cellColor="#26455f"
+        sectionColor="#3b6788"
+        fadeDistance={18}
+        fadeStrength={1}
+      />
+
+      <mesh position={rampPos} rotation={[0, 0, -rampAngle]}>
+        <boxGeometry args={[RAMP_LENGTH * SCENE_SCALE, RAMP_THICKNESS * SCENE_SCALE, 0.35]} />
+        <meshPhysicalMaterial color="#8f99a8" metalness={0.55} roughness={0.3} clearcoat={0.45} />
+      </mesh>
+
+      <mesh position={blockPos} rotation={[0, 0, blockState.angle]}>
+        <boxGeometry args={[blockSize * SCENE_SCALE, blockSize * SCENE_SCALE, blockSize * SCENE_SCALE]} />
+        <meshPhysicalMaterial
+          color="#00f5ff"
+          metalness={0.45}
+          roughness={0.25}
+          clearcoat={0.6}
+          transmission={0.08}
+          emissive="#00f5ff"
+          emissiveIntensity={0.15}
+        />
+      </mesh>
+
+      {trail.length > 1 && <Line points={trail} color="#00ffff" transparent opacity={0.6} lineWidth={2} />}
+
+      <FrostedLabel position={[blockPos[0], blockPos[1] + 0.7, 0.2]} color="#00f5ff">
+        {`v = ${blockState.velocity.toFixed(2)} m/s`}
+      </FrostedLabel>
+      <FrostedLabel position={[2.4, 2.2, 0]} color="#ff8844">{`Fnet = ${netForce.toFixed(2)} N`}</FrostedLabel>
+      <FrostedLabel position={[2.4, 1.8, 0]} color="#88ff88">{`μ = ${friction.toFixed(2)} | θ = ${angle.toFixed(1)}°`}</FrostedLabel>
+
+      <EffectComposer>
+        <Bloom intensity={0.4} luminanceThreshold={0.55} luminanceSmoothing={0.9} mipmapBlur />
+        <Vignette offset={0.25} darkness={0.45} />
+      </EffectComposer>
+    </>
+  )
 }
 
 function InclinedPlane(props) {
-  const canvasRef = useRef(null)
-  const containerRef = useRef(null)
-  const velocityLabelRef = useRef(null)
-  const sceneManagerRef = useRef(null)
-  const physicsEngineRef = useRef(null)
-  const stepCleanupRef = useRef(null)
-  const completedRef = useRef(false)
-  const latestCompleteRef = useRef(props.onComplete)
-
-  useEffect(() => {
-    latestCompleteRef.current = props.onComplete
-  }, [props.onComplete])
-
-  const renderForceArrows = useCallback((blockBody, meta, variables) => {
-    const sceneManager = sceneManagerRef.current
-
-    if (!sceneManager || !blockBody) {
-      return
-    }
-
-    sceneManager.clearArrows()
-
-    const gravityMagnitude = variables.mass * GRAVITY
-    const normalMagnitude = gravityMagnitude * Math.cos(meta.rampAngle)
-    const rampComponent = gravityMagnitude * Math.sin(meta.rampAngle)
-    const frictionMagnitude = variables.friction * normalMagnitude
-    const netMagnitude = Math.max(rampComponent - frictionMagnitude, 0)
-    const toArrowLength = (magnitude) => Math.max(magnitude * 0.6, 16)
-    const origin = {
-      x: blockBody.position.x,
-      y: -blockBody.position.y,
-      z: 18,
-    }
-
-    sceneManager.addForceArrow(
-      origin,
-      { x: 0, y: -toArrowLength(gravityMagnitude), z: 0 },
-      '#ef4444',
-      'mg',
-    )
-    sceneManager.addForceArrow(
-      origin,
-      {
-        x: Math.sin(meta.rampAngle) * toArrowLength(normalMagnitude),
-        y: Math.cos(meta.rampAngle) * toArrowLength(normalMagnitude),
-        z: 0,
-      },
-      '#60a5fa',
-      'N',
-    )
-    sceneManager.addForceArrow(
-      origin,
-      {
-        x: Math.cos(meta.rampAngle) * toArrowLength(netMagnitude),
-        y: -Math.sin(meta.rampAngle) * toArrowLength(netMagnitude),
-        z: 0,
-      },
-      '#22c55e',
-      'Fnet',
-    )
-  }, [])
-
-  const syncSceneFromPhysics = useCallback((meta, variables) => {
-    const sceneManager = sceneManagerRef.current
-    const physicsEngine = physicsEngineRef.current
-
-    if (!sceneManager || !physicsEngine) {
-      return
-    }
-
-    const bodyStates = physicsEngine.getBodyPositions().map(toSceneBodyState)
-    sceneManager.updatePositions(bodyStates)
-
-    const blockBody = physicsEngine.findBodyById(BLOCK_ID)
-
-    if (!blockBody) {
-      return
-    }
-
-    const velocityMagnitude = Math.hypot(blockBody.velocity.x, blockBody.velocity.y)
-    const labelPosition = new THREE.Vector3(
-      blockBody.position.x,
-      -blockBody.position.y + meta.blockSize * 1.65,
-      18,
-    )
-
-    renderForceArrows(blockBody, meta, variables)
-    updateVelocityLabelElement(
-      velocityLabelRef.current,
-      sceneManager,
-      labelPosition,
-      velocityMagnitude,
-    )
-
-    if (
-      !completedRef.current &&
-      blockBody.position.x >= meta.completionThresholdX
-    ) {
-      completedRef.current = true
-
-      if (typeof latestCompleteRef.current === 'function') {
-        latestCompleteRef.current(velocityMagnitude)
-      }
-    }
-  }, [renderForceArrows])
-
-  useEffect(() => {
-    const sceneManager = new SceneManager()
-    const velocityLabelElement = velocityLabelRef.current
-    sceneManager.init(canvasRef)
-    sceneManager.setBackground('#07111f')
-    sceneManager.enableGrid(false)
-    sceneManagerRef.current = sceneManager
-
-    sceneManager.camera.position.set(...CAMERA_POSITION)
-    sceneManager.controls.target.set(...CAMERA_TARGET)
-    sceneManager.controls.update()
-
-    const handleResize = () => {
-      sceneManager.handleResize()
-    }
-
-    window.addEventListener('resize', handleResize)
-
-    return () => {
-      window.removeEventListener('resize', handleResize)
-      stepCleanupRef.current?.()
-      physicsEngineRef.current?.destroy()
-      sceneManager.destroy()
-      sceneManagerRef.current = null
-      physicsEngineRef.current = null
-      velocityLabelElement?.style.setProperty('opacity', '0')
-    }
-  }, [])
-
-  useEffect(() => {
-    const sceneManager = sceneManagerRef.current
-
-    if (!sceneManager) {
-      return
-    }
-
-    const definition = buildInclinedPlaneDefinition({
-      mass: props.mass,
-      angle: props.angle,
-      friction: props.friction,
-    })
-
-    completedRef.current = false
-    sceneManager.loadScene(definition.sceneConfig)
-    sceneManager.camera.position.set(...definition.meta.cameraPosition)
-    sceneManager.controls.target.set(...definition.meta.cameraTarget)
-    sceneManager.controls.update()
-
-    stepCleanupRef.current?.()
-    physicsEngineRef.current?.destroy()
-
-    const physicsEngine = createInclinedPlaneWorld(
-      definition.variables.mass,
-      definition.variables.angle,
-      definition.variables.friction,
-    )
-
-    physicsEngine.stopLoop()
-    physicsEngineRef.current = physicsEngine
-    stepCleanupRef.current = physicsEngine.onStep(() => {
-      syncSceneFromPhysics(definition.meta, definition.variables)
-    })
-
-    syncSceneFromPhysics(definition.meta, definition.variables)
-    return () => {
-      stepCleanupRef.current?.()
-      stepCleanupRef.current = null
-      physicsEngine.stopLoop()
-      physicsEngine.destroy()
-      physicsEngineRef.current = null
-    }
-  }, [props.angle, props.friction, props.mass, syncSceneFromPhysics])
-
-  useEffect(() => {
-    const physicsEngine = physicsEngineRef.current
-
-    if (!physicsEngine) {
-      return
-    }
-
-    if (props.isPlaying) {
-      physicsEngine.startLoop()
-      return () => {
-        physicsEngine.stopLoop()
-      }
-    }
-
-    physicsEngine.stopLoop()
-    return undefined
-  }, [props.angle, props.friction, props.isPlaying, props.mass])
+  const variables = normalizeInputs({
+    mass: props.mass,
+    angle: props.angle,
+    friction: props.friction,
+  })
 
   return (
-    <section
-      ref={containerRef}
-      className="relative h-full min-h-[760px] overflow-hidden rounded-[34px] border border-[rgba(0,245,255,0.14)] bg-[#07111f]/85 shadow-[0_26px_90px_rgba(2,8,23,0.6)]"
-    >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(0,245,255,0.12),transparent_32%),linear-gradient(180deg,rgba(10,15,30,0.12),rgba(10,15,30,0.55))]" />
-
-      <canvas
-        ref={canvasRef}
-        className="relative z-0 h-full w-full"
-      />
-
-      <div
-        ref={velocityLabelRef}
-        className="pointer-events-none absolute left-0 top-0 z-10 rounded-full border border-[rgba(0,245,255,0.22)] bg-[#081221]/86 px-4 py-2 font-mono-display text-xs uppercase tracking-[0.24em] text-[#00f5ff] opacity-0 shadow-[0_0_20px_rgba(0,245,255,0.14)] backdrop-blur-md"
-      />
-    </section>
+    <div className="relative h-full w-full rounded-[24px] border border-[rgba(0,245,255,0.14)] bg-[#07111f]/85">
+      <Canvas
+        camera={{ position: [4.5, -0.8, 10], fov: 50 }}
+        style={{ width: '100%', height: '100%', background: '#07111f' }}
+        onCreated={(state) => {
+          try {
+            state.gl.getContext('webgl2') || state.gl.getContext('webgl')
+          } catch (error) {
+            console.warn('WebGL initialization warning:', error)
+          }
+        }}
+      >
+        <InclinedScene
+          mass={variables.mass}
+          angle={variables.angle}
+          friction={variables.friction}
+          isPlaying={Boolean(props.isPlaying)}
+          onComplete={props.onComplete}
+        />
+        <OrbitControls
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={6}
+          maxDistance={20}
+          autoRotate={!props.isPlaying}
+          autoRotateSpeed={0.14}
+        />
+      </Canvas>
+    </div>
   )
 }
 
 InclinedPlane.getSceneConfig = function getSceneConfig(variables) {
-  return buildInclinedPlaneDefinition(variables).sceneConfig
+  const normalized = normalizeInputs(variables)
+  return {
+    backgroundColor: '#07111f',
+    showGrid: true,
+    variables: normalized,
+    objects: [
+      { id: 'inclined-plane-ramp', type: 'box' },
+      { id: BLOCK_ID, type: 'box' },
+    ],
+  }
 }
 
 export default InclinedPlane

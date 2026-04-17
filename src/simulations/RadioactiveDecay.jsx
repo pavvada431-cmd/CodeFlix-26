@@ -1,24 +1,34 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
+import { Environment, Html, Line, OrbitControls, Stars } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
 const SCENE_SCALE = 1
 
-function createLabelTexture(text, color = '#ffffff') {
-  const canvas = document.createElement('canvas')
-  canvas.width = 512
-  canvas.height = 64
-  const ctx = canvas.getContext('2d')
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-  ctx.roundRect(0, 0, 512, 64, 8)
-  ctx.fill()
-  ctx.fillStyle = color
-  ctx.font = 'bold 28px Arial'
-  ctx.textAlign = 'center'
-  ctx.fillText(text, 256, 42)
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.needsUpdate = true
-  return texture
+function FrostedLabel({ position, color = '#00f5ff', children }) {
+  return (
+    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
+      <div
+        style={{
+          background: 'rgba(10, 15, 30, 0.86)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid ${color}40`,
+          borderRadius: '8px',
+          padding: '4px 10px',
+          color,
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          fontWeight: 700,
+          boxShadow: `0 4px 18px ${color}25`,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {children}
+      </div>
+    </Html>
+  )
 }
 
 function Atom({ position, isDecayed, isFlashing, flashProgress }) {
@@ -49,7 +59,7 @@ function Atom({ position, isDecayed, isFlashing, flashProgress }) {
   return (
     <mesh ref={meshRef} position={position}>
       <sphereGeometry args={[1, 16, 16]} />
-      <meshStandardMaterial
+      <meshPhysicalMaterial
         color="#00ff88"
         emissive="#00ff44"
         emissiveIntensity={0.5}
@@ -62,9 +72,8 @@ function Atom({ position, isDecayed, isFlashing, flashProgress }) {
 
 function DecayParticle({ startPos, velocity, color, lifetime, onComplete }) {
   const meshRef = useRef()
-  const trailRef = useRef()
   const positionRef = useRef({ ...startPos })
-  const trailRef_ = useRef([])
+  const trailRef = useRef([])
   const startTimeRef = useRef(Date.now())
   const completedRef = useRef(false)
 
@@ -84,7 +93,7 @@ function DecayParticle({ startPos, velocity, color, lifetime, onComplete }) {
     positionRef.current.y += velocity.y * 0.016
     positionRef.current.z += velocity.z * 0.016
 
-    trailRef_.current = [...trailRef_.current.slice(-19), { ...positionRef.current }]
+    trailRef.current = [...trailRef.current.slice(-19), { ...positionRef.current }]
 
     if (meshRef.current) {
       meshRef.current.position.set(
@@ -95,24 +104,22 @@ function DecayParticle({ startPos, velocity, color, lifetime, onComplete }) {
       meshRef.current.material.opacity = 1 - progress
     }
 
-    if (trailRef.current?.geometry && trailRef_.current.length > 1) {
-      const positions = trailRef_.current.flatMap(p => [p.x, p.y, p.z])
-      trailRef.current.geometry.setAttribute(
-        'position',
-        new THREE.Float32BufferAttribute(positions, 3)
-      )
-    }
   })
 
   return (
     <group>
-      <line ref={trailRef}>
-        <bufferGeometry />
-        <lineBasicMaterial color={color} transparent opacity={0.6} />
-      </line>
+      {trailRef.current.length > 1 && (
+        <Line
+          points={trailRef.current.map(p => [p.x, p.y, p.z])}
+          color={color}
+          transparent
+          opacity={0.65}
+          lineWidth={1.5}
+        />
+      )}
       <mesh ref={meshRef} position={[startPos.x, startPos.y, startPos.z]}>
         <sphereGeometry args={[0.05, 8, 8]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1} transparent opacity={1} />
+        <meshPhysicalMaterial color={color} emissive={color} emissiveIntensity={1} transparent opacity={1} />
       </mesh>
     </group>
   )
@@ -510,8 +517,17 @@ export default function RadioactiveDecay({
           failIfMajorPerformanceCaveat: false,
         }}
       >
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[5, 10, 5]} intensity={1} />
+        <fog attach="fog" args={['#060a12', 8, 30]} />
+        <Environment preset="night" intensity={0.2} />
+        <Stars radius={90} depth={40} count={2500} factor={3} saturation={0} fade speed={0.45} />
+        <ambientLight intensity={0.25} color="#8fb09a" />
+        <directionalLight position={[5, 10, 5]} intensity={0.95} color="#ffffff" />
+        <pointLight position={[0, 4, 0]} intensity={0.7} color="#4dff88" />
+        <pointLight position={[-4, 2, -4]} intensity={0.35} color="#00f5ff" />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2.2, 0]}>
+          <planeGeometry args={[16, 16]} />
+          <meshPhysicalMaterial color="#0b1018" metalness={0.45} roughness={0.3} />
+        </mesh>
 
         <AtomCluster
           initialAtoms={initialAtoms}
@@ -522,15 +538,21 @@ export default function RadioactiveDecay({
           chainDecay={chainDecayEnabled}
         />
 
-        <sprite scale={[4, 1, 1]} position={[0, 4, 0]}>
-          <spriteMaterial
-            map={createLabelTexture(
-              `${decayType.toUpperCase()} Decay | t½ = ${halfLife}s`,
-              '#00ff88'
-            )}
-            transparent
-          />
-        </sprite>
+        <FrostedLabel position={[0, 4, 0]} color="#00ff88">
+          {`${decayType.toUpperCase()} Decay | t½ = ${halfLife}s`}
+        </FrostedLabel>
+        <EffectComposer>
+          <Bloom intensity={0.42} luminanceThreshold={0.55} luminanceSmoothing={0.9} mipmapBlur />
+          <Vignette offset={0.28} darkness={0.5} />
+        </EffectComposer>
+        <OrbitControls
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={6}
+          maxDistance={20}
+          autoRotate={!isPlaying}
+          autoRotateSpeed={0.16}
+        />
       </Canvas>
 
       <div className="absolute right-4 top-4 rounded-lg border border-[rgba(0,245,255,0.3)] bg-[rgba(10,15,30,0.9)] p-3">

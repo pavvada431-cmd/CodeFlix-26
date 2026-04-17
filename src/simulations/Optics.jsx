@@ -1,24 +1,34 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
+import { Environment, Grid, Html, OrbitControls } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
 const SCENE_SCALE = 2
 
-function createLabelTexture(text, color = '#ffffff', width = 512) {
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = 64
-  const ctx = canvas.getContext('2d')
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-  ctx.roundRect(0, 0, width, 64, 8)
-  ctx.fill()
-  ctx.fillStyle = color
-  ctx.font = 'bold 28px Arial'
-  ctx.textAlign = 'center'
-  ctx.fillText(text, width / 2, 42)
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.needsUpdate = true
-  return texture
+function FrostedLabel({ position, color = '#00f5ff', children }) {
+  return (
+    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
+      <div
+        style={{
+          background: 'rgba(10, 15, 30, 0.86)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid ${color}40`,
+          borderRadius: '8px',
+          padding: '4px 10px',
+          color,
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          fontWeight: 700,
+          boxShadow: `0 4px 18px ${color}25`,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {children}
+      </div>
+    </Html>
+  )
 }
 
 function lensEquation(f, u) {
@@ -117,11 +127,11 @@ function FocalPoints({ focalLength }) {
     <group>
       <mesh position={[-focalLength * SCENE_SCALE, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
         <coneGeometry args={[0.08, 0.2, 8]} />
-        <meshStandardMaterial color="#ff4444" />
+        <meshPhysicalMaterial color="#ff4444" />
       </mesh>
       <mesh position={[focalLength * SCENE_SCALE, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
         <coneGeometry args={[0.08, 0.2, 8]} />
-        <meshStandardMaterial color="#ff4444" />
+        <meshPhysicalMaterial color="#ff4444" />
       </mesh>
     </group>
   )
@@ -136,7 +146,7 @@ function Lens({ type, focalLength }) {
   return (
     <group>
       <mesh geometry={geometry} rotation={[0, 0, Math.PI / 2]} position={[0, 0, 0]}>
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           color={type === 'concave' ? '#4488ff' : '#88ccff'}
           transparent
           opacity={0.6}
@@ -160,7 +170,7 @@ function Mirror({ type }) {
   return (
     <group>
       <mesh geometry={geometry} rotation={[0, 0, Math.PI / 2]} position={[0, 0, 0]}>
-        <meshStandardMaterial color="#c0c0c0" metalness={0.9} roughness={0.1} side={THREE.DoubleSide} />
+        <meshPhysicalMaterial color="#c0c0c0" metalness={0.9} roughness={0.1} side={THREE.DoubleSide} />
       </mesh>
     </group>
   )
@@ -276,11 +286,11 @@ function ObjectArrow({ position, height, color }) {
     <group>
       <mesh position={[position.x, 0, 0]}>
         <cylinderGeometry args={[0.03, 0.03, height, 8]} />
-        <meshStandardMaterial color={color} />
+        <meshPhysicalMaterial color={color} />
       </mesh>
       <mesh position={[position.x, height / 2, 0]}>
         <coneGeometry args={[0.08, 0.15, 8]} />
-        <meshStandardMaterial color={color} />
+        <meshPhysicalMaterial color={color} />
       </mesh>
     </group>
   )
@@ -292,7 +302,7 @@ function ImageArrow({ position, height, inverted, color, real }) {
     <group>
       <mesh position={[position.x, actualHeight / 2, 0]}>
         <cylinderGeometry args={[0.03, 0.03, Math.abs(height), 8]} />
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           color={color}
           emissive={color}
           emissiveIntensity={0.3}
@@ -302,7 +312,7 @@ function ImageArrow({ position, height, inverted, color, real }) {
       </mesh>
       <mesh position={[position.x, actualHeight > 0 ? actualHeight : 0, 0]}>
         <coneGeometry args={[0.08, 0.15, 8]} />
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           color={color}
           emissive={color}
           emissiveIntensity={0.3}
@@ -313,7 +323,7 @@ function ImageArrow({ position, height, inverted, color, real }) {
       {inverted && (
         <mesh position={[position.x, actualHeight > 0 ? 0 : actualHeight, 0]} rotation={[0, 0, Math.PI]}>
           <coneGeometry args={[0.08, 0.15, 8]} />
-          <meshStandardMaterial
+          <meshPhysicalMaterial
             color={color}
             emissive={color}
             emissiveIntensity={0.3}
@@ -367,11 +377,11 @@ function TotalInternalReflection() {
     <group>
       <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
         <planeGeometry args={[8, 4]} />
-        <meshStandardMaterial color="#4488cc" transparent opacity={0.3} side={THREE.DoubleSide} />
+        <meshPhysicalMaterial color="#4488cc" transparent opacity={0.3} side={THREE.DoubleSide} />
       </mesh>
       <mesh position={[0, -2, 0]} rotation={[0, 0, 0]}>
         <planeGeometry args={[8, 4]} />
-        <meshStandardMaterial color="#c0c0c0" metalness={0.9} />
+        <meshPhysicalMaterial color="#c0c0c0" metalness={0.9} />
       </mesh>
       <lineSegments>
         <edgesGeometry args={[new THREE.PlaneGeometry(8, 4)]} />
@@ -579,8 +589,33 @@ export default function Optics({
           failIfMajorPerformanceCaveat: false,
         }}
       >
-        <ambientLight intensity={0.8} />
-        <directionalLight position={[5, 5, 5]} intensity={1} />
+        <fog attach="fog" args={['#0a0f1e', 8, 26]} />
+        <Environment preset="studio" intensity={0.18} />
+        <ambientLight intensity={0.32} color="#b4c9e6" />
+        <directionalLight position={[5, 6, 5]} intensity={0.95} color="#ffffff" />
+        <pointLight position={[-5, 1.5, 2]} intensity={0.55} color="#00f5ff" />
+        <pointLight position={[5, 1.5, -2]} intensity={0.45} color="#ffb366" />
+
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2.2, 0]}>
+          <planeGeometry args={[24, 8]} />
+          <meshPhysicalMaterial color="#0b1220" metalness={0.55} roughness={0.28} clearcoat={0.6} />
+        </mesh>
+        <Grid
+          position={[0, -2.18, 0]}
+          args={[24, 8]}
+          cellSize={0.4}
+          cellThickness={0.5}
+          sectionSize={2}
+          sectionThickness={1}
+          cellColor="#24384f"
+          sectionColor="#3f5f84"
+          fadeDistance={20}
+          fadeStrength={1}
+        />
+        <mesh position={[0, -1.9, -0.2]}>
+          <boxGeometry args={[20, 0.1, 0.8]} />
+          <meshPhysicalMaterial color="#4a5e78" metalness={0.8} roughness={0.2} emissive="#79b1ff" emissiveIntensity={0.08} />
+        </mesh>
 
         <OpticalAxis width={15} />
 
@@ -616,15 +651,21 @@ export default function Optics({
           />
         )}
 
-        <sprite scale={[5, 1, 1]} position={[0, 4, 0]}>
-          <spriteMaterial
-            map={createLabelTexture(
-              `${lensType.toUpperCase()} | f=${f}m | u=${u}m | v=${(v / SCENE_SCALE).toFixed(2)}m | m=${m.toFixed(2)}`,
-              '#00f5ff'
-            )}
-            transparent
-          />
-        </sprite>
+        <FrostedLabel position={[0, 4, 0]} color="#00f5ff">
+          {`${lensType.toUpperCase()} | f=${f}m | u=${u}m | v=${(v / SCENE_SCALE).toFixed(2)}m | m=${m.toFixed(2)}`}
+        </FrostedLabel>
+        <EffectComposer>
+          <Bloom intensity={0.38} luminanceThreshold={0.58} luminanceSmoothing={0.9} mipmapBlur />
+          <Vignette offset={0.25} darkness={0.45} />
+        </EffectComposer>
+        <OrbitControls
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={7}
+          maxDistance={20}
+          autoRotate={!isPlaying}
+          autoRotateSpeed={0.14}
+        />
       </Canvas>
 
       <div className="absolute right-4 top-4 rounded-lg border border-[rgba(0,245,255,0.3)] bg-[rgba(10,15,30,0.9)] p-3">

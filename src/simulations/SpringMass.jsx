@@ -1,6 +1,6 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Environment, Grid, Text, Html, Line } from '@react-three/drei';
+import { Environment, Grid, Text, Html, Line, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 
@@ -313,6 +313,7 @@ function SimulationScene({
       <pointLight position={[-5, 8, 3]} intensity={0.8} color="#4466aa" />
       <pointLight position={[5, 3, -3]} intensity={0.5} color="#aa6644" />
       <pointLight position={[0, CEILING_Y + 1, 2]} intensity={1} color="#00f5ff" />
+      <Environment preset="city" intensity={0.2} />
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
         <planeGeometry args={[15, 15]} />
@@ -431,6 +432,14 @@ export default function SpringMass({
           onDataPoint={onDataPoint}
           resonanceMode={resonanceMode}
           onResonanceEnd={handleResonanceEnd}
+        />
+        <OrbitControls
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={4}
+          maxDistance={16}
+          autoRotate={!isPlaying}
+          autoRotateSpeed={0.22}
         />
       </Canvas>
 

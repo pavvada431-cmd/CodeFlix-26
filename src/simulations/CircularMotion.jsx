@@ -821,6 +821,8 @@ export default function CircularMotion({
           minDistance={3}
           maxDistance={15}
           maxPolarAngle={Math.PI / 2}
+          autoRotate={!isPlaying}
+          autoRotateSpeed={0.18}
         />
 
         <SimulationScene

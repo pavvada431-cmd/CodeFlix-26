@@ -1,5 +1,7 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
 import { Canvas } from '@react-three/fiber'
+import { Environment, Grid, Html, Line, OrbitControls } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
 const G = 9.81
@@ -20,44 +22,47 @@ function createArrowGeometry(length, headLength = 0.15, headWidth = 0.08) {
   return new THREE.ExtrudeGeometry(shape, extrudeSettings)
 }
 
-function createLabelTexture(text, color = '#ffffff') {
-  const canvas = document.createElement('canvas')
-  canvas.width = 256
-  canvas.height = 64
-  const ctx = canvas.getContext('2d')
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-  ctx.roundRect(0, 0, 256, 64, 8)
-  ctx.fill()
-  ctx.fillStyle = color
-  ctx.font = 'bold 28px Arial'
-  ctx.textAlign = 'center'
-  ctx.fillText(text, 128, 42)
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.needsUpdate = true
-  return texture
+function FrostedLabel({ position, color = '#00f5ff', children }) {
+  return (
+    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
+      <div
+        style={{
+          background: 'rgba(10, 15, 30, 0.86)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid ${color}40`,
+          borderRadius: '8px',
+          padding: '4px 10px',
+          color,
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          fontWeight: 700,
+          boxShadow: `0 4px 18px ${color}25`,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {children}
+      </div>
+    </Html>
+  )
 }
 
 function FieldLine({ start, end, color }) {
-  const points = useMemo(() => {
-    const arr = []
-    for (let t = 0; t <= 1; t += 0.05) {
-      arr.push(new THREE.Vector3(
-        start.x + (end.x - start.x) * t,
-        start.y + (end.y - start.y) * t,
-        start.z + (end.z - start.z) * t
-      ))
-    }
-    return arr
-  }, [start, end])
-
-  const geometry = useMemo(() => {
-    return new THREE.BufferGeometry().setFromPoints(points)
-  }, [points])
+  const points = useMemo(
+    () =>
+      Array.from({ length: 21 }, (_, i) => {
+        const t = i / 20
+        return [
+          start.x + (end.x - start.x) * t,
+          start.y + (end.y - start.y) * t,
+          start.z + (end.z - start.z) * t,
+        ]
+      }),
+    [start, end]
+  )
 
   return (
-    <line geometry={geometry}>
-      <lineBasicMaterial color={color} transparent opacity={0.5} />
-    </line>
+    <Line points={points} color={color} transparent opacity={0.5} lineWidth={1} />
   )
 }
 
@@ -69,11 +74,9 @@ function MagneticPole({ position, type }) {
     <group position={position}>
       <mesh>
         <cylinderGeometry args={[0.3, 0.3, 0.8, 32]} />
-        <meshStandardMaterial color={color} metalness={0.8} roughness={0.2} emissive={color} emissiveIntensity={0.3} />
+        <meshPhysicalMaterial color={color} metalness={0.8} roughness={0.2} emissive={color} emissiveIntensity={0.3} />
       </mesh>
-      <sprite scale={[0.5, 0.25, 1]} position={[0, 0.7, 0]}>
-        <spriteMaterial map={createLabelTexture(label, color)} transparent />
-      </sprite>
+      <FrostedLabel position={[0, 0.7, 0]} color={color}>{label}</FrostedLabel>
     </group>
   )
 }
@@ -85,7 +88,7 @@ function ChargedParticle({ position, charge, velocity, color }) {
   return (
     <mesh position={position}>
       <sphereGeometry args={[BALL_SIZE, 32, 32]} />
-      <meshStandardMaterial 
+      <meshPhysicalMaterial 
         color={actualColor} 
         metalness={0.6} 
         roughness={0.3} 
@@ -131,7 +134,7 @@ function VelocityArrow({ position, direction, length, color }) {
   return (
     <group position={position}>
       <mesh geometry={geometry} rotation={rotation} position={[0, length / 2, 0]}>
-        <meshStandardMaterial color={color} transparent opacity={0.9} />
+        <meshPhysicalMaterial color={color} transparent opacity={0.9} />
       </mesh>
     </group>
   )
@@ -272,13 +275,19 @@ function SimulationScene({
     }
   }, [charge, velocity, magneticField, electricField, onDataPoint, radius])
 
-  const infoTextures = useMemo(() => ({
-    velocity: createLabelTexture(`v = ${velocity.toFixed(1)} m/s`, '#00ffff'),
-    force: createLabelTexture(`F = ${lorentzForce.toFixed(2)} N`, '#ff4444'),
-    radius: createLabelTexture(`r = ${radius.toFixed(2)} m`, '#88ff88'),
-    field: createLabelTexture(`B = ${magneticField.toFixed(2)} T`, '#ffff00'),
-    charge: createLabelTexture(charge > 0 ? 'q = +' + Math.abs(charge).toExponential(1) + ' C' : 'q = -' + Math.abs(charge).toExponential(1) + ' C', charge > 0 ? '#00ffff' : '#ff4444'),
-  }), [velocity, lorentzForce, radius, magneticField, charge])
+  const infoLabels = useMemo(
+    () => ({
+      velocity: `v = ${velocity.toFixed(1)} m/s`,
+      force: `F = ${lorentzForce.toFixed(2)} N`,
+      radius: `r = ${radius.toFixed(2)} m`,
+      field: `B = ${magneticField.toFixed(2)} T`,
+      charge:
+        charge > 0
+          ? `q = +${Math.abs(charge).toExponential(1)} C`
+          : `q = -${Math.abs(charge).toExponential(1)} C`,
+    }),
+    [velocity, lorentzForce, radius, magneticField, charge]
+  )
 
   if (mode === 'spectrometer') {
     const chargeColor = charge > 0 ? '#00ffff' : '#ff4444'
@@ -289,27 +298,27 @@ function SimulationScene({
 
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
           <planeGeometry args={[12, 12]} />
-          <meshStandardMaterial color="#0a0f1e" />
+          <meshPhysicalMaterial color="#0a0f1e" />
         </mesh>
 
         <mesh position={[0, 0, 0]} rotation={[0, 0, 0]}>
           <torusGeometry args={[3, 0.05, 16, 100]} />
-          <meshStandardMaterial color="#444466" metalness={0.8} />
+          <meshPhysicalMaterial color="#444466" metalness={0.8} />
         </mesh>
 
         <mesh position={[0, 0, 0]} rotation={[0, 0, 0]}>
           <torusGeometry args={[3, 0.02, 16, 100]} />
-          <meshStandardMaterial color="#00f5ff" transparent opacity={0.3} />
+          <meshPhysicalMaterial color="#00f5ff" transparent opacity={0.3} />
         </mesh>
 
         <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.5, 0.5, 6, 32]} />
-          <meshStandardMaterial color="#223344" metalness={0.9} roughness={0.2} side={THREE.DoubleSide} transparent opacity={0.3} />
+          <meshPhysicalMaterial color="#223344" metalness={0.9} roughness={0.2} side={THREE.DoubleSide} transparent opacity={0.3} />
         </mesh>
 
         <mesh position={[-3, 0, 0]}>
           <boxGeometry args={[0.2, 1, 0.1]} />
-          <meshStandardMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={0.5} />
+          <meshPhysicalMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={0.5} />
         </mesh>
 
         <ChargedParticle
@@ -321,22 +330,11 @@ function SimulationScene({
 
         <TrajectoryPath points={displayTrail} color={chargeColor} />
 
-        <sprite scale={[1, 0.25, 1]} position={[-5, 4, 0]}>
-          <spriteMaterial map={infoTextures.velocity} transparent />
-        </sprite>
-        <sprite scale={[1, 0.25, 1]} position={[2, 4, 0]}>
-          <spriteMaterial map={infoTextures.radius} transparent />
-        </sprite>
-        <sprite scale={[1, 0.25, 1]} position={[-5, 3.7, 0]}>
-          <spriteMaterial map={infoTextures.force} transparent />
-        </sprite>
-        <sprite scale={[1, 0.25, 1]} position={[2, 3.7, 0]}>
-          <spriteMaterial map={infoTextures.field} transparent />
-        </sprite>
-
-        <sprite scale={[1.5, 0.3, 1]} position={[0, -4.5, 0]}>
-          <spriteMaterial map={createLabelTexture('Mass Spectrometer - Lorentz Force', '#ff88ff')} transparent />
-        </sprite>
+        <FrostedLabel position={[-5, 4, 0]} color="#00ffff">{infoLabels.velocity}</FrostedLabel>
+        <FrostedLabel position={[2, 4, 0]} color="#88ff88">{infoLabels.radius}</FrostedLabel>
+        <FrostedLabel position={[-5, 3.7, 0]} color="#ff4444">{infoLabels.force}</FrostedLabel>
+        <FrostedLabel position={[2, 3.7, 0]} color="#ffff00">{infoLabels.field}</FrostedLabel>
+        <FrostedLabel position={[0, -4.5, 0]} color="#ff88ff">Mass Spectrometer - Lorentz Force</FrostedLabel>
       </>
     )
   }
@@ -349,7 +347,7 @@ function SimulationScene({
 
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
           <planeGeometry args={[12, 12]} />
-          <meshStandardMaterial color="#0a0f1e" />
+          <meshPhysicalMaterial color="#0a0f1e" />
         </mesh>
 
         <MagneticPole position={[0, 3, 0]} type="north" />
@@ -367,16 +365,9 @@ function SimulationScene({
 
         <TrajectoryPath points={displayTrail} color="#ffff00" />
 
-        <sprite scale={[1, 0.25, 1]} position={[-4, 4, 0]}>
-          <spriteMaterial map={infoTextures.charge} transparent />
-        </sprite>
-        <sprite scale={[1, 0.25, 1]} position={[1, 4, 0]}>
-          <spriteMaterial map={infoTextures.field} transparent />
-        </sprite>
-
-        <sprite scale={[1.5, 0.3, 1]} position={[0, -4.5, 0]}>
-          <spriteMaterial map={createLabelTexture('Magnetic Field Lines - Lorentz Force', '#ff88ff')} transparent />
-        </sprite>
+        <FrostedLabel position={[-4, 4, 0]} color={charge > 0 ? '#00ffff' : '#ff4444'}>{infoLabels.charge}</FrostedLabel>
+        <FrostedLabel position={[1, 4, 0]} color="#ffff00">{infoLabels.field}</FrostedLabel>
+        <FrostedLabel position={[0, -4.5, 0]} color="#ff88ff">Magnetic Field Lines - Lorentz Force</FrostedLabel>
       </>
     )
   }
@@ -388,7 +379,7 @@ function SimulationScene({
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
         <planeGeometry args={[12, 12]} />
-        <meshStandardMaterial color="#0a0f1e" />
+        <meshPhysicalMaterial color="#0a0f1e" />
       </mesh>
 
       {fieldLines.slice(0, 15).map((line, i) => (
@@ -397,7 +388,7 @@ function SimulationScene({
 
       <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.05, 0.05, 8, 16]} />
-        <meshStandardMaterial color="#333344" metalness={0.9} />
+        <meshPhysicalMaterial color="#333344" metalness={0.9} />
       </mesh>
 
       <ChargedParticle
@@ -417,22 +408,11 @@ function SimulationScene({
         />
       )}
 
-      <sprite scale={[1, 0.25, 1]} position={[-4, 4, 0]}>
-        <spriteMaterial map={infoTextures.charge} transparent />
-      </sprite>
-      <sprite scale={[1, 0.25, 1]} position={[1, 4, 0]}>
-        <spriteMaterial map={infoTextures.velocity} transparent />
-      </sprite>
-      <sprite scale={[1, 0.25, 1]} position={[-4, 3.7, 0]}>
-        <spriteMaterial map={infoTextures.force} transparent />
-      </sprite>
-      <sprite scale={[1, 0.25, 1]} position={[1, 3.7, 0]}>
-        <spriteMaterial map={infoTextures.field} transparent />
-      </sprite>
-
-      <sprite scale={[1.5, 0.3, 1]} position={[0, -4.5, 0]}>
-        <spriteMaterial map={createLabelTexture('F = qvB (Lorentz Force)', '#ff88ff')} transparent />
-      </sprite>
+      <FrostedLabel position={[-4, 4, 0]} color={charge > 0 ? '#00ffff' : '#ff4444'}>{infoLabels.charge}</FrostedLabel>
+      <FrostedLabel position={[1, 4, 0]} color="#00ffff">{infoLabels.velocity}</FrostedLabel>
+      <FrostedLabel position={[-4, 3.7, 0]} color="#ff4444">{infoLabels.force}</FrostedLabel>
+      <FrostedLabel position={[1, 3.7, 0]} color="#ffff00">{infoLabels.field}</FrostedLabel>
+      <FrostedLabel position={[0, -4.5, 0]} color="#ff88ff">F = qvB (Lorentz Force)</FrostedLabel>
     </>
   )
 }
@@ -609,6 +589,22 @@ export default function MagneticFields({
       camera={{ position: [0, 0, 8], fov: 50 }}
         style={{ width: '100%', height: '100%', background: '#0a0f1e' }}
       >
+        <fog attach="fog" args={['#060c18', 9, 26]} />
+        <Environment preset="night" intensity={0.2} />
+        <pointLight position={[0, 4, 3]} intensity={0.6} color="#00f5ff" />
+        <pointLight position={[-4, 2, -3]} intensity={0.35} color="#44ff88" />
+        <Grid
+          position={[0, -0.02, 0]}
+          args={[14, 14]}
+          cellSize={0.4}
+          cellThickness={0.5}
+          sectionSize={2}
+          sectionThickness={1}
+          cellColor="#22364f"
+          sectionColor="#375979"
+          fadeDistance={18}
+          fadeStrength={1}
+        />
         <SimulationScene
           charge={charge}
           velocity={velocity}
@@ -617,6 +613,18 @@ export default function MagneticFields({
           isPlaying={isPlaying}
           onDataPoint={handleDataPoint}
           mode={mode}
+        />
+        <EffectComposer>
+          <Bloom intensity={0.4} luminanceThreshold={0.55} luminanceSmoothing={0.9} mipmapBlur />
+          <Vignette offset={0.25} darkness={0.44} />
+        </EffectComposer>
+        <OrbitControls
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={5}
+          maxDistance={20}
+          autoRotate={!isPlaying}
+          autoRotateSpeed={0.14}
         />
       </Canvas>
 

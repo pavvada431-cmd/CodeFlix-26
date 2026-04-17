@@ -1,5 +1,7 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
+import { Environment, Grid, Html, OrbitControls } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
 const G = 9.81
@@ -8,21 +10,29 @@ const TANK_HEIGHT = 8
 const TANK_DEPTH = 3
 const WATER_LEVEL = TANK_HEIGHT * 0.6
 
-function createLabelTexture(text, color = '#ffffff') {
-  const canvas = document.createElement('canvas')
-  canvas.width = 512
-  canvas.height = 64
-  const ctx = canvas.getContext('2d')
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-  ctx.roundRect(0, 0, 512, 64, 8)
-  ctx.fill()
-  ctx.fillStyle = color
-  ctx.font = 'bold 28px Arial'
-  ctx.textAlign = 'center'
-  ctx.fillText(text, 256, 42)
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.needsUpdate = true
-  return texture
+function FrostedLabel({ position, color = '#00f5ff', children }) {
+  return (
+    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
+      <div
+        style={{
+          background: 'rgba(10, 15, 30, 0.86)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid ${color}40`,
+          borderRadius: '8px',
+          padding: '4px 10px',
+          color,
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          fontWeight: 700,
+          boxShadow: `0 4px 18px ${color}25`,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {children}
+      </div>
+    </Html>
+  )
 }
 
 function GlassTank() {
@@ -30,7 +40,7 @@ function GlassTank() {
     <group>
       <mesh position={[0, TANK_HEIGHT / 2, 0]}>
         <boxGeometry args={[TANK_WIDTH, TANK_HEIGHT, TANK_DEPTH]} />
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           color="#88ccff"
           transparent
           opacity={0.15}
@@ -51,7 +61,7 @@ function WaterVolume() {
   return (
     <mesh position={[0, WATER_LEVEL / 2, 0]}>
       <boxGeometry args={[TANK_WIDTH - 0.1, WATER_LEVEL, TANK_DEPTH - 0.1]} />
-      <meshStandardMaterial
+      <meshPhysicalMaterial
         color="#0066cc"
         transparent
         opacity={0.3}
@@ -76,7 +86,7 @@ function PressureBands() {
         return (
           <mesh key={i} position={[0, depth, 0]}>
             <boxGeometry args={[TANK_WIDTH - 0.2, bandHeight * 0.95, TANK_DEPTH - 0.2]} />
-            <meshStandardMaterial
+            <meshPhysicalMaterial
               color="#0044aa"
               transparent
               opacity={opacity}
@@ -110,18 +120,14 @@ function ForceArrow({ position, direction, length, color, label }) {
     return [0, 0, -angle - Math.PI / 2]
   }, [direction])
 
-  const texture = useMemo(() => createLabelTexture(label, color), [label, color])
-
   if (length < 0.1) return null
 
   return (
     <group position={position}>
       <mesh geometry={geometry} rotation={rotation}>
-        <meshStandardMaterial color={color} transparent opacity={0.9} />
+        <meshPhysicalMaterial color={color} transparent opacity={0.9} />
       </mesh>
-      <sprite scale={[0.6, 0.15, 1]} position={[direction[0] * 0.5, direction[1] * 0.5, 0.2]}>
-        <spriteMaterial map={texture} transparent />
-      </sprite>
+      <FrostedLabel position={[direction[0] * 0.6, direction[1] * 0.6, 0.2]} color={color}>{label}</FrostedLabel>
     </group>
   )
 }
@@ -138,7 +144,7 @@ function Waterline({ objectPosition, objectRadius, objectShape }) {
   return (
     <mesh position={[objectPosition.x, waterY, objectPosition.z]} rotation={[Math.PI / 2, 0, 0]}>
       <torusGeometry args={[ringRadius, 0.03, 8, 32]} />
-      <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} />
+      <meshPhysicalMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} />
     </mesh>
   )
 }
@@ -266,7 +272,7 @@ function FloatingObject({
   return (
     <mesh ref={meshRef} position={[0, WATER_LEVEL + 1, 0]} rotation={getRotation()}>
       {getGeometry()}
-      <meshStandardMaterial
+      <meshPhysicalMaterial
         color={objectColor}
         metalness={0.4}
         roughness={0.5}
@@ -410,12 +416,12 @@ function BernoulliPipe() {
             true
           ]}
         />
-        <meshStandardMaterial color="#88ccff" transparent opacity={0.3} side={THREE.DoubleSide} />
+        <meshPhysicalMaterial color="#88ccff" transparent opacity={0.3} side={THREE.DoubleSide} />
       </mesh>
 
       <mesh>
         <boxGeometry args={[12, 3, 1]} />
-        <meshStandardMaterial color="#4488cc" transparent opacity={0.1} side={THREE.DoubleSide} />
+        <meshPhysicalMaterial color="#4488cc" transparent opacity={0.1} side={THREE.DoubleSide} />
       </mesh>
 
       <points ref={particlesRef}>
@@ -430,15 +436,9 @@ function BernoulliPipe() {
         <pointsMaterial color="#00ffff" size={0.15} />
       </points>
 
-      <sprite scale={[2, 0.5, 1]} position={[0, 2, 0]}>
-        <spriteMaterial map={createLabelTexture('Bernoulli Pipe', '#00ffff')} transparent />
-      </sprite>
-      <sprite scale={[1.5, 0.3, 1]} position={[-3, 1, 0]}>
-        <spriteMaterial map={createLabelTexture('Wide = Slow = High P', '#4488ff')} transparent />
-      </sprite>
-      <sprite scale={[1.5, 0.3, 1]} position={[3, 1, 0]}>
-        <spriteMaterial map={createLabelTexture('Narrow = Fast = Low P', '#ff8844')} transparent />
-      </sprite>
+      <FrostedLabel position={[0, 2, 0]} color="#00ffff">Bernoulli Pipe</FrostedLabel>
+      <FrostedLabel position={[-3, 1, 0]} color="#4488ff">Wide = Slow = High P</FrostedLabel>
+      <FrostedLabel position={[3, 1, 0]} color="#ff8844">Narrow = Fast = Low P</FrostedLabel>
     </group>
   )
 }
@@ -599,8 +599,24 @@ export default function FluidMechanics({
       camera={{ position: [0, 4, 10], fov: 50 }}
         style={{ width: '100%', height: '100%', background: '#0a0f1e' }}
       >
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[5, 10, 5]} intensity={0.8} />
+        <fog attach="fog" args={['#071120', 10, 30]} />
+        <Environment preset="city" intensity={0.18} />
+        <ambientLight intensity={0.35} color="#9ab8d6" />
+        <directionalLight position={[5, 10, 5]} intensity={1.1} />
+        <pointLight position={[0, 5, 3]} intensity={0.6} color="#00d4ff" />
+        <pointLight position={[0, 2, -5]} intensity={0.35} color="#35ffb6" />
+        <Grid
+          position={[0, -0.01, 0]}
+          args={[16, 16]}
+          cellSize={0.4}
+          cellThickness={0.5}
+          sectionSize={2}
+          sectionThickness={1}
+          cellColor="#1f3f52"
+          sectionColor="#3d647c"
+          fadeDistance={20}
+          fadeStrength={1}
+        />
 
         {bernoulliMode ? (
           <BernoulliPipe />
@@ -625,6 +641,18 @@ export default function FluidMechanics({
             />
           </>
         )}
+        <EffectComposer>
+          <Bloom intensity={0.4} luminanceThreshold={0.55} luminanceSmoothing={0.9} mipmapBlur />
+          <Vignette offset={0.28} darkness={0.5} />
+        </EffectComposer>
+        <OrbitControls
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={6}
+          maxDistance={22}
+          autoRotate={!isPlaying}
+          autoRotateSpeed={0.18}
+        />
       </Canvas>
 
       <div className="absolute right-4 top-4 rounded-lg border border-[rgba(0,245,255,0.3)] bg-[rgba(10,15,30,0.9)] p-3">

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Environment, Grid, Text, Html, Line } from '@react-three/drei';
+import { Environment, Grid, Text, Html, Line, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import Matter from 'matter-js';
@@ -307,6 +307,7 @@ function PendulumScene({
 
       <pointLight position={[-5, 8, 3]} intensity={0.8} color="#4466aa" />
       <pointLight position={[5, 3, -3]} intensity={0.5} color="#aa6644" />
+      <Environment preset="warehouse" intensity={0.2} />
 
       <mesh ref={pivotRef} position={[0, length * SCALE, 0]}>
         <sphereGeometry args={[0.15 * SCALE, 32, 32]} />
@@ -531,6 +532,14 @@ export default function Pendulum({
         currentVelocity={currentVelocity}
         calculatedPeriod={calculatedPeriod}
         damping={damping}
+      />
+      <OrbitControls
+        enableDamping
+        dampingFactor={0.08}
+        minDistance={5}
+        maxDistance={20}
+        autoRotate={!isPlaying}
+        autoRotateSpeed={0.22}
       />
     </Canvas>
   );

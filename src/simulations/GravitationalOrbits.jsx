@@ -1,6 +1,6 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { Stars, Text, Html, Line } from '@react-three/drei';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Stars, Text, Html, Line, Environment, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 
@@ -344,6 +344,7 @@ function SimulationScene({
       <ambientLight intensity={0.2} color="#4466aa" />
       <directionalLight position={[10, 10, 5]} intensity={1.5} color="#ffffff" />
       <pointLight position={[-10, 5, -5]} intensity={0.5} color="#aa6644" />
+      <Environment preset="night" intensity={0.22} />
 
       <Stars radius={100} depth={50} count={3000} factor={4} saturation={0} fade speed={0.5} />
 
@@ -461,6 +462,14 @@ export default function GravitationalOrbits({
           orbitType={orbitType}
           onDataUpdate={handleDataUpdate}
           enableMultiBody={enableMultiBody}
+        />
+        <OrbitControls
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={6}
+          maxDistance={28}
+          autoRotate={!isPlaying}
+          autoRotateSpeed={0.2}
         />
       </Canvas>
 

@@ -1,24 +1,34 @@
 import { useRef, useMemo, useEffect, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
+import { Environment, Grid, Html, OrbitControls } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
 const G = 9.81
 
-function createLabelTexture(text, color = '#ffffff') {
-  const canvas = document.createElement('canvas')
-  canvas.width = 512
-  canvas.height = 64
-  const ctx = canvas.getContext('2d')
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-  ctx.roundRect(0, 0, 512, 64, 8)
-  ctx.fill()
-  ctx.fillStyle = color
-  ctx.font = 'bold 28px Arial'
-  ctx.textAlign = 'center'
-  ctx.fillText(text, 256, 42)
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.needsUpdate = true
-  return texture
+function FrostedLabel({ position, color = '#00f5ff', children }) {
+  return (
+    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
+      <div
+        style={{
+          background: 'rgba(10, 15, 30, 0.86)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid ${color}40`,
+          borderRadius: '8px',
+          padding: '4px 10px',
+          color,
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          fontWeight: 700,
+          boxShadow: `0 4px 18px ${color}25`,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {children}
+      </div>
+    </Html>
+  )
 }
 
 function calculateMomentOfInertia(objectType, mass, radius) {
@@ -89,18 +99,16 @@ function ForceArrow({ position, direction, length, color, label }) {
     return [0, 0, -angle - Math.PI / 2]
   }, [direction])
 
-  const texture = useMemo(() => createLabelTexture(label, color), [label, color])
-
   if (length < 0.05) return null
 
   return (
     <group position={position}>
       <mesh ref={meshRef} geometry={arrowGeometry} rotation={rotation} position={[0, 0, 0.05]}>
-        <meshStandardMaterial color={color} transparent opacity={0.9} />
+        <meshPhysicalMaterial color={color} transparent opacity={0.9} />
       </mesh>
-      <sprite scale={[0.8, 0.2, 1]} position={[direction[0] * (length / 2 + 0.3), direction[1] * (length / 2 + 0.3), 0.2]}>
-        <spriteMaterial map={texture} transparent />
-      </sprite>
+      <FrostedLabel position={[direction[0] * (length / 2 + 0.45), direction[1] * (length / 2 + 0.45), 0.2]} color={color}>
+        {label}
+      </FrostedLabel>
     </group>
   )
 }
@@ -115,9 +123,7 @@ function TorqueArrow({ radius, angle, direction, color }) {
       <mesh geometry={arcGeometry} rotation={rotation}>
         <meshBasicMaterial color={color} linewidth={3} />
       </mesh>
-      <sprite scale={[0.6, 0.15, 1]} position={[radius * 0.7, radius * 0.7, 0.1]}>
-        <spriteMaterial map={createLabelTexture('τ', color)} transparent />
-      </sprite>
+      <FrostedLabel position={[radius * 0.75, radius * 0.75, 0.1]} color={color}>τ</FrostedLabel>
     </group>
   )
 }
@@ -129,15 +135,13 @@ function AngularMomentumArrow({ magnitude, color }) {
     <group position={[0, 0, 0]}>
       <mesh position={[0, 0, length / 2]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.03, 0.03, length, 8]} />
-        <meshStandardMaterial color={color} />
+        <meshPhysicalMaterial color={color} />
       </mesh>
       <mesh position={[0, 0, length]} rotation={[Math.PI / 2, 0, 0]}>
         <coneGeometry args={[0.08, 0.2, 8]} />
-        <meshStandardMaterial color={color} />
+        <meshPhysicalMaterial color={color} />
       </mesh>
-      <sprite scale={[1, 0.25, 1]} position={[0.3, 0.3, length]}>
-        <spriteMaterial map={createLabelTexture('L', color)} transparent />
-      </sprite>
+      <FrostedLabel position={[0.35, 0.35, length]} color={color}>L</FrostedLabel>
     </group>
   )
 }
@@ -228,35 +232,35 @@ function RigidBody({ objectType, mass, radius, rotation, color }) {
       return (
         <mesh ref={meshRef} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[radius, radius, radius * 0.3, 32]} />
-          <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+          <meshPhysicalMaterial color={color} metalness={0.6} roughness={0.3} />
         </mesh>
       )
     case 'rod':
       return (
         <mesh ref={meshRef}>
           <boxGeometry args={[radius * 4, radius * 0.4, radius * 0.4]} />
-          <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+          <meshPhysicalMaterial color={color} metalness={0.6} roughness={0.3} />
         </mesh>
       )
     case 'ring':
       return (
         <mesh ref={meshRef} rotation={[Math.PI / 2, 0, 0]}>
           <torusGeometry args={[radius, radius * 0.15, 16, 32]} />
-          <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+          <meshPhysicalMaterial color={color} metalness={0.6} roughness={0.3} />
         </mesh>
       )
     case 'sphere':
       return (
         <mesh ref={meshRef}>
           <sphereGeometry args={[radius, 32, 32]} />
-          <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+          <meshPhysicalMaterial color={color} metalness={0.6} roughness={0.3} />
         </mesh>
       )
     default:
       return (
         <mesh ref={meshRef} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[radius, radius, radius * 0.3, 32]} />
-          <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+          <meshPhysicalMaterial color={color} metalness={0.6} roughness={0.3} />
         </mesh>
       )
   }
@@ -283,7 +287,7 @@ function ComparatorShape({ objectType, mass, radius, angularAccel, time, color }
         <group position={[0, 0, 0]} rotation={[Math.PI / 2, 0, displayRotation]}>
           <mesh>
             <cylinderGeometry args={[radius, radius, radius * 0.3, 32]} />
-            <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+            <meshPhysicalMaterial color={color} metalness={0.6} roughness={0.3} />
           </mesh>
         </group>
       )
@@ -291,7 +295,7 @@ function ComparatorShape({ objectType, mass, radius, angularAccel, time, color }
       return (
         <mesh rotation={[0, 0, displayRotation]}>
           <boxGeometry args={[radius * 4, radius * 0.4, radius * 0.4]} />
-          <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+          <meshPhysicalMaterial color={color} metalness={0.6} roughness={0.3} />
         </mesh>
       )
     case 'ring':
@@ -299,7 +303,7 @@ function ComparatorShape({ objectType, mass, radius, angularAccel, time, color }
         <group rotation={[Math.PI / 2, 0, displayRotation]}>
           <mesh>
             <torusGeometry args={[radius, radius * 0.15, 16, 32]} />
-            <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+            <meshPhysicalMaterial color={color} metalness={0.6} roughness={0.3} />
           </mesh>
         </group>
       )
@@ -307,7 +311,7 @@ function ComparatorShape({ objectType, mass, radius, angularAccel, time, color }
       return (
         <mesh rotation={[displayRotation, displayRotation, 0]}>
           <sphereGeometry args={[radius, 32, 32]} />
-          <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+          <meshPhysicalMaterial color={color} metalness={0.6} roughness={0.3} />
         </mesh>
       )
     default:
@@ -418,27 +422,36 @@ function SimulationScene({
 
   const torqueDir = torqueCalc >= 0 ? 1 : -1
 
-  const infoTextures = useMemo(() => ({
-    type: createLabelTexture(`${objectType.toUpperCase()}  ${getInertiaLabel(objectType)}`, '#00f5ff'),
-    I: createLabelTexture(`I = ${momentOfInertia.toFixed(3)} kg·m²`, '#ffff00'),
-    tau: createLabelTexture(`τ = ${torqueCalc.toFixed(2)} N·m`, '#ff8800'),
-    alpha: createLabelTexture(`α = ${angularAccel.toFixed(2)} rad/s²`, '#88ff88'),
-  }), [objectType, momentOfInertia, torqueCalc, angularAccel])
-
   return (
     <>
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[5, 10, 5]} intensity={0.8} />
+      <fog attach="fog" args={['#080d16', 9, 26]} />
+      <Environment preset="warehouse" intensity={0.2} />
+      <ambientLight intensity={0.35} color="#a5b5cc" />
+      <directionalLight position={[5, 10, 5]} intensity={1.05} />
+      <pointLight position={[-4, 3, -4]} intensity={0.45} color="#00f5ff" />
+      <pointLight position={[4, 2, 4]} intensity={0.35} color="#ff8844" />
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]}>
         <planeGeometry args={[15, 15]} />
-        <meshStandardMaterial color="#0a0f1e" />
+        <meshPhysicalMaterial color="#0a0f1e" />
       </mesh>
 
       <mesh position={[0, 0, -radius - 0.5]}>
         <boxGeometry args={[3, 0.1, 0.5]} />
-        <meshStandardMaterial color="#334455" metalness={0.7} />
+        <meshPhysicalMaterial color="#334455" metalness={0.7} />
       </mesh>
+      <Grid
+        position={[0, -1.99, 0]}
+        args={[15, 15]}
+        cellSize={0.35}
+        cellThickness={0.5}
+        sectionSize={1.75}
+        sectionThickness={1}
+        cellColor="#21374b"
+        sectionColor="#3d5b73"
+        fadeDistance={18}
+        fadeStrength={1}
+      />
 
       <RigidBody
         objectType={objectType}
@@ -468,20 +481,16 @@ function SimulationScene({
         color="#44ff44"
       />
 
-      <sprite scale={[3, 0.75, 1]} position={[0, 3, 0]}>
-        <spriteMaterial map={infoTextures.type} transparent />
-      </sprite>
-      <sprite scale={[2, 0.5, 1]} position={[-3, 2.5, 0]}>
-        <spriteMaterial map={infoTextures.I} transparent />
-      </sprite>
-      <sprite scale={[2, 0.5, 1]} position={[3, 2.5, 0]}>
-        <spriteMaterial map={infoTextures.tau} transparent />
-      </sprite>
-      <sprite scale={[2, 0.5, 1]} position={[3, 2, 0]}>
-        <spriteMaterial map={infoTextures.alpha} transparent />
-      </sprite>
+      <FrostedLabel position={[0, 3, 0]} color="#00f5ff">{`${objectType.toUpperCase()}  ${getInertiaLabel(objectType)}`}</FrostedLabel>
+      <FrostedLabel position={[-3, 2.5, 0]} color="#ffff00">{`I = ${momentOfInertia.toFixed(3)} kg·m²`}</FrostedLabel>
+      <FrostedLabel position={[3, 2.5, 0]} color="#ff8800">{`τ = ${torqueCalc.toFixed(2)} N·m`}</FrostedLabel>
+      <FrostedLabel position={[3, 2, 0]} color="#88ff88">{`α = ${angularAccel.toFixed(2)} rad/s²`}</FrostedLabel>
 
       <AngularVelocityDial omega={omega} maxOmega={maxOmega} />
+      <EffectComposer>
+        <Bloom intensity={0.36} luminanceThreshold={0.6} luminanceSmoothing={0.92} mipmapBlur />
+        <Vignette offset={0.25} darkness={0.45} />
+      </EffectComposer>
     </>
   )
 }
@@ -716,6 +725,14 @@ export default function RotationalMechanics({
           forcePosition={forcePosition}
           isPlaying={isPlaying}
           onDataPoint={handleDataPoint}
+        />
+        <OrbitControls
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={4}
+          maxDistance={18}
+          autoRotate={!isPlaying}
+          autoRotateSpeed={0.2}
         />
       </Canvas>
 

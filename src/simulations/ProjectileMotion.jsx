@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Environment, Stars, Grid, Text, Html, Line } from '@react-three/drei';
+import { Environment, Stars, Grid, Text, Html, Line, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import Matter from 'matter-js';
@@ -458,6 +458,7 @@ function SimulationScene({ initialVelocity, launchAngle, initialHeight, isPlayin
 
       <pointLight position={[-5, 8, 3]} intensity={0.8} color="#4466aa" />
       <pointLight position={[5, 3, -3]} intensity={0.5} color="#aa6644" />
+      <Environment preset="city" intensity={0.22} />
 
       <rectAreaLight
         position={[0, 5, -5]}
@@ -567,6 +568,14 @@ export default function ProjectileMotion({
         launchAngle={launchAngle}
         initialHeight={height}
         isPlaying={isPlaying}
+      />
+      <OrbitControls
+        enableDamping
+        dampingFactor={0.08}
+        minDistance={6}
+        maxDistance={22}
+        autoRotate={!isPlaying}
+        autoRotateSpeed={0.25}
       />
     </Canvas>
   );

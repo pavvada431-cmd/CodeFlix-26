@@ -1,26 +1,36 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
 import { Canvas } from '@react-three/fiber'
+import { Environment, Grid, Html, Line, OrbitControls } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
 const PI = Math.PI
 const WAVE_POINTS = 200
 const LONGITUDINAL_POINTS = 100
 
-function createLabelTexture(text, color = '#ffffff') {
-  const canvas = document.createElement('canvas')
-  canvas.width = 512
-  canvas.height = 64
-  const ctx = canvas.getContext('2d')
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-  ctx.roundRect(0, 0, 512, 64, 8)
-  ctx.fill()
-  ctx.fillStyle = color
-  ctx.font = 'bold 28px Arial'
-  ctx.textAlign = 'center'
-  ctx.fillText(text, 256, 42)
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.needsUpdate = true
-  return texture
+function FrostedLabel({ position, color = '#00f5ff', children }) {
+  return (
+    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
+      <div
+        style={{
+          background: 'rgba(10, 15, 30, 0.86)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid ${color}40`,
+          borderRadius: '8px',
+          padding: '4px 10px',
+          color,
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          fontWeight: 700,
+          boxShadow: `0 4px 18px ${color}25`,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {children}
+      </div>
+    </Html>
+  )
 }
 
 function TransverseWave({ amplitude, frequency, wavelength, time }) {
@@ -58,7 +68,7 @@ function TransverseWave({ amplitude, frequency, wavelength, time }) {
           position={[x, 0, 0]}
         >
           <sphereGeometry args={[0.05, 8, 8]} />
-          <meshStandardMaterial
+          <meshPhysicalMaterial
             color="#00f5ff"
             emissive="#00f5ff"
             emissiveIntensity={0.2}
@@ -110,7 +120,7 @@ function LongitudinalWave({ amplitude, frequency, wavelength, time }) {
           position={[(i / (LONGITUDINAL_POINTS - 1) - 0.5) * 8, 0, 0]}
         >
           <boxGeometry args={[0.15, 0.4, 0.4]} />
-          <meshStandardMaterial
+          <meshPhysicalMaterial
             color="#ff8800"
             emissive="#ff4400"
             emissiveIntensity={0.2}
@@ -175,7 +185,7 @@ function StandingWave({ amplitude, frequency, wavelength, time }) {
           position={[x, 0, 0]}
         >
           <sphereGeometry args={[0.05, 8, 8]} />
-          <meshStandardMaterial
+          <meshPhysicalMaterial
             color="#ff00ff"
             emissive="#ff00ff"
             emissiveIntensity={0.2}
@@ -192,7 +202,7 @@ function StandingWave({ amplitude, frequency, wavelength, time }) {
           position={[x, 0, 0]}
         >
           <sphereGeometry args={[0.12, 16, 16]} />
-          <meshStandardMaterial
+          <meshPhysicalMaterial
             color="#ff0000"
             emissive="#ff0000"
             emissiveIntensity={1.5}
@@ -251,7 +261,7 @@ function InterferenceWave({ amplitude, frequency, wavelength, time }) {
           position={[x, 0, 0]}
         >
           <sphereGeometry args={[0.08, 8, 8]} />
-          <meshStandardMaterial
+          <meshPhysicalMaterial
             color="#00f5ff"
             emissive="#00f5ff"
             emissiveIntensity={0.2}
@@ -263,11 +273,11 @@ function InterferenceWave({ amplitude, frequency, wavelength, time }) {
 
       <mesh position={[source1X, 0.5, 0]}>
         <sphereGeometry args={[0.15, 16, 16]} />
-        <meshStandardMaterial color="#ffff00" emissive="#ffff00" emissiveIntensity={2} />
+        <meshPhysicalMaterial color="#ffff00" emissive="#ffff00" emissiveIntensity={2} />
       </mesh>
       <mesh position={[source2X, 0.5, 0]}>
         <sphereGeometry args={[0.15, 16, 16]} />
-        <meshStandardMaterial color="#ffff00" emissive="#ffff00" emissiveIntensity={2} />
+        <meshPhysicalMaterial color="#ffff00" emissive="#ffff00" emissiveIntensity={2} />
       </mesh>
 
       <mesh position={[source1X, -0.5, 0]} rotation={[0, 0, 0]}>
@@ -534,12 +544,6 @@ function WaveScene({
     }
   }, [waveType, amplitude, k, omega])
 
-  const infoTextures = useMemo(() => ({
-    equation: createLabelTexture(waveEquation, '#00f5ff'),
-    params: createLabelTexture(`A=${amplitude.toFixed(2)}m f=${frequency.toFixed(1)}Hz λ=${wavelength.toFixed(1)}m v=${waveSpeed}m/s`, '#ffff00'),
-    type: createLabelTexture(`Type: ${waveType.toUpperCase()}`, '#ff88ff'),
-  }), [waveEquation, waveSpeed, amplitude, frequency, wavelength, waveType])
-
   useEffect(() => {
     if (Date.now() - lastDataTime < 50) return
 
@@ -602,33 +606,57 @@ function WaveScene({
     }
   }
 
+  const glowWaveTrail = useMemo(() => {
+    const points = []
+    for (let i = 0; i <= 100; i++) {
+      const x = (i / 100 - 0.5) * 8
+      const y = amplitude * Math.sin(k * x - omega * time) - 0.9
+      points.push([x, y, 0.3])
+    }
+    return points
+  }, [amplitude, k, omega, time])
+
   return (
     <>
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[5, 10, 5]} intensity={0.8} />
-      <pointLight position={[0, 2, 2]} intensity={0.5} color="#00f5ff" />
+      <fog attach="fog" args={['#070d18', 8, 24]} />
+      <Environment preset="city" intensity={0.18} />
+      <ambientLight intensity={0.35} color="#9ab6d6" />
+      <directionalLight position={[5, 10, 5]} intensity={1.1} />
+      <pointLight position={[0, 2, 2]} intensity={0.7} color="#00f5ff" />
+      <pointLight position={[-4, 2, -3]} intensity={0.45} color="#ff8844" />
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.5, 0]}>
         <planeGeometry args={[10, 3]} />
-        <meshStandardMaterial color="#0a0f1e" />
+        <meshPhysicalMaterial color="#0a0f1e" />
       </mesh>
+      <Grid
+        position={[0, -1.49, 0]}
+        args={[10, 3]}
+        cellSize={0.25}
+        cellThickness={0.5}
+        sectionSize={1}
+        sectionThickness={1}
+        cellColor="#1f3b50"
+        sectionColor="#2f5f7a"
+        fadeDistance={14}
+        fadeStrength={1}
+      />
 
       <mesh position={[0, -1.2, 0]}>
         <boxGeometry args={[8, 0.02, 0.5]} />
-        <meshStandardMaterial color="#334455" metalness={0.7} />
+        <meshPhysicalMaterial color="#334455" metalness={0.7} />
       </mesh>
 
       {renderWave()}
+      <Line points={glowWaveTrail} color="#00ffff" transparent opacity={0.35} lineWidth={1.5} />
 
-      <sprite scale={[5, 0.6, 1]} position={[0, 2.5, 0]}>
-        <spriteMaterial map={infoTextures.equation} transparent />
-      </sprite>
-      <sprite scale={[5, 0.5, 1]} position={[0, 2.2, 0]}>
-        <spriteMaterial map={infoTextures.params} transparent />
-      </sprite>
-      <sprite scale={[2, 0.4, 1]} position={[-3, 1.5, 0]}>
-        <spriteMaterial map={infoTextures.type} transparent />
-      </sprite>
+      <FrostedLabel position={[0, 2.5, 0]} color="#00f5ff">{waveEquation}</FrostedLabel>
+      <FrostedLabel position={[0, 2.2, 0]} color="#ffff00">{`A=${amplitude.toFixed(2)}m f=${frequency.toFixed(1)}Hz λ=${wavelength.toFixed(1)}m v=${waveSpeed}m/s`}</FrostedLabel>
+      <FrostedLabel position={[-3, 1.5, 0]} color="#ff88ff">{`Type: ${waveType.toUpperCase()}`}</FrostedLabel>
+      <EffectComposer>
+        <Bloom intensity={0.38} luminanceThreshold={0.55} luminanceSmoothing={0.9} mipmapBlur />
+        <Vignette offset={0.3} darkness={0.55} />
+      </EffectComposer>
     </>
   )
 }
@@ -728,6 +756,14 @@ export default function WaveMotion({
           time={time}
           onDataPoint={onDataPoint}
           lastDataTime={lastDataTime}
+        />
+        <OrbitControls
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={5}
+          maxDistance={16}
+          autoRotate={!isPlaying}
+          autoRotateSpeed={0.2}
         />
       </Canvas>
 

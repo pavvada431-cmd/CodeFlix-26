@@ -1,5 +1,7 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
+import { Environment, Grid, Html, Line, OrbitControls } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
 const K_BOLTZMANN = 1.0
@@ -7,21 +9,29 @@ const PARTICLE_MASS = 1.0
 const HISTOGRAM_BINS = 20
 const HISTOGRAM_UPDATE_INTERVAL = 500
 
-function createLabelTexture(text, color = '#ffffff', width = 512) {
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = 64
-  const ctx = canvas.getContext('2d')
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-  ctx.roundRect(0, 0, width, 64, 8)
-  ctx.fill()
-  ctx.fillStyle = color
-  ctx.font = 'bold 28px Arial'
-  ctx.textAlign = 'center'
-  ctx.fillText(text, width / 2, 42)
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.needsUpdate = true
-  return texture
+function FrostedLabel({ position, color = '#00f5ff', children }) {
+  return (
+    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
+      <div
+        style={{
+          background: 'rgba(10, 15, 30, 0.86)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid ${color}40`,
+          borderRadius: '8px',
+          padding: '4px 10px',
+          color,
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          fontWeight: 700,
+          boxShadow: `0 4px 18px ${color}25`,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {children}
+      </div>
+    </Html>
+  )
 }
 
 function MaxwellBoltzmann(v, T) {
@@ -45,7 +55,7 @@ function Particle({ position, speed, maxSpeed }) {
   return (
     <mesh position={position}>
       <sphereGeometry args={[0.08, 8, 8]} />
-      <meshStandardMaterial
+      <meshPhysicalMaterial
         color={color}
         emissive={color}
         emissiveIntensity={0.3 + normalizedSpeed * 0.4}
@@ -150,7 +160,7 @@ function ParticleSystem({ numParticles, temperature, volume, isPlaying, onDataUp
           position={[p.x, p.y, p.z]}
         >
           <sphereGeometry args={[0.08, 8, 8]} />
-          <meshStandardMaterial color="#00f5ff" />
+          <meshPhysicalMaterial color="#00f5ff" />
         </mesh>
       ))}
     </group>
@@ -372,6 +382,8 @@ function SimulationScene({ numParticles, temperature, volume, isPlaying, onDataU
 
   const particleRefs = useRef([])
   const lastDataTimeRef = useRef(0)
+  const trailRef = useRef([])
+  const [thermalTrail, setThermalTrail] = useState([])
 
   useFrame((state, delta) => {
     if (!isPlaying) return
@@ -409,6 +421,12 @@ function SimulationScene({ numParticles, temperature, volume, isPlaying, onDataU
       }
     })
 
+    const probe = particlesData.particles[0]
+    if (probe) {
+      trailRef.current = [...trailRef.current.slice(-44), [probe.x, probe.y, probe.z]]
+      setThermalTrail(trailRef.current)
+    }
+
     const now = performance.now()
     if (now - lastDataTimeRef.current > 50) {
       const avgKE = totalKE / numParticles
@@ -430,8 +448,24 @@ function SimulationScene({ numParticles, temperature, volume, isPlaying, onDataU
 
   return (
     <>
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[5, 10, 5]} intensity={0.8} />
+      <fog attach="fog" args={['#140b08', 8, 24]} />
+      <Environment preset="warehouse" intensity={0.18} />
+      <ambientLight intensity={0.34} color="#ffc38c" />
+      <directionalLight position={[5, 10, 5]} intensity={1.05} color="#ffd9b0" />
+      <pointLight position={[0, 2, 3]} intensity={0.65} color="#ff7f3f" />
+      <pointLight position={[-3, 2, -3]} intensity={0.35} color="#00f5ff" />
+      <Grid
+        position={[0, -(boxSize / 2) - 0.05, 0]}
+        args={[12, 12]}
+        cellSize={0.35}
+        cellThickness={0.5}
+        sectionSize={1.8}
+        sectionThickness={1}
+        cellColor="#4d2a18"
+        sectionColor="#7a4323"
+        fadeDistance={16}
+        fadeStrength={1}
+      />
 
       <Box volume={volume} />
 
@@ -442,13 +476,21 @@ function SimulationScene({ numParticles, temperature, volume, isPlaying, onDataU
           position={[p.x, p.y, p.z]}
         >
           <sphereGeometry args={[0.08, 8, 8]} />
-          <meshStandardMaterial color="#00f5ff" emissive="#00f5ff" emissiveIntensity={0.3} />
+          <meshPhysicalMaterial color="#00f5ff" emissive="#00f5ff" emissiveIntensity={0.3} />
         </mesh>
       ))}
 
-      <sprite scale={[3, 0.75, 1]} position={[0, boxSize / 2 + 1, 0]}>
-        <spriteMaterial map={createLabelTexture(`T=${temperature}K  V=${volume.toFixed(1)}m³  N=${numParticles}`, '#00f5ff')} transparent />
-      </sprite>
+      {thermalTrail.length > 1 && (
+        <Line points={thermalTrail} color="#ff9f43" transparent opacity={0.45} lineWidth={1.5} />
+      )}
+
+      <FrostedLabel position={[0, boxSize / 2 + 1, 0]} color="#00f5ff">
+        {`T=${temperature}K  V=${volume.toFixed(1)}m³  N=${numParticles}`}
+      </FrostedLabel>
+      <EffectComposer>
+        <Bloom intensity={0.42} luminanceThreshold={0.55} luminanceSmoothing={0.9} mipmapBlur />
+        <Vignette offset={0.26} darkness={0.46} />
+      </EffectComposer>
     </>
   )
 }
@@ -647,6 +689,14 @@ export default function Thermodynamics({
           isPlaying={isPlaying}
           onDataUpdate={handleDataUpdate}
           processType={processType}
+        />
+        <OrbitControls
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={4}
+          maxDistance={18}
+          autoRotate={!isPlaying}
+          autoRotateSpeed={0.15}
         />
       </Canvas>
 

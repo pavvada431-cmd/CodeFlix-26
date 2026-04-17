@@ -1,6 +1,6 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Environment, Grid, Text, Html, Line } from '@react-three/drei';
+import { Environment, Grid, Text, Html, Line, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import Matter from 'matter-js';
@@ -513,6 +513,7 @@ function SimulationScene({
         <directionalLight position={[10, 20, 5]} intensity={1.5} color="#ffffff" />
         <pointLight position={[-5, 8, 3]} intensity={0.8} color="#4466aa" />
         <pointLight position={[5, 3, -3]} intensity={0.5} color="#aa6644" />
+        <Environment preset="city" intensity={0.22} />
 
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
           <planeGeometry args={[15, 15]} />
@@ -552,6 +553,7 @@ function SimulationScene({
       <directionalLight position={[10, 20, 5]} intensity={1.5} color="#ffffff" />
       <pointLight position={[-5, 8, 3]} intensity={0.8} color="#4466aa" />
       <pointLight position={[5, 3, -3]} intensity={0.5} color="#aa6644" />
+      <Environment preset="city" intensity={0.22} />
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
         <planeGeometry args={[15, 15]} />
@@ -785,6 +787,14 @@ export default function Collisions({
         />
 
         <ConservationTable data={conservationData} />
+        <OrbitControls
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={6}
+          maxDistance={20}
+          autoRotate={!isPlaying}
+          autoRotateSpeed={0.2}
+        />
       </Canvas>
 
       <div className="absolute bottom-4 left-4 flex flex-col gap-2">

@@ -1,5 +1,7 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Environment, Grid, Html, OrbitControls } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
 const K_COULOMB = 8.99e9
@@ -9,21 +11,29 @@ const FIELD_LINE_COUNT = 12
 const FIELD_LINE_STEPS = 100
 const FIELD_LINE_DS = 0.1
 
-function createLabelTexture(text, color = '#ffffff') {
-  const canvas = document.createElement('canvas')
-  canvas.width = 512
-  canvas.height = 64
-  const ctx = canvas.getContext('2d')
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-  ctx.roundRect(0, 0, 512, 64, 8)
-  ctx.fill()
-  ctx.fillStyle = color
-  ctx.font = 'bold 28px Arial'
-  ctx.textAlign = 'center'
-  ctx.fillText(text, 256, 42)
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.needsUpdate = true
-  return texture
+function FrostedLabel({ position, color = '#00f5ff', children }) {
+  return (
+    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
+      <div
+        style={{
+          background: 'rgba(10, 15, 30, 0.86)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid ${color}40`,
+          borderRadius: '8px',
+          padding: '4px 10px',
+          color,
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          fontWeight: 700,
+          boxShadow: `0 4px 18px ${color}25`,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {children}
+      </div>
+    </Html>
+  )
 }
 
 function calculateElectricField(charges, x, y) {
@@ -184,7 +194,7 @@ function Charge({ position, q, onDrag }) {
       }}
     >
       <sphereGeometry args={[size, 32, 32]} />
-      <meshStandardMaterial
+      <meshPhysicalMaterial
         color={color}
         emissive={emissive}
         emissiveIntensity={1.5}
@@ -298,14 +308,14 @@ function ForceArrows({ charges }) {
             position={[arrow.dx * 0.5, 0, arrow.dy * 0.5]}
           >
             <coneGeometry args={[0.05, 0.15, 8]} />
-            <meshStandardMaterial color={arrow.repulsion ? '#ff4444' : '#44ff44'} />
+            <meshPhysicalMaterial color={arrow.repulsion ? '#ff4444' : '#44ff44'} />
           </mesh>
           <mesh
             rotation={[0, Math.atan2(arrow.dy, arrow.dx) + Math.PI / 2, 0]}
             position={[0, 0, 0]}
           >
             <cylinderGeometry args={[0.02, 0.02, 0.4, 8]} />
-            <meshStandardMaterial color={arrow.repulsion ? '#ff4444' : '#44ff44'} />
+            <meshPhysicalMaterial color={arrow.repulsion ? '#ff4444' : '#44ff44'} />
           </mesh>
         </group>
       ))}
@@ -377,7 +387,7 @@ function TestCharge({ charges, isActive, onPositionUpdate }) {
       </line>
       <mesh ref={meshRef} position={[1, 0, 0]}>
         <sphereGeometry args={[0.08, 16, 16]} />
-        <meshStandardMaterial color="#00ff00" emissive="#00ff00" emissiveIntensity={1} />
+        <meshPhysicalMaterial color="#00ff00" emissive="#00ff00" emissiveIntensity={1} />
       </mesh>
     </group>
   )
@@ -568,15 +578,30 @@ export default function ElectricFields({
         onContextMenu={(e) => e.preventDefault()}
         onClick={handleCanvasClick}
       >
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[10, 10, 5]} intensity={1} />
+        <fog attach="fog" args={['#050a16', 8, 28]} />
+        <Environment preset="night" intensity={0.2} />
+        <ambientLight intensity={0.34} color="#9ab8e8" />
+        <directionalLight position={[10, 10, 5]} intensity={1.15} />
+        <pointLight position={[0, 4, 0]} intensity={0.7} color="#00f5ff" />
+        <pointLight position={[0, 2, -6]} intensity={0.35} color="#22ffaa" />
 
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
           <planeGeometry args={[15, 15]} />
-          <meshStandardMaterial color="#0a0f1e" />
+          <meshPhysicalMaterial color="#0a0f1e" />
         </mesh>
 
-        <gridHelper args={[15, 15, '#222', '#1a1a2e']} position={[0, -0.05, 0]} />
+        <Grid
+          position={[0, -0.05, 0]}
+          args={[15, 15]}
+          cellSize={0.4}
+          cellThickness={0.5}
+          sectionSize={2}
+          sectionThickness={1}
+          cellColor="#22465f"
+          sectionColor="#2f617d"
+          fadeDistance={18}
+          fadeStrength={1}
+        />
 
         {showFieldLines && <FieldLines charges={charges} />}
         {showEquipotentials && <EquipotentialContours charges={charges} />}
@@ -599,10 +624,22 @@ export default function ElectricFields({
         />
 
         {charges.length > 0 && (
-          <sprite scale={[4, 1, 1]} position={[0, 3, 0]}>
-            <spriteMaterial map={createLabelTexture(`U = ${potentialEnergy.toExponential(2)} J`, '#ff88ff')} transparent />
-          </sprite>
+          <FrostedLabel position={[0, 3, 0]} color="#ff88ff">
+            {`U = ${potentialEnergy.toExponential(2)} J`}
+          </FrostedLabel>
         )}
+        <EffectComposer>
+          <Bloom intensity={0.44} luminanceThreshold={0.55} luminanceSmoothing={0.9} mipmapBlur />
+          <Vignette offset={0.25} darkness={0.45} />
+        </EffectComposer>
+        <OrbitControls
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={6}
+          maxDistance={20}
+          autoRotate={!isPlaying}
+          autoRotateSpeed={0.14}
+        />
       </Canvas>
 
       <div className="absolute right-4 top-4 rounded-lg border border-[rgba(0,245,255,0.3)] bg-[rgba(10,15,30,0.9)] p-3">

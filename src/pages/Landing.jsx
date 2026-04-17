@@ -16,7 +16,6 @@ import {
   ChevronRight,
   Sparkles,
   Code2,
-  Github,
   Zap,
   Atom,
   FlaskConical,
@@ -186,7 +185,7 @@ function MiniPendulum({ swinging }) {
             clearcoat={1}
           />
         </mesh>
-      </group>
+      </mesh>
 
       <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[4, 4]} />
@@ -512,7 +511,7 @@ export default function Landing() {
               rel="noopener noreferrer"
               className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
             >
-              <Github className="h-4 w-4" />
+              <Code2 className="h-4 w-4" />
               <span>GitHub</span>
             </a>
           </motion.div>
@@ -928,7 +927,7 @@ export default function Landing() {
                   onClick={() => window.open('https://github.com/pavvada431-cmd/CodeFlix-26', '_blank')}
                   className="group inline-flex items-center justify-center gap-2 rounded-xl border-2 border-[var(--color-border)] bg-transparent px-8 py-4 font-semibold text-[var(--color-text)] transition-all duration-300 hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-surface)]/50"
                 >
-                  <Github className="h-5 w-5" />
+                  <Code2 className="h-5 w-5" />
                   <span>View on GitHub</span>
                 </button>
               </div>
@@ -979,7 +978,7 @@ export default function Landing() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-accent)]"
               >
-                <Github className="h-4 w-4" />
+                <Code2 className="h-4 w-4" />
                 <span>GitHub</span>
               </a>
 
