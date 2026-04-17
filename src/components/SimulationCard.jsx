@@ -83,6 +83,9 @@ function SimulationHelpTooltip({ type }) {
     stoichiometry: '⚖️ Balance chemical equations and calculate reaction quantities!',
     titration: '🧫 Acid meets base! Watch the equivalence point.',
     combustion: '🔥 Fuel burns with oxygen. See the energy release!',
+    atomic_structure: '⚛️ Explore shells, valence electrons, and configurations.',
+    gas_laws: '🫙 Adjust P, V, T, and n to observe gas law relationships.',
+    chemical_bonding: '🔗 Compare ionic, covalent, and metallic bonding.',
   }
 
   const helpText = helpTexts[type] || 'Interact with the simulation using the controls below! 🌟'
@@ -212,6 +215,9 @@ export default function SimulationCard({ simulation, particleMultiplier }) {
       stoichiometry: '⚖️ Stoichiometry',
       titration: '🧫 Titration',
       combustion: '🔥 Combustion',
+      atomic_structure: '⚛️ Atomic Structure',
+      gas_laws: '🫙 Gas Laws',
+      chemical_bonding: '🔗 Chemical Bonding',
     }
     return titles[type] || '🧪 Simulation'
   }

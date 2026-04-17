@@ -145,6 +145,10 @@ export const SUPPORTED_SIMULATION_TYPES = [
   'electromagnetic',
   'organic_chemistry',
   'stoichiometry',
+  'titration',
+  'atomic_structure',
+  'gas_laws',
+  'chemical_bonding',
 ]
 
 export const SIMULATION_DISPLAY_NAMES = {
@@ -169,6 +173,9 @@ export const SIMULATION_DISPLAY_NAMES = {
   combustion: 'Combustion',
   organic_chemistry: 'Organic Chemistry',
   stoichiometry: 'Stoichiometry',
+  atomic_structure: 'Atomic Structure',
+  gas_laws: 'Gas Laws',
+  chemical_bonding: 'Chemical Bonding',
 }
 
 export const SIMULATION_ICONS = {
@@ -190,6 +197,10 @@ export const SIMULATION_ICONS = {
   electromagnetic: '🧲',
   organic_chemistry: '🧪',
   stoichiometry: '⚖️',
+  titration: '🧫',
+  atomic_structure: '⚛️',
+  gas_laws: '🫙',
+  chemical_bonding: '🔗',
 }
 
 export const SIMULATION_CATEGORIES = {
@@ -200,7 +211,7 @@ export const SIMULATION_CATEGORIES = {
   'Electricity & Magnetism': ['electric_field', 'electromagnetic'],
   'Optics': ['optics_lens', 'optics_mirror'],
   'Nuclear': ['radioactive_decay'],
-  'Chemistry': ['organic_chemistry', 'stoichiometry', 'titration', 'combustion'],
+  'Chemistry': ['organic_chemistry', 'stoichiometry', 'titration', 'atomic_structure', 'gas_laws', 'chemical_bonding', 'combustion'],
 }
 
 export const SIMULATION_COLORS = {
@@ -222,4 +233,8 @@ export const SIMULATION_COLORS = {
   electromagnetic: '#ff0088',
   organic_chemistry: '#a855f7',
   stoichiometry: '#f97316',
+  titration: '#ec4899',
+  atomic_structure: '#6366f1',
+  gas_laws: '#06b6d4',
+  chemical_bonding: '#8b5cf6',
 }

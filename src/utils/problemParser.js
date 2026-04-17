@@ -1,5 +1,5 @@
 import { assertValidParsedProblem } from './validator'
-import { cleanProblemText, detectProblemType, extractVariables, normalizeProblemText } from './problemCleaner'
+import { normalizeProblemText } from './problemCleaner'
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
 const AI_PROXY_URL = `${API_BASE_URL}/ai`
@@ -106,6 +106,24 @@ const VARIABLE_SCHEMAS = {
     required: ['reactantAmount', 'molarMass'],
     optional: ['productAmount', 'yield'],
     units: { reactantAmount: 'mol', molarMass: 'g/mol', productAmount: 'mol' },
+  },
+  atomic_structure: {
+    required: ['atomicNumber'],
+    optional: ['mode', 'massNumber'],
+    units: { atomicNumber: 'count', massNumber: 'count' },
+    modes: ['bohr', 'quantum'],
+  },
+  gas_laws: {
+    required: ['pressure', 'volume', 'temperature'],
+    optional: ['moles', 'mode'],
+    units: { pressure: 'atm', volume: 'L', temperature: 'K', moles: 'mol' },
+    modes: ['boyle', 'charles', 'gay_lussac'],
+  },
+  chemical_bonding: {
+    required: ['mode'],
+    optional: ['molecule', 'electronegativityDifference'],
+    units: { electronegativityDifference: 'ΔEN' },
+    modes: ['ionic', 'covalent', 'metallic'],
   },
   organic_chemistry: {
     required: ['compound', 'reactionType'],

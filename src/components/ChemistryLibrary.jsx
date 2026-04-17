@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import { SIMULATION_DISPLAY_NAMES, SIMULATION_ICONS, SIMULATION_COLORS } from '../hooks/useSimulation'
+import { SIMULATION_ICONS, SIMULATION_COLORS } from '../hooks/useSimulation'
 
 const CHEMISTRY_SIMULATIONS = [
   {
@@ -21,6 +21,24 @@ const CHEMISTRY_SIMULATIONS = [
     examples: ['Strong acid/base', 'Weak acid', 'pH indicators'],
   },
   {
+    type: 'atomic_structure',
+    name: 'Atomic Structure',
+    description: 'Bohr shells, valence electrons, and electron configurations',
+    examples: ['H through Ca', 'Valence trends', 'Quantum cloud view'],
+  },
+  {
+    type: 'gas_laws',
+    name: 'Gas Laws',
+    description: 'Explore Boyle, Charles, and Gay-Lussac gas relationships',
+    examples: ['PV relationship', 'Volume-temperature', 'Pressure-temperature'],
+  },
+  {
+    type: 'chemical_bonding',
+    name: 'Chemical Bonding',
+    description: 'Compare ionic, covalent, and metallic bonding mechanisms',
+    examples: ['NaCl transfer', 'H₂/O₂/H₂O/CO₂ sharing', 'Electron sea'],
+  },
+  {
     type: 'combustion',
     name: 'Combustion',
     description: 'Fuel burning and energy release reactions',
@@ -40,7 +58,7 @@ const CHEMISTRY_SIMULATIONS = [
   },
 ]
 
-export default function ChemistryLibrary({ isOpen, onClose, onSelectSimulation, category }) {
+export default function ChemistryLibrary({ isOpen, onClose, onSelectSimulation }) {
   if (!isOpen) return null
 
   return (

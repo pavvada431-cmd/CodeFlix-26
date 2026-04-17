@@ -62,6 +62,9 @@ const PROBLEM_TYPE_KEYWORDS = {
   combustion: ['combustion', 'burn', 'flame', 'oxidation', 'fuel', 'heat'],
   organic_chemistry: ['organic', 'alkane', 'alkene', 'alkyne', 'alcohol', 'carboxylic', 'ester', 'benzene', 'functional group', 'isomer', 'polymer', 'substitution', 'elimination'],
   stoichiometry: ['stoichiometry', 'mole', 'molar', 'limiting reagent', 'yield', 'balance'],
+  atomic_structure: ['atomic structure', 'bohr', 'electron configuration', 'valence electron', 'atomic number', 'shell'],
+  gas_laws: ['boyle', 'charles', 'gay-lussac', 'pv=nrt', 'gas law', 'ideal gas law'],
+  chemical_bonding: ['ionic bond', 'covalent', 'metallic bond', 'electronegativity', 'bond polarity', 'bond energy'],
 }
 
 const VALUE_EXTRACTORS = {
@@ -86,12 +89,14 @@ const VALUE_EXTRACTORS = {
   centralMass: [/central\s*mass\s*[=:]\s*(\d+(?:\.\d+)?)/gi, /sun\s*mass\s*[=:]\s*(\d+(?:\.\d+)?)/gi, /earth\s*mass\s*[=:]\s*(\d+(?:\.\d+)?)/gi],
   orbitingMass: [/orbiting\s*mass\s*[=:]\s*(\d+(?:\.\d+)?)/gi, /planet\s*mass\s*[=:]\s*(\d+(?:\.\d+)?)/gi],
   distance: [/distance\s*[=:]\s*(\d+(?:\.\d+)?)/gi, /(\d+(?:\.\d+)?)\s*m\s*(?:distance|r)/gi],
-  charge: [/charge\s*[=:]\s*(\d+(?:\.\d+)?(?:\s*[eE][\+-]?\d+)?)/gi, /(\d+(?:\.\d+)?(?:\s*[eE][\+-]?\d+)?)\s*C/gi, /electron\s*charge/gi],
+  charge: [/charge\s*[=:]\s*(\d+(?:\.\d+)?(?:\s*[eE][+-]?\d+)?)/gi, /(\d+(?:\.\d+)?(?:\s*[eE][+-]?\d+)?)\s*C/gi, /electron\s*charge/gi],
   magneticField: [/magnetic\s*field\s*[=:]\s*(\d+(?:\.\d+)?)/gi, /(\d+(?:\.\d+)?)\s*T/gi, /(\d+(?:\.\d+)?)\s*tesla/gi],
   friction: [/friction\s*[=:]\s*(\d+(?:\.\d+)?)/gi, /coefficient\s*[=:]\s*(\d+(?:\.\d+)?)/gi, /mu\s*[=:]\s*(\d+(?:\.\d+)?)/gi],
   damping: [/damping\s*[=:]\s*(\d+(?:\.\d+)?)/gi, /(\d+(?:\.\d+)?)\s*damping/gi],
   focalLength: [/focal\s*length\s*[=:]\s*(\d+(?:\.\d+)?)/gi, /f\s*[=:]\s*(\d+(?:\.\d+)?)/gi, /(\d+(?:\.\d+)?)\s*cm/gi],
   objectDistance: [/object\s*distance\s*[=:]\s*(\d+(?:\.\d+)?)/gi, /(\d+(?:\.\d+)?)\s*m\s*object/gi],
+  atomicNumber: [/atomic\s*number\s*[=:]?\s*(\d+(?:\.\d+)?)/gi, /\bz\s*[=:]?\s*(\d+(?:\.\d+)?)/gi],
+  moles: [/moles?\s*[=:]?\s*(\d+(?:\.\d+)?)/gi, /\bn\s*[=:]?\s*(\d+(?:\.\d+)?)/gi],
 }
 
 export function cleanProblemText(text) {

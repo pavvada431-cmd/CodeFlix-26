@@ -17,6 +17,11 @@ const Optics = lazy(() => import('../simulations/Optics'))
 const RadioactiveDecay = lazy(() => import('../simulations/RadioactiveDecay'))
 const MagneticFields = lazy(() => import('../simulations/MagneticFields'))
 const OrganicChemistry = lazy(() => import('../simulations/OrganicChemistry'))
+const Stoichiometry = lazy(() => import('../simulations/Stoichiometry'))
+const Titration = lazy(() => import('../simulations/Titration'))
+const AtomicStructure = lazy(() => import('../simulations/AtomicStructure'))
+const GasLaws = lazy(() => import('../simulations/GasLaws'))
+const ChemicalBonding = lazy(() => import('../simulations/ChemicalBonding'))
 
 function SimulationNotSupported({ simulationType }) {
   return (
@@ -283,6 +288,53 @@ export default function SimulationRouter({
         return {
           compound: resolvedVariables.compound ?? 'methane',
           reactionType: resolvedVariables.reactionType ?? 'combustion',
+          variables: resolvedVariables,
+          isPlaying,
+        }
+
+      case 'stoichiometry':
+        return {
+          reaction: resolvedVariables.reaction ?? 'water_formation',
+          reactantAmount: resolvedVariables.reactantAmount ?? 4,
+          secondaryAmount: resolvedVariables.secondaryAmount ?? 3,
+          variables: resolvedVariables,
+          isPlaying,
+        }
+
+      case 'titration':
+        return {
+          acidConcentration: resolvedVariables.acidConcentration ?? 0.1,
+          baseConcentration: resolvedVariables.baseConcentration ?? 0.1,
+          volume: resolvedVariables.volume ?? 25,
+          mode: resolvedVariables.mode ?? 'strong_acid_strong_base',
+          variables: resolvedVariables,
+          isPlaying,
+        }
+
+      case 'atomic_structure':
+        return {
+          atomicNumber: resolvedVariables.atomicNumber ?? resolvedVariables.protons ?? 8,
+          mode: resolvedVariables.mode ?? 'bohr',
+          variables: resolvedVariables,
+          isPlaying,
+        }
+
+      case 'gas_laws':
+        return {
+          pressure: resolvedVariables.pressure ?? 1,
+          volume: resolvedVariables.volume ?? 12,
+          temperature: resolvedVariables.temperature ?? 300,
+          moles: resolvedVariables.moles ?? resolvedVariables.n ?? 1,
+          mode: resolvedVariables.mode ?? 'boyle',
+          variables: resolvedVariables,
+          isPlaying,
+        }
+
+      case 'chemical_bonding':
+        return {
+          mode: resolvedVariables.mode ?? 'ionic',
+          molecule: resolvedVariables.molecule ?? 'H2O',
+          variables: resolvedVariables,
           isPlaying,
         }
 
@@ -345,6 +397,16 @@ export default function SimulationRouter({
         return <MagneticFields {...simulationProps} {...commonProps} />
       case 'organic_chemistry':
         return <OrganicChemistry {...simulationProps} {...commonProps} />
+      case 'stoichiometry':
+        return <Stoichiometry {...simulationProps} {...commonProps} />
+      case 'titration':
+        return <Titration {...simulationProps} {...commonProps} />
+      case 'atomic_structure':
+        return <AtomicStructure {...simulationProps} {...commonProps} />
+      case 'gas_laws':
+        return <GasLaws {...simulationProps} {...commonProps} />
+      case 'chemical_bonding':
+        return <ChemicalBonding {...simulationProps} {...commonProps} />
       default:
         return <SimulationNotSupported simulationType={resolvedSimulationType} />
     }
