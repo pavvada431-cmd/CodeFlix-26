@@ -7,27 +7,28 @@ import Panel from './ui/Panel'
 import { Select, Textarea } from './ui/Input'
 
 const MAX_INPUT_LENGTH = 500
+
 const AI_PROVIDERS = [
-  { value: 'openai', label: 'OpenAI (GPT-4o)' },
-  { value: 'anthropic', label: 'Anthropic (Claude Sonnet 4)' },
-  { value: 'gemini', label: 'Google Gemini (1.5 Flash)' },
-  { value: 'groq', label: 'Groq (Llama 3.3 70B)' },
-  { value: 'ollama', label: 'Ollama (Local / Cloud)' },
+  { value: 'openai', label: 'GPT-4o (Fast & Smart)' },
+  { value: 'anthropic', label: 'Claude (Detailed)' },
+  { value: 'gemini', label: 'Gemini (Free)' },
+  { value: 'groq', label: 'Groq (Very Fast)' },
+  { value: 'ollama', label: 'Ollama (Local AI)' },
 ]
 
-const EXAMPLES = [
-  { label: '🎯 Projectile', text: 'A ball is launched at 20 m/s at 45 degrees. Find range and flight time.' },
-  { label: '⏱️ Pendulum', text: 'A simple pendulum has length 2 m. Calculate period.' },
-  { label: '📐 Inclined Plane', text: 'A 10kg block slides down a 30-degree ramp with friction 0.2.' },
-  { label: '🔄 Spring', text: 'A 2kg mass attached to a spring with k=100 N/m is displaced and released.' },
-  { label: '💥 Collision', text: 'Two balls collide elastically. Ball 1 (2kg) at 5 m/s hits Ball 2 (3kg) at rest.' },
-  { label: '🧪 Methane', text: 'Show me the methane molecule CH4 and explain its structure.' },
-  { label: '🌊 Wave', text: 'A wave has frequency 5 Hz and wavelength 2 m. Calculate wave speed.' },
-  { label: '⚡ Electric', text: 'Two charges of 1e-6 C are 0.1 m apart. Find the force between them.' },
-  { label: '☀️ Orbit', text: 'A satellite orbits Earth at 400 km altitude. Calculate orbital velocity.' },
-  { label: '🫧 Buoyancy', text: 'A wooden block (density 600 kg/m³) with volume 0.1 m³ floats in water.' },
-  { label: '🔬 Gas', text: '2 moles of ideal gas at 300 K in 0.05 m³. Find the pressure.' },
-  { label: '☢️ Decay', text: 'A sample has 1000 atoms with half-life of 5 seconds. How much remains after 15s?' },
+const PHYSICS_EXAMPLES = [
+  { label: '🎯 Projectile', text: 'A ball is launched at 20 m/s at 45 degrees. Find range.' },
+  { label: '⏱️ Pendulum', text: 'A pendulum has length 2m. Find its period.' },
+  { label: '📐 Inclined Plane', text: 'A 10kg block slides down a 30° frictionless ramp.' },
+  { label: '🔄 Spring', text: 'A 2kg mass on a spring with k=100 N/m oscillates.' },
+  { label: '💥 Collision', text: 'Two balls collide elastically. Ball 1 at 5 m/s hits Ball 2 at rest.' },
+]
+
+const CHEMISTRY_EXAMPLES = [
+  { label: '🧪 Methane', text: 'Show me the methane molecule and explain its structure.' },
+  { label: '⚗️ Reaction', text: 'Balance: CH4 + O2 → CO2 + H2O' },
+  { label: '⚖️ Stoichiometry', text: 'How many moles in 36g of water?' },
+  { label: '🧫 Titration', text: '0.1M HCl is titrated with 0.1M NaOH. Find equivalence point.' },
 ]
 
 export default function ProblemInput({
@@ -59,7 +60,7 @@ export default function ProblemInput({
     const trimmedProblem = sanitizedText.trim()
 
     if (!trimmedProblem) {
-      setError('Describe a problem before starting the parser.')
+      setError('Please describe a physics or chemistry problem first!')
       setSuccess(false)
       textareaRef.current?.focus()
       return
@@ -69,14 +70,14 @@ export default function ProblemInput({
     setError('')
     setSuccess(false)
     setConnected(true)
-    onApiStatusChange?.(true)  // Mark as connected while loading
+    onApiStatusChange?.(true)
 
     try {
       const parsedData = await parseProblem(trimmedProblem, provider)
-      console.log('PARSED DATA:', parsedData)
+      console.log('Parsed:', parsedData)
 
-      if (!parsedData?.type || !parsedData?.variables || typeof parsedData.variables !== 'object') {
-        throw new Error('Parsed data is missing required fields: type and variables')
+      if (!parsedData?.type) {
+        throw new Error('Could not understand the problem. Try rephrasing!')
       }
 
       setConnected(true)
@@ -85,7 +86,7 @@ export default function ProblemInput({
       onSolved?.(parsedData)
     } catch (solveError) {
       setConnected(false)
-      setError(solveError?.message || 'Failed to parse problem')
+      setError(solveError?.message || 'Something went wrong. Please try again!')
       setSuccess(false)
       onApiStatusChange?.(false)
     } finally {
@@ -95,13 +96,17 @@ export default function ProblemInput({
 
   return (
     <Panel
-      title="📝 Describe Your Problem"
-      subtitle="Type or click an example to get started!"
-      action={<Badge variant={connected ? 'success' : 'error'}>{connected ? '🟢 Online' : '🔴 Offline'}</Badge>}
+      title="✨ Describe Your Problem"
+      subtitle="Type naturally or click an example!"
+      action={<Badge variant={connected ? 'success' : 'error'}>
+        {connected ? '🟢 Online' : '🔴 Offline'}
+      </Badge>}
     >
       <div className="space-y-4">
         <div className="space-y-2">
-          <label className="text-xs text-[#9ca3af]" htmlFor="ai-provider">🤖 AI Model</label>
+          <label className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
+            🤖 AI Model
+          </label>
           <Select
             id="ai-provider"
             value={provider}
@@ -115,7 +120,9 @@ export default function ProblemInput({
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs text-[#9ca3af]" htmlFor="problem-input">✏️ Your Problem</label>
+          <label className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
+            ✏️ Your Problem
+          </label>
           <Textarea
             id="problem-input"
             ref={textareaRef}
@@ -127,58 +134,101 @@ export default function ProblemInput({
               if (error) setError('')
               setSuccess(false)
             }}
-            placeholder="Type your physics or chemistry problem here... You can use casual language!"
+            placeholder="Example: A ball is thrown at 20 m/s at 45°. What is its range?&#10;&#10;You can also ask: Show me methane molecule, balance this equation, etc."
             disabled={isBusy}
             maxLength={MAX_INPUT_LENGTH}
-            className="min-h-36"
+            className="min-h-40"
           />
-          <p className="text-xs text-[#9ca3af]">{charCount}/{MAX_INPUT_LENGTH}</p>
+          <div className="flex justify-between text-xs" style={{ color: 'var(--color-text-dim)' }}>
+            <span>{charCount}/{MAX_INPUT_LENGTH} characters</span>
+            <span>Include values like "20 m/s" or "45°"</span>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <p className="text-xs text-[#9ca3af]">💡 Try these examples (click to use)</p>
+        <div className="space-y-3">
+          <p className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
+            💡 Physics Examples
+          </p>
           <div className="flex flex-wrap gap-2">
-            {EXAMPLES.map((example) => (
-              <Button
+            {PHYSICS_EXAMPLES.map((example) => (
+              <button
                 key={example.label}
-                variant="ghost"
-                className="px-2 py-1 text-xs hover:bg-[rgba(0,245,255,0.1)]"
+                className="rounded-lg border px-3 py-1.5 text-xs transition-all hover:scale-105"
+                style={{ 
+                  borderColor: 'var(--color-border)',
+                  backgroundColor: 'var(--color-bg)',
+                  color: 'var(--color-text)'
+                }}
                 onClick={() => handleExampleClick(example.text)}
                 disabled={isBusy}
               >
                 {example.label}
-              </Button>
+              </button>
             ))}
           </div>
         </div>
 
-        <Button variant="primary" className="w-full text-base py-3" onClick={handleSolve} disabled={isBusy || !sanitizedText.trim()}>
-          {loading ? '⏳ Analyzing your problem...' : '🚀 Solve & Simulate'}
+        <div className="space-y-3">
+          <p className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
+            🧪 Chemistry Examples
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CHEMISTRY_EXAMPLES.map((example) => (
+              <button
+                key={example.label}
+                className="rounded-lg border px-3 py-1.5 text-xs transition-all hover:scale-105"
+                style={{ 
+                  borderColor: 'var(--color-border)',
+                  backgroundColor: 'var(--color-bg)',
+                  color: 'var(--color-text)'
+                }}
+                onClick={() => handleExampleClick(example.text)}
+                disabled={isBusy}
+              >
+                {example.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <Button 
+          variant="primary" 
+          className="w-full text-base py-3" 
+          onClick={handleSolve} 
+          disabled={isBusy || !sanitizedText.trim()}
+        >
+          {loading ? '⏳ Analyzing...' : '🚀 Solve & Simulate'}
         </Button>
 
-        {loading ? (
-          <div className="flex items-center gap-2 text-[#00f5ff]">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#00f5ff] border-t-transparent"></div>
-            <span className="text-sm">Processing...</span>
+        {loading && (
+          <div className="flex items-center gap-2" style={{ color: 'var(--color-accent)' }}>
+            <div className="h-4 w-4 animate-spin rounded-full border-2" style={{ borderColor: 'var(--color-border)', borderTopColor: 'var(--color-accent)' }} />
+            <span className="text-sm">Processing your problem...</span>
           </div>
-        ) : null}
-        {success ? <Badge variant="success">✅ Parsed successfully! Check the simulation!</Badge> : null}
-        {error ? (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-            <p className="text-sm text-red-400 font-medium">❌ Oops! Something went wrong</p>
-            <p className="mt-1 text-xs text-red-300">{error}</p>
-            <div className="mt-3 rounded bg-[rgba(0,0,0,0.3)] p-2">
-              <p className="text-xs text-slate-400">
-                💡 <span className="text-[#00f5ff]">Tips:</span>
-              </p>
-              <ul className="mt-1 space-y-1 text-xs text-slate-400">
-                <li>• Include numbers with units (like "20 m/s" or "45 degrees")</li>
-                <li>• Describe what you want to find (like "find the range")</li>
-                <li>• Click an example above to see how it's done!</li>
-              </ul>
+        )}
+        
+        {success && (
+          <div className="flex items-center gap-2 rounded-lg p-3" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
+            <span style={{ color: '#22c55e' }}>✅</span>
+            <span className="text-sm" style={{ color: '#22c55e' }}>Success! Check the simulation →</span>
+          </div>
+        )}
+        
+        {error && (
+          <div className="rounded-xl border p-4" style={{ 
+            borderColor: 'rgba(239, 68, 68, 0.3)', 
+            backgroundColor: 'rgba(239, 68, 68, 0.1)' 
+          }}>
+            <p className="text-sm font-medium" style={{ color: '#ef4444' }}>❌ Oops!</p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>{error}</p>
+            <div className="mt-3 space-y-1 text-xs" style={{ color: 'var(--color-text-dim)' }}>
+              <p>💡 Tips:</p>
+              <p>• Include numbers with units (like "20 m/s")</p>
+              <p>• Be specific about what you want to find</p>
+              <p>• Click an example above to see how it's done</p>
             </div>
           </div>
-        ) : null}
+        )}
       </div>
     </Panel>
   )
