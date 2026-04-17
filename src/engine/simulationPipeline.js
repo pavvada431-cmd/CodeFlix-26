@@ -1,265 +1,128 @@
 /**
- * Simulation Pipeline - Execute multi-stage physics problems
- * Orchestrates sequential execution of different physics concepts
+ * Multi-stage simulation pipeline.
+ * Handles stage execution, transitions, output-to-input mapping, and timeline continuity.
  */
 
-/**
- * Stage - Individual physics simulation step
- */
-export class SimulationStage {
-  constructor(id, type, variables, index) {
-    this.id = id
-    this.type = type
-    this.variables = { ...variables }
-    this.index = index
-    this.state = {
-      startTime: 0,
-      currentTime: 0,
-      elapsed: 0,
-      position: { x: 0, y: 0, z: 0 },
-      velocity: { x: 0, y: 0, z: 0 },
-      acceleration: { x: 0, y: 0, z: 0 },
-      complete: false,
-      data: [], // Timeline data points
-    }
-    this.initialState = null
-    this.physicsEngine = null
-    this.bodies = []
-  }
+const EPSILON = 1e-6
 
-  /**
-   * Initialize stage with optional state from previous stage
-   */
-  initialize(inheritedState = null) {
-    this.startTime = performance.now()
-    this.state.startTime = this.startTime
-    this.state.elapsed = 0
+function toNumber(value, fallback = 0) {
+  return Number.isFinite(value) ? Number(value) : fallback
+}
 
-    // Inherit state from previous stage if available
-    if (inheritedState) {
-      this.state.position = { ...inheritedState.position }
-      this.state.velocity = { ...inheritedState.velocity }
-      this.state.acceleration = inheritedState.acceleration ? { ...inheritedState.acceleration } : { x: 0, y: 0, z: 0 }
-    }
+function speedFromVector(velocity = { x: 0, y: 0 }) {
+  return Math.hypot(toNumber(velocity.x, 0), toNumber(velocity.y, 0))
+}
 
-    // Store initial state for reset capability
-    this.initialState = JSON.parse(JSON.stringify(this.state))
+function angleFromVelocity(velocity = { x: 0, y: 0 }) {
+  return (Math.atan2(toNumber(velocity.y, 0), toNumber(velocity.x, 0)) * 180) / Math.PI
+}
 
-    return this
-  }
-
-  /**
-   * Update stage physics by delta time
-   */
-  update(deltaTime) {
-    this.state.currentTime = performance.now()
-    this.state.elapsed = (this.state.currentTime - this.startTime) / 1000
-
-    // Stage-specific update logic (implemented by subclasses)
-    this.updatePhysics(deltaTime)
-
-    return this.state
-  }
-
-  /**
-   * Override in subclasses - implement stage-specific physics
-   */
-  updatePhysics(deltaTime) {
-    // Default: no movement
-  }
-
-  /**
-   * Check if stage transition condition is met
-   */
-  checkTransitionCondition(condition = {}) {
-    // Default: check various condition types
-    if (condition.type === 'time' && condition.value) {
-      return this.state.elapsed >= condition.value
-    }
-
-    if (condition.type === 'position' && condition.threshold) {
-      const threshold = condition.threshold
-      if (condition.axis === 'y') {
-        return this.state.position.y >= threshold.y || this.state.position.y <= threshold.y
-      }
-      if (condition.axis === 'x') {
-        return this.state.position.x >= threshold.x || this.state.position.x <= threshold.x
-      }
-    }
-
-    if (condition.type === 'velocity' && condition.threshold) {
-      const vx = this.state.velocity.x
-      const vy = this.state.velocity.y
-      const speed = Math.hypot(vx, vy)
-      return speed >= condition.threshold
-    }
-
-    return false
-  }
-
-  /**
-   * Get stage state for transfer to next stage
-   */
-  getTransferState() {
+function normalizeTransition(transition) {
+  if (transition instanceof StageTransition) {
     return {
-      position: { ...this.state.position },
-      velocity: { ...this.state.velocity },
-      acceleration: { ...this.state.acceleration },
-      energy: this.calculateEnergy(),
-      momentum: this.calculateMomentum(),
-      time: this.state.elapsed,
-      data: [...this.state.data],
+      from: transition.from,
+      to: transition.to,
+      condition: transition.condition,
+      value: transition.value,
+      label: transition.label,
+      _instance: transition,
     }
   }
 
-  /**
-   * Calculate kinetic energy
-   */
-  calculateEnergy() {
-    const mass = this.variables.mass || 1
-    const speed = Math.hypot(this.state.velocity.x, this.state.velocity.y, this.state.velocity.z)
-    return 0.5 * mass * speed * speed
+  if (!transition || typeof transition !== 'object') {
+    return null
   }
 
-  /**
-   * Calculate momentum
-   */
-  calculateMomentum() {
-    const mass = this.variables.mass || 1
-    return {
-      x: mass * this.state.velocity.x,
-      y: mass * this.state.velocity.y,
-      z: mass * this.state.velocity.z,
-    }
-  }
-
-  /**
-   * Record data point for graphing
-   */
-  recordDataPoint(x, y) {
-    this.state.data.push({ x, y, time: this.state.elapsed })
-  }
-
-  /**
-   * Reset stage to initial state
-   */
-  reset() {
-    if (this.initialState) {
-      this.state = JSON.parse(JSON.stringify(this.initialState))
-    }
-    this.state.complete = false
-  }
-
-  /**
-   * Mark stage as complete
-   */
-  complete() {
-    this.state.complete = true
+  return {
+    from: toNumber(transition.from, 0),
+    to: Number.isFinite(transition.to) ? transition.to : toNumber(transition.from, 0) + 1,
+    condition: transition.condition || transition.type || 'stage_complete',
+    value: transition.value ?? transition.conditionValue ?? 0,
+    label: transition.label || '',
+    _instance: null,
   }
 }
 
-/**
- * Transition between stages
- */
 export class StageTransition {
-  constructor(fromIndex, toIndex, condition = {}, label = '') {
-    this.fromIndex = fromIndex
-    this.toIndex = toIndex
-    this.condition = condition // { type: 'time|position|velocity', value?: number, threshold?: object }
-    this.label = label || `Transition from stage ${fromIndex} to ${toIndex}`
+  constructor(from, to, condition = 'stage_complete', value = 0, label = '') {
+    this.from = toNumber(from, 0)
+    this.to = toNumber(to, this.from + 1)
+    this.condition = condition || 'stage_complete'
+    this.value = value
+    this.label = label || `Stage ${this.from + 1} → ${this.to + 1}`
     this.triggered = false
-    this.triggerTime = null
+    this.triggerTime = 0
   }
 
-  /**
-   * Check if transition should occur
-   */
-  check(currentStage) {
+  check(stage) {
+    if (!stage || this.triggered) return this.triggered
+    this.triggered = stage.checkTransitionCondition({
+      condition: this.condition,
+      value: this.value,
+    })
     if (this.triggered) {
-      return true
+      this.triggerTime = stage.elapsedTime || 0
     }
-
-    if (currentStage.checkTransitionCondition(this.condition)) {
-      this.triggered = true
-      this.triggerTime = currentStage.state.elapsed
-      return true
-    }
-
-    return false
+    return this.triggered
   }
 
-  /**
-   * Reset transition state
-   */
   reset() {
     this.triggered = false
-    this.triggerTime = null
+    this.triggerTime = 0
   }
 }
 
-/**
- * Simulation Pipeline - Manages multi-stage simulations
- */
 export class SimulationPipeline {
   constructor() {
-    this.stages = [] // Array of SimulationStage
-    this.transitions = [] // Array of StageTransition
+    this.stages = []
+    this.transitions = []
     this.currentStageIndex = 0
+    this.totalElapsed = 0
     this.isRunning = false
     this.isPaused = false
-    this.startTime = 0
-    this.totalElapsed = 0
-    this.history = [] // Complete timeline of all stages
+    this.history = []
     this.callbacks = {
       onStageChange: null,
       onTransition: null,
-      onComplete: null,
       onUpdate: null,
+      onComplete: null,
     }
   }
 
-  /**
-   * Add a stage to the pipeline
-   */
   addStage(stage) {
-    stage.index = this.stages.length
+    if (!stage || typeof stage.initialize !== 'function' || typeof stage.update !== 'function') {
+      throw new Error('Stage must implement initialize() and update() methods')
+    }
     this.stages.push(stage)
     return this
   }
 
-  /**
-   * Add a transition between stages
-   */
   addTransition(transition) {
-    this.transitions.push(transition)
+    const normalized = normalizeTransition(transition)
+    if (!normalized) {
+      throw new Error('Transition must be an object or StageTransition instance')
+    }
+    this.transitions.push(normalized)
     return this
   }
 
-  /**
-   * Set callback for events
-   */
   on(eventName, callback) {
-    if (this.callbacks.hasOwnProperty(`on${eventName.charAt(0).toUpperCase()}${eventName.slice(1)}`)) {
-      this.callbacks[`on${eventName.charAt(0).toUpperCase()}${eventName.slice(1)}`] = callback
+    const callbackName = `on${eventName.charAt(0).toUpperCase()}${eventName.slice(1)}`
+    if (Object.prototype.hasOwnProperty.call(this.callbacks, callbackName)) {
+      this.callbacks[callbackName] = callback
     }
     return this
   }
 
-  /**
-   * Start the simulation pipeline
-   */
   start() {
-    if (this.stages.length === 0) {
-      throw new Error('Pipeline has no stages to execute')
+    if (!this.stages.length) {
+      throw new Error('Cannot start pipeline with no stages')
     }
 
+    this.reset()
     this.isRunning = true
     this.isPaused = false
-    this.startTime = performance.now()
-    this.totalElapsed = 0
     this.currentStageIndex = 0
-
-    // Initialize first stage
     this.stages[0].initialize()
 
     if (this.callbacks.onStageChange) {
@@ -273,223 +136,250 @@ export class SimulationPipeline {
     return this
   }
 
-  /**
-   * Update pipeline
-   */
   update(deltaTime) {
-    if (!this.isRunning || this.isPaused) {
+    if (!this.isRunning || this.isPaused || this.isComplete()) {
       return
     }
 
-    const currentStage = this.stages[this.currentStageIndex]
+    const dt = Math.max(toNumber(deltaTime, 0), 0)
+    const stage = this.stages[this.currentStageIndex]
+    if (!stage) return
 
-    // Update current stage
-    const stageState = currentStage.update(deltaTime)
+    stage.update(dt)
+    this.totalElapsed += dt
 
-    this.totalElapsed += deltaTime
-
-    // Check for stage transition
-    const transition = this.transitions.find((t) => t.fromIndex === this.currentStageIndex)
-
-    if (transition && transition.check(currentStage)) {
-      this._transitionToNextStage(transition)
-    }
-
-    // Record history
+    const renderState = stage.getRenderState()
     this.history.push({
-      time: this.totalElapsed,
+      t: this.totalElapsed,
       stageIndex: this.currentStageIndex,
-      state: JSON.parse(JSON.stringify(stageState)),
+      stageType: stage.type,
+      state: JSON.parse(JSON.stringify(renderState)),
     })
 
-    // Callback
+    const transition = this._findTransition(this.currentStageIndex)
+    const shouldTransition = transition
+      ? stage.checkTransitionCondition(transition)
+      : stage.checkTransitionCondition({ condition: 'stage_complete' })
+
+    if (shouldTransition) {
+      this._advance(transition)
+    }
+
     if (this.callbacks.onUpdate) {
       this.callbacks.onUpdate({
-        currentStage,
         stageIndex: this.currentStageIndex,
         totalElapsed: this.totalElapsed,
-        isComplete: this._isComplete(),
+        currentStage: this.stages[this.currentStageIndex] || null,
+        isComplete: this.isComplete(),
       })
     }
 
-    // Check if all stages complete
-    if (this._isComplete()) {
+    if (this.isComplete()) {
       this.isRunning = false
       if (this.callbacks.onComplete) {
         this.callbacks.onComplete({
           totalTime: this.totalElapsed,
+          history: this.getHistory(),
           stages: this.stages,
-          history: this.history,
         })
       }
     }
   }
 
-  /**
-   * Transition to next stage
-   */
-  _transitionToNextStage(transition) {
-    const currentStage = this.stages[this.currentStageIndex]
-    const nextStage = this.stages[transition.toIndex]
-
-    if (!nextStage) {
-      currentStage.complete()
-      return
-    }
-
-    // Transfer state to next stage
-    const transferState = currentStage.getTransferState()
-    nextStage.initialize(transferState)
-
-    const previousIndex = this.currentStageIndex
-    this.currentStageIndex = transition.toIndex
-
-    if (this.callbacks.onTransition) {
-      this.callbacks.onTransition({
-        transition,
-        fromStage: currentStage,
-        toStage: nextStage,
-        transferredState: transferState,
-      })
-    }
-
-    if (this.callbacks.onStageChange) {
-      this.callbacks.onStageChange({
-        previousIndex,
-        currentIndex: this.currentStageIndex,
-        stage: nextStage,
-      })
+  getCurrentState() {
+    const currentIndex = Math.min(this.currentStageIndex, Math.max(this.stages.length - 1, 0))
+    const stage = this.stages[currentIndex] || null
+    const completed = this.stages.filter((item) => item?.isComplete).length
+    return {
+      isRunning: this.isRunning,
+      isPaused: this.isPaused,
+      stageIndex: currentIndex,
+      stageType: stage?.type || null,
+      stageState: stage?.getRenderState?.() || null,
+      stageCount: this.stages.length,
+      completedStages: completed,
+      totalElapsed: this.totalElapsed,
+      progress: this.getProgress(),
+      isComplete: this.isComplete(),
     }
   }
 
-  /**
-   * Check if pipeline is complete
-   */
-  _isComplete() {
-    if (this.currentStageIndex >= this.stages.length) {
-      return true
-    }
-
-    // Check if last stage is complete
-    const lastStage = this.stages[this.stages.length - 1]
-    if (this.currentStageIndex === this.stages.length - 1) {
-      return lastStage.state.complete
-    }
-
-    return false
+  getState() {
+    return this.getCurrentState()
   }
 
-  /**
-   * Pause simulation
-   */
+  reset() {
+    this.stages.forEach((stage) => stage.reset?.())
+    this.transitions.forEach((transition) => {
+      transition._instance?.reset?.()
+      if (transition._instance == null && transition.triggered) {
+        transition.triggered = false
+      }
+    })
+    this.currentStageIndex = 0
+    this.totalElapsed = 0
+    this.isRunning = false
+    this.isPaused = false
+    this.history = []
+    return this
+  }
+
   pause() {
     this.isPaused = true
     return this
   }
 
-  /**
-   * Resume simulation
-   */
   resume() {
     this.isPaused = false
+    this.isRunning = !this.isComplete()
     return this
   }
 
-  /**
-   * Stop simulation
-   */
   stop() {
     this.isRunning = false
     this.isPaused = false
     return this
   }
 
-  /**
-   * Reset simulation to start
-   */
-  reset() {
-    this.stages.forEach((stage) => stage.reset())
-    this.transitions.forEach((transition) => transition.reset())
-    this.currentStageIndex = 0
-    this.totalElapsed = 0
-    this.history = []
-    this.isRunning = false
-    this.isPaused = false
-    return this
+  getTotalTime() {
+    return this.totalElapsed
   }
 
-  /**
-   * Get current stage
-   */
+  isComplete() {
+    if (!this.stages.length) return true
+    if (this.currentStageIndex >= this.stages.length) return true
+    const stage = this.stages[this.currentStageIndex]
+    return this.currentStageIndex === this.stages.length - 1 && Boolean(stage?.isComplete)
+  }
+
   getCurrentStage() {
     return this.stages[this.currentStageIndex] || null
   }
 
-  /**
-   * Get all stages
-   */
   getStages() {
     return [...this.stages]
   }
 
-  /**
-   * Get pipeline state
-   */
-  getState() {
-    return {
-      isRunning: this.isRunning,
-      isPaused: this.isPaused,
-      currentStageIndex: this.currentStageIndex,
-      totalElapsed: this.totalElapsed,
-      currentStage: this.getCurrentStage()?.state || null,
-      stageCount: this.stages.length,
-      completedStages: this.stages.filter((s) => s.state.complete).length,
-    }
-  }
-
-  /**
-   * Get complete history
-   */
   getHistory() {
     return [...this.history]
   }
 
-  /**
-   * Jump to specific stage
-   */
   jumpToStage(stageIndex) {
-    if (stageIndex < 0 || stageIndex >= this.stages.length) {
+    const index = toNumber(stageIndex, 0)
+    if (index < 0 || index >= this.stages.length) {
       throw new Error(`Invalid stage index: ${stageIndex}`)
     }
 
-    // Reset all stages up to target
-    this.stages.forEach((stage, idx) => {
-      if (idx <= stageIndex) {
-        stage.reset()
-      }
-    })
-
-    this.currentStageIndex = stageIndex
-    const stage = this.stages[stageIndex]
-    stage.initialize()
+    this.stages.forEach((stage) => stage.reset?.())
+    this.currentStageIndex = index
+    this.totalElapsed = 0
+    this.history = []
+    this.stages[index].initialize()
 
     if (this.callbacks.onStageChange) {
       this.callbacks.onStageChange({
         previousIndex: -1,
-        currentIndex: stageIndex,
-        stage,
+        currentIndex: index,
+        stage: this.stages[index],
       })
     }
 
     return this
   }
 
-  /**
-   * Get stage progress (0-1)
-   */
   getProgress() {
-    if (this.stages.length === 0) return 0
-    return this.currentStageIndex / this.stages.length
+    if (!this.stages.length) return 0
+    const fractional = this.currentStageIndex / this.stages.length
+    return Math.max(0, Math.min(1, fractional))
+  }
+
+  _findTransition(stageIndex) {
+    return this.transitions.find((transition) => transition.from === stageIndex) || null
+  }
+
+  _advance(transition) {
+    const currentStage = this.stages[this.currentStageIndex]
+    currentStage.isComplete = true
+
+    const output = currentStage.getOutputState()
+    const nextIndex = Number.isFinite(transition?.to) ? transition.to : this.currentStageIndex + 1
+    const nextStage = this.stages[nextIndex]
+
+    if (!nextStage) {
+      this.currentStageIndex = this.stages.length
+      return
+    }
+
+    const mappedVariables = this._mapOutputToStageInput(output, nextStage.type, nextStage.variables)
+    nextStage.initialize(mappedVariables, output)
+
+    const previousIndex = this.currentStageIndex
+    this.currentStageIndex = nextIndex
+
+    if (this.callbacks.onTransition) {
+      this.callbacks.onTransition({
+        transition: transition || null,
+        fromStage: currentStage,
+        toStage: nextStage,
+        output,
+        mappedVariables,
+      })
+    }
+
+    if (this.callbacks.onStageChange) {
+      this.callbacks.onStageChange({
+        previousIndex,
+        currentIndex: nextIndex,
+        stage: nextStage,
+      })
+    }
+  }
+
+  _mapOutputToStageInput(output, nextType, currentVariables = {}) {
+    const mapped = { ...currentVariables }
+    const position = output?.position || { x: 0, y: 0, z: 0 }
+    const velocity = output?.velocity || { x: 0, y: 0, z: 0 }
+    const speed = Number.isFinite(output?.velocityMagnitude) ? output.velocityMagnitude : speedFromVector(velocity)
+    const angle = Number.isFinite(output?.angle) ? output.angle : angleFromVelocity(velocity)
+
+    if (nextType === 'projectile') {
+      mapped.velocity = speed
+      mapped.angle = angle
+      mapped.height = toNumber(position.y, 0)
+      mapped.position = { x: toNumber(position.x, 0), y: toNumber(position.y, 0), z: 0 }
+      return mapped
+    }
+
+    if (nextType === 'free_fall') {
+      mapped.height = Math.max(toNumber(position.y, mapped.height || 0), 0)
+      mapped.position = { x: toNumber(position.x, 0), y: toNumber(position.y, mapped.height || 0), z: 0 }
+      mapped.initialVelocityX = toNumber(velocity.x, 0)
+      mapped.initialVelocityY = toNumber(velocity.y, 0)
+      return mapped
+    }
+
+    if (nextType === 'collisions') {
+      mapped.velocity1 = Number.isFinite(mapped.velocity1) ? mapped.velocity1 : toNumber(velocity.x, toNumber(velocity.y, 0))
+      mapped.position1 = Number.isFinite(mapped.position1) ? mapped.position1 : -1
+      mapped.position2 = Number.isFinite(mapped.position2) ? mapped.position2 : 1
+      return mapped
+    }
+
+    if (nextType === 'spring_launch' || nextType === 'spring_mass') {
+      if (!Number.isFinite(mapped.compression)) {
+        mapped.compression = Math.max(speed / 20, 0.1)
+      }
+      return mapped
+    }
+
+    if (nextType === 'inclined_plane') {
+      mapped.initialSpeed = speed
+      mapped.startX = toNumber(position.x, 0)
+      mapped.baseY = toNumber(position.y, 0)
+      return mapped
+    }
+
+    return mapped
   }
 }
 

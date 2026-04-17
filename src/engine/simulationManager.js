@@ -5,11 +5,15 @@
 
 import { CorePhysicsEngine, PHYSICS_CONFIG } from './corePhysics.js'
 import { RenderEngine } from './renderEngine.js'
+import { MultiConceptProblemHandler } from './multiConceptProblem.js'
 
 export class SimulationManager {
   constructor(canvasElement = null) {
     this.physicsEngine = new CorePhysicsEngine()
     this.renderEngine = new RenderEngine(canvasElement)
+    this.multiConceptHandler = null
+    this.pipeline = null
+    this.pipelineState = null
 
     this.running = false
     this.animationFrameId = null
@@ -134,8 +138,13 @@ export class SimulationManager {
     const deltaTime = Math.min((now - this.lastFrameTime) / 1000, 0.016) // Cap at 16ms
     this.lastFrameTime = now
 
-    // Update physics
-    this.physicsEngine.update(deltaTime)
+    // Update either single-scene physics or multi-concept pipeline.
+    if (this.pipeline && this.pipeline.isRunning && !this.pipeline.isPaused) {
+      this.pipeline.update(deltaTime)
+      this.pipelineState = this.pipeline.getCurrentState()
+    } else {
+      this.physicsEngine.update(deltaTime)
+    }
 
     // Calculate interpolation alpha for smooth rendering
     this.alpha = (this.physicsEngine.accumulator / PHYSICS_CONFIG.TIMESTEP) * 100
@@ -189,6 +198,59 @@ export class SimulationManager {
   }
 
   /**
+   * Build and attach a multi-concept pipeline from parsed problem data.
+   */
+  loadMultiConceptProblem(parsedProblem) {
+    this.multiConceptHandler = new MultiConceptProblemHandler()
+    this.multiConceptHandler.parseProblems(parsedProblem)
+    this.pipeline = this.multiConceptHandler.buildPipeline()
+    this.pipelineState = this.pipeline.getCurrentState()
+    return this.pipeline
+  }
+
+  /**
+   * Start active multi-concept pipeline.
+   */
+  startPipeline() {
+    if (!this.pipeline) {
+      throw new Error('No multi-concept pipeline loaded')
+    }
+    this.pipeline.start()
+    this.pipelineState = this.pipeline.getCurrentState()
+    return this
+  }
+
+  pausePipeline() {
+    this.pipeline?.pause()
+    return this
+  }
+
+  resumePipeline() {
+    this.pipeline?.resume()
+    return this
+  }
+
+  resetPipeline() {
+    this.pipeline?.reset()
+    this.pipelineState = this.pipeline?.getCurrentState() || null
+    return this
+  }
+
+  getPipelineState() {
+    if (!this.pipeline) return null
+    this.pipelineState = this.pipeline.getCurrentState()
+    return this.pipelineState
+  }
+
+  getCurrentSceneState() {
+    return this.getPipelineState() || {
+      type: 'single_scene',
+      bodyStates: this.getBodyStates(),
+      frameStats: this.getFrameStats(),
+    }
+  }
+
+  /**
    * Toggle debug mode
    */
   setDebugMode(enabled) {
@@ -226,6 +288,9 @@ export class SimulationManager {
   destroy() {
     this.stop()
     this.physicsEngine.reset()
+    this.pipeline?.stop?.()
+    this.pipeline = null
+    this.multiConceptHandler = null
     this.renderEngine = null
   }
 }

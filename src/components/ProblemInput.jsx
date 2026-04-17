@@ -77,7 +77,8 @@ export default function ProblemInput({
       const parsedData = await parseProblem(trimmedProblem, provider)
       console.log('Parsed:', parsedData)
 
-      if (!parsedData?.type) {
+      const hasMultiConceptStages = parsedData?.isMultiConcept === true && Array.isArray(parsedData?.stages) && parsedData.stages.length > 0
+      if (!parsedData?.type && !hasMultiConceptStages) {
         throw new Error('Could not understand the problem. Try rephrasing!')
       }
 

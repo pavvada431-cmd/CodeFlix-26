@@ -1,14 +1,114 @@
 /**
- * Multi-Concept Problem Handler
- * Manages parsing and execution of multi-stage physics problems
+ * Multi-concept problem parsing and pipeline orchestration.
  */
 
 import { SimulationPipeline, StageTransition } from './simulationPipeline.js'
-import { createStage } from './physicsStages.js'
+import { createStage } from './simulationStages.js'
 
-/**
- * Detects multi-concept problems and parses them
- */
+const STAGE_DISPLAY_NAMES = {
+  inclined_plane: 'Inclined Plane',
+  projectile: 'Projectile Motion',
+  free_fall: 'Free Fall',
+  collisions: 'Collision',
+  spring_launch: 'Spring Launch',
+}
+
+function normalizeTransition(transition, index, stageCount) {
+  const from = Number.isFinite(transition?.from) ? transition.from : index
+  const to = Number.isFinite(transition?.to) ? transition.to : index + 1
+  const condition = transition?.condition || transition?.type || 'stage_complete'
+  const value = transition?.value ?? transition?.conditionValue ?? 0
+
+  if (from < 0 || to < 0 || from >= stageCount || to >= stageCount) {
+    return null
+  }
+
+  return {
+    from,
+    to,
+    condition,
+    value,
+    label: transition?.label || `Stage ${from + 1} → ${to + 1}`,
+  }
+}
+
+function normalizeStage(stage, fallbackType) {
+  if (!stage || typeof stage !== 'object') {
+    return null
+  }
+  const type = stage.type || fallbackType
+  if (!type) return null
+  return {
+    type,
+    variables: typeof stage.variables === 'object' && stage.variables ? { ...stage.variables } : {},
+    units: typeof stage.units === 'object' && stage.units ? { ...stage.units } : {},
+  }
+}
+
+function detectPatternsFromText(parsedResponse) {
+  const chunks = [
+    parsedResponse?.problemText,
+    parsedResponse?.prompt,
+    parsedResponse?.formula,
+    parsedResponse?.answer?.explanation,
+    ...(Array.isArray(parsedResponse?.steps) ? parsedResponse.steps : []),
+  ]
+  const text = chunks.filter(Boolean).join(' ').toLowerCase()
+  const variables = typeof parsedResponse?.variables === 'object' && parsedResponse.variables
+    ? parsedResponse.variables
+    : {}
+
+  // Inclined plane → projectile
+  if (/(ramp|incline|inclined plane).*(projectile|flies|launched|air)/.test(text)) {
+    return {
+      isMultiConcept: true,
+      stages: [
+        { type: 'inclined_plane', variables: { ...variables } },
+        { type: 'projectile', variables: { ...variables, angle: variables.angle ?? 0 } },
+      ],
+      transitions: [{ from: 0, to: 1, condition: 'position_threshold', value: 0 }],
+    }
+  }
+
+  // Free fall → collision
+  if (/(free fall|falls|dropped).*(collid|hits|impact)/.test(text)) {
+    return {
+      isMultiConcept: true,
+      stages: [
+        { type: 'free_fall', variables: { ...variables } },
+        { type: 'collisions', variables: { ...variables } },
+      ],
+      transitions: [{ from: 0, to: 1, condition: 'position_threshold', value: 0 }],
+    }
+  }
+
+  // Spring → projectile
+  if (/(spring).*(projectile|launch|launched)/.test(text)) {
+    return {
+      isMultiConcept: true,
+      stages: [
+        { type: 'spring_launch', variables: { ...variables } },
+        { type: 'projectile', variables: { ...variables } },
+      ],
+      transitions: [{ from: 0, to: 1, condition: 'velocity_change', value: 0 }],
+    }
+  }
+
+  // Inclined plane → free fall
+  if (/(ramp|incline|inclined plane).*(edge|table|off).*(fall|free fall)/.test(text)) {
+    return {
+      isMultiConcept: true,
+      stages: [
+        { type: 'inclined_plane', variables: { ...variables } },
+        { type: 'free_fall', variables: { ...variables } },
+      ],
+      transitions: [{ from: 0, to: 1, condition: 'position_threshold', value: 0 }],
+    }
+  }
+
+  return null
+}
+
 export class MultiConceptProblemHandler {
   constructor() {
     this.problem = null
@@ -18,64 +118,72 @@ export class MultiConceptProblemHandler {
     this.transitions = []
   }
 
-  /**
-   * Parse problem response and detect if multi-concept
-   */
   parseProblems(parsedResponse) {
-    this.problem = parsedResponse
+    this.problem = parsedResponse || {}
 
-    // Check if already marked as multi-concept
-    if (parsedResponse.isMultiConcept === true && Array.isArray(parsedResponse.stages)) {
-      this.isMultiConcept = true
-      this.stages = parsedResponse.stages
-      this.transitions = parsedResponse.transitions || []
+    // Explicit multi-concept format from parser.
+    if (this.problem?.isMultiConcept === true && Array.isArray(this.problem?.stages) && this.problem.stages.length > 0) {
+      const normalizedStages = this.problem.stages
+        .map((stage) => normalizeStage(stage, this.problem?.type))
+        .filter(Boolean)
+
+      this.isMultiConcept = normalizedStages.length > 1
+      this.stages = normalizedStages
+      this.transitions = (Array.isArray(this.problem.transitions) ? this.problem.transitions : [])
+        .map((transition, index) => normalizeTransition(transition, index, this.stages.length))
+        .filter(Boolean)
       return this
     }
 
-    // Single concept problem
-    this.isMultiConcept = false
-    this.stages = [
-      {
-        type: parsedResponse.type,
-        variables: parsedResponse.variables,
-        units: parsedResponse.units,
-      },
-    ]
-    this.transitions = []
+    const detected = detectPatternsFromText(this.problem)
+    if (detected) {
+      this.isMultiConcept = true
+      this.stages = detected.stages.map((stage) => normalizeStage(stage)).filter(Boolean)
+      this.transitions = detected.transitions
+      return this
+    }
 
+    // Fallback single stage
+    const fallbackStage = normalizeStage(
+      {
+        type: this.problem?.type,
+        variables: this.problem?.variables,
+        units: this.problem?.units,
+      },
+      this.problem?.type,
+    )
+
+    this.isMultiConcept = false
+    this.stages = fallbackStage ? [fallbackStage] : []
+    this.transitions = []
     return this
   }
 
-  /**
-   * Build simulation pipeline from parsed problem
-   */
   buildPipeline() {
-    const pipeline = new SimulationPipeline()
+    if (!this.stages.length) {
+      throw new Error('No valid stages available for pipeline construction')
+    }
 
-    // Add stages
-    this.stages.forEach((stageConfig, index) => {
-      const stage = createStage(stageConfig.type, stageConfig.variables, index)
-      pipeline.addStage(stage)
+    const pipeline = new SimulationPipeline()
+    this.stages.forEach((stageConfig) => {
+      pipeline.addStage(createStage(stageConfig.type, stageConfig.variables))
     })
 
-    // Add transitions
-    if (this.isMultiConcept) {
-      this.transitions.forEach((transConfig) => {
-        const condition = this._parseTransitionCondition(transConfig)
-        const transition = new StageTransition(
-          transConfig.from,
-          transConfig.to,
-          condition,
-          transConfig.label || `Stage ${transConfig.from} → ${transConfig.to}`
+    if (this.transitions.length > 0) {
+      this.transitions.forEach((transition) => {
+        pipeline.addTransition(
+          new StageTransition(
+            transition.from,
+            transition.to,
+            transition.condition,
+            transition.value,
+            transition.label,
+          ),
         )
-        pipeline.addTransition(transition)
       })
-    } else if (this.stages.length > 1) {
-      // Auto-detect transitions for single-concept multi-stage
-      for (let i = 0; i < this.stages.length - 1; i++) {
-        const condition = this._autoDetectTransition(this.stages[i], this.stages[i + 1])
-        const transition = new StageTransition(i, i + 1, condition)
-        pipeline.addTransition(transition)
+    } else {
+      for (let index = 0; index < this.stages.length - 1; index += 1) {
+        pipeline.addTransition(new StageTransition(index, index + 1, 'stage_complete', 0))
       }
     }
 
@@ -83,150 +191,51 @@ export class MultiConceptProblemHandler {
     return pipeline
   }
 
-  /**
-   * Parse transition condition from config
-   */
-  _parseTransitionCondition(transConfig) {
-    if (transConfig.condition === 'position_threshold') {
-      return {
-        type: 'position',
-        threshold: { y: transConfig.conditionValue || 0 },
-        axis: 'y',
-      }
-    }
-
-    if (transConfig.condition === 'velocity_change') {
-      return {
-        type: 'velocity',
-        threshold: transConfig.conditionValue || 0,
-      }
-    }
-
-    if (transConfig.condition === 'time_based') {
-      return {
-        type: 'time',
-        value: transConfig.conditionValue || 1,
-      }
-    }
-
-    // Default: use position threshold at y=0
-    return {
-      type: 'position',
-      threshold: { y: 0 },
-      axis: 'y',
-    }
-  }
-
-  /**
-   * Auto-detect transition between two stages
-   */
-  _autoDetectTransition(fromStage, toStage) {
-    // From inclined plane to projectile: detect velocity becomes horizontal
-    if (fromStage.type === 'inclined_plane' && toStage.type === 'projectile') {
-      return {
-        type: 'position',
-        axis: 'distance',
-        description: 'Block reaches bottom of incline',
-      }
-    }
-
-    // From projectile to anything: detect landing (y=0)
-    if (fromStage.type === 'projectile') {
-      return {
-        type: 'position',
-        threshold: { y: 0 },
-        axis: 'y',
-        description: 'Projectile reaches ground',
-      }
-    }
-
-    // From pendulum to projectile: detect max angle
-    if (fromStage.type === 'pendulum' && toStage.type === 'projectile') {
-      return {
-        type: 'velocity',
-        threshold: 1,
-        description: 'Pendulum reaches launch point with velocity',
-      }
-    }
-
-    // Default: time-based after 2 seconds
-    return {
-      type: 'time',
-      value: 2,
-      description: 'Time-based transition',
-    }
-  }
-
-  /**
-   * Get pipeline state info
-   */
   getPipelineInfo() {
-    if (!this.pipeline) {
-      return null
-    }
-
+    if (!this.pipeline) return null
     return {
       isMultiConcept: this.isMultiConcept,
       stageCount: this.stages.length,
-      stages: this.stages.map((s, idx) => ({
-        index: idx,
-        type: s.type,
-        variables: s.variables,
+      stages: this.stages.map((stage, index) => ({
+        index,
+        type: stage.type,
+        variables: stage.variables,
+        units: stage.units,
       })),
       transitions: this.transitions,
-      currentState: this.pipeline.getState(),
+      currentState: this.pipeline.getCurrentState(),
     }
   }
 
-  /**
-   * Format for UI display
-   */
   getStageDisplayName(stageType) {
-    const displayNames = {
-      inclined_plane: 'Inclined Plane',
-      projectile: 'Projectile Motion',
-      pendulum: 'Pendulum',
-      spring_mass: 'Spring-Mass System',
-      collisions: 'Collision',
-      circular_motion: 'Circular Motion',
-      wave_motion: 'Wave Motion',
-      rotational_mechanics: 'Rotational Mechanics',
-      orbital: 'Orbital Motion',
-      buoyancy: 'Buoyancy',
-    }
-    return displayNames[stageType] || stageType
+    return STAGE_DISPLAY_NAMES[stageType] || stageType
   }
 }
 
-/**
- * Multi-Concept Problem Executor
- */
 export class MultiConceptExecutor {
   constructor(pipeline) {
     this.pipeline = pipeline
     this.animationFrameId = null
-    this.lastFrameTime = performance.now()
+    this.running = false
+    this.lastFrameTime = 0
     this.frameStats = {
       fps: 0,
-      frameTime: 0,
+      frameTimeMs: 0,
     }
   }
 
-  /**
-   * Start execution
-   */
   start() {
+    if (!this.pipeline) return this
     this.pipeline.start()
+    this.running = true
     this.lastFrameTime = performance.now()
     this._animate()
     return this
   }
 
-  /**
-   * Stop execution
-   */
   stop() {
-    this.pipeline.stop()
+    this.running = false
+    this.pipeline?.stop()
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId)
       this.animationFrameId = null
@@ -234,93 +243,68 @@ export class MultiConceptExecutor {
     return this
   }
 
-  /**
-   * Pause execution
-   */
   pause() {
-    this.pipeline.pause()
+    this.pipeline?.pause()
     return this
   }
 
-  /**
-   * Resume execution
-   */
   resume() {
-    this.pipeline.resume()
+    this.pipeline?.resume()
+    if (!this.running) {
+      this.running = true
+      this.lastFrameTime = performance.now()
+      this._animate()
+    }
     return this
   }
 
-  /**
-   * Reset execution
-   */
   reset() {
     this.stop()
-    this.pipeline.reset()
+    this.pipeline?.reset()
     return this
   }
 
-  /**
-   * Animation loop
-   */
   _animate = () => {
+    if (!this.running || !this.pipeline) return
+
     const now = performance.now()
-    const deltaTime = Math.min((now - this.lastFrameTime) / 1000, 0.016) // Cap at 16ms
+    const dt = Math.min((now - this.lastFrameTime) / 1000, 0.05)
     this.lastFrameTime = now
 
-    // Update frame stats
-    this.frameStats.frameTime = (now - this.lastFrameTime) * 1000
-    this.frameStats.fps = this.frameStats.frameTime > 0 ? 1000 / this.frameStats.frameTime : 0
+    const frameMs = dt * 1000
+    this.frameStats.frameTimeMs = frameMs
+    this.frameStats.fps = frameMs > 0 ? 1000 / frameMs : 0
 
-    // Update pipeline
-    this.pipeline.update(deltaTime)
+    if (!this.pipeline.isPaused) {
+      this.pipeline.update(dt)
+    }
 
-    // Continue animation if still running
-    if (this.pipeline.isRunning) {
+    if (!this.pipeline.isComplete() && this.pipeline.isRunning) {
       this.animationFrameId = requestAnimationFrame(this._animate)
+    } else {
+      this.running = false
+      this.animationFrameId = null
     }
   }
 
-  /**
-   * Get current execution state
-   */
   getState() {
     return {
-      pipelineState: this.pipeline.getState(),
+      pipelineState: this.pipeline?.getCurrentState() || null,
       frameStats: this.frameStats,
     }
   }
 
-  /**
-   * Get history data for graphing
-   */
   getHistory() {
-    const history = this.pipeline.getHistory()
-    const stageData = {}
-
-    history.forEach((entry) => {
-      const stageType = this.pipeline.stages[entry.stageIndex].type
-      if (!stageData[stageType]) {
-        stageData[stageType] = []
-      }
-      stageData[stageType].push(entry.state)
-    })
-
-    return stageData
+    return this.pipeline?.getHistory() || []
   }
 
-  /**
-   * Jump to specific stage
-   */
   jumpToStage(stageIndex) {
-    this.pipeline.jumpToStage(stageIndex)
+    this.pipeline?.jumpToStage(stageIndex)
     return this
   }
 
-  /**
-   * Get progress (0-1)
-   */
   getProgress() {
-    return this.pipeline.getProgress()
+    return this.pipeline?.getProgress() || 0
   }
 }
 

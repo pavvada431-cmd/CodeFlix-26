@@ -4,8 +4,10 @@ const ALLOWED_DOMAINS = new Set(['physics', 'chemistry'])
 const ALLOWED_TYPES = new Set([
   'inclined_plane',
   'projectile',
+  'free_fall',
   'pendulum',
   'spring_mass',
+  'spring_launch',
   'circular_motion',
   'collisions',
   'wave_motion',
@@ -27,8 +29,10 @@ const DOMAIN_TYPES = {
   physics: new Set([
     'inclined_plane',
     'projectile',
+    'free_fall',
     'pendulum',
     'spring_mass',
+    'spring_launch',
     'circular_motion',
     'collisions',
     'wave_motion',

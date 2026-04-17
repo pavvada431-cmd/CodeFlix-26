@@ -63,6 +63,7 @@ function SimulationControls({ isPlaying, onPlayPause, onReset, speed, onSpeedCha
 
 function SimulationHelpTooltip({ type }) {
   const helpTexts = {
+    multi_concept: '🧩 This problem has sequential stages. Watch the top pipeline tabs and progress bar as each concept transitions to the next.',
     projectile: '🎯 Watch the ball fly through the air! Try changing the launch angle and velocity to see how they affect the trajectory.',
     pendulum: '⏱️ The pendulum swings back and forth. Try different lengths and starting angles!',
     collisions: '💥 Watch the balls collide! Elastic bounces conserve energy, inelastic ones lose some.',
@@ -195,6 +196,7 @@ export default function SimulationCard({ simulation, particleMultiplier }) {
 
   const getSimulationTitle = (type) => {
     const titles = {
+      multi_concept: '🧩 Multi-Concept Pipeline',
       projectile: '🎯 Projectile Motion',
       pendulum: '⏱️ Simple Pendulum',
       collisions: '💥 Collision Simulation',

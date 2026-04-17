@@ -27,9 +27,12 @@ export default function useSimulation() {
         ? await parseProblem(problemInput, provider)
         : problemInput
 
+      const isMultiConcept = result?.isMultiConcept === true && Array.isArray(result?.stages) && result.stages.length > 0
+      const nextVariables = result?.variables || (isMultiConcept ? result.stages[0]?.variables : {}) || {}
+
       setParsedData(result)
-      setCurrentVariables(result.variables || {})
-      setActiveSimulation(result.type)
+      setCurrentVariables(nextVariables)
+      setActiveSimulation(isMultiConcept ? 'multi_concept' : result.type)
       setDataStream([])
       simulationKeyRef.current += 1
       setIsPlaying(false)
@@ -45,6 +48,47 @@ export default function useSimulation() {
   }, [])
 
   const updateVariable = useCallback((key, value) => {
+    const stageMatch = /^stage:(\d+):(.+)$/.exec(String(key))
+    if (stageMatch) {
+      const stageIndex = Number(stageMatch[1])
+      const stageKey = stageMatch[2]
+
+      setParsedData((prev) => {
+        if (!prev?.isMultiConcept || !Array.isArray(prev?.stages)) return prev
+        const nextStages = prev.stages.map((stage, idx) => {
+          if (idx !== stageIndex) return stage
+          return {
+            ...stage,
+            variables: {
+              ...(stage.variables || {}),
+              [stageKey]: value,
+            },
+          }
+        })
+
+        return {
+          ...prev,
+          stages: nextStages,
+          variables: stageIndex === 0
+            ? {
+              ...(prev.variables || {}),
+              [stageKey]: value,
+            }
+            : prev.variables,
+        }
+      })
+
+      if (stageIndex === 0) {
+        setCurrentVariables(prev => ({
+          ...prev,
+          [stageKey]: value,
+        }))
+      }
+
+      simulationKeyRef.current += 1
+      return
+    }
+
     setCurrentVariables(prev => ({
       ...prev,
       [key]: value,
@@ -127,6 +171,7 @@ export default function useSimulation() {
 }
 
 export const SUPPORTED_SIMULATION_TYPES = [
+  'multi_concept',
   'inclined_plane',
   'projectile',
   'pendulum',
@@ -152,6 +197,7 @@ export const SUPPORTED_SIMULATION_TYPES = [
 ]
 
 export const SIMULATION_DISPLAY_NAMES = {
+  multi_concept: 'Multi-Concept Pipeline',
   inclined_plane: 'Inclined Plane',
   projectile: 'Projectile Motion',
   pendulum: 'Simple Pendulum',
@@ -179,6 +225,7 @@ export const SIMULATION_DISPLAY_NAMES = {
 }
 
 export const SIMULATION_ICONS = {
+  multi_concept: '🧩',
   inclined_plane: '📐',
   projectile: '🎯',
   pendulum: '⏱️',
@@ -204,6 +251,7 @@ export const SIMULATION_ICONS = {
 }
 
 export const SIMULATION_CATEGORIES = {
+  'Multi-Concept': ['multi_concept'],
   'Mechanics': ['inclined_plane', 'projectile', 'pendulum', 'circular_motion', 'collisions', 'rotational_mechanics'],
   'Energy & Springs': ['spring_mass', 'orbital'],
   'Waves': ['wave_motion'],
@@ -215,6 +263,7 @@ export const SIMULATION_CATEGORIES = {
 }
 
 export const SIMULATION_COLORS = {
+  multi_concept: '#60a5fa',
   inclined_plane: '#00f5ff',
   projectile: '#ff8800',
   pendulum: '#88ff88',

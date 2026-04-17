@@ -15,6 +15,11 @@ const VARIABLE_SCHEMAS = {
     optional: ['height', 'gravity'],
     units: { velocity: 'm/s', angle: 'degrees', height: 'm', gravity: 'm/s²' },
   },
+  free_fall: {
+    required: ['height'],
+    optional: ['initialVelocityY', 'initialVelocityX', 'gravity'],
+    units: { height: 'm', initialVelocityY: 'm/s', initialVelocityX: 'm/s', gravity: 'm/s²' },
+  },
   pendulum: {
     required: ['length'],
     optional: ['mass', 'angle', 'gravity', 'damping'],
@@ -24,6 +29,11 @@ const VARIABLE_SCHEMAS = {
     required: ['k', 'mass'],
     optional: ['displacement', 'damping'],
     units: { k: 'N/m', mass: 'kg', displacement: 'm', damping: 'coefficient' },
+  },
+  spring_launch: {
+    required: ['k', 'mass'],
+    optional: ['compression', 'damping', 'launchAngle'],
+    units: { k: 'N/m', mass: 'kg', compression: 'm', damping: 'coefficient', launchAngle: 'degrees' },
   },
   circular_motion: {
     required: ['radius'],
@@ -134,42 +144,35 @@ const VARIABLE_SCHEMAS = {
   },
 }
 
-const MULTI_CONCEPT_PROMPT = `IMPORTANT: This problem may involve MULTIPLE physics concepts happening sequentially.
-
-If the problem involves multiple stages or transitions (e.g., "slides down then becomes projectile"), return:
+const MULTI_CONCEPT_PROMPT = `IMPORTANT: If a problem involves multiple physics concepts in sequence
+(for example: "slides down ramp then flies off"), return this structure:
 {
-  domain: 'physics',
-  isMultiConcept: true,
-  stages: [
-    {
-      type: string,
-      variables: { [key: string]: number | string },
-      units: { [key: string]: string }
-    }
+  "isMultiConcept": true,
+  "stages": [
+    { "type": "inclined_plane", "variables": { ... } },
+    { "type": "projectile", "variables": { ... } }
   ],
-  transitions: [
-    {
-      from: number,
-      to: number,
-      condition: "position_threshold" | "velocity_change" | "time_based",
-      conditionValue: number
-    }
-  ],
-  formula: string,
-  steps: string[],
-  answer: { value: number, unit: string, explanation: string }
+  "transitions": [
+    { "from": 0, "to": 1, "condition": "position_threshold", "value": 0 }
+  ]
 }
 
-If the problem is SINGLE concept only, return:
+For multi-concept responses, also include:
+- "domain": "physics"
+- "formula": string
+- "steps": string[]
+- "answer": { "value": number, "unit": string, "explanation": string }
+
+If the problem is single-concept, return:
 {
-  domain: 'physics' | 'chemistry',
-  isMultiConcept: false,
-  type: string,
-  variables: { [key: string]: number | string },
-  units: { [key: string]: string },
-  formula: string,
-  steps: string[],
-  answer: { value: number, unit: string, explanation: string }
+  "domain": "physics" | "chemistry",
+  "isMultiConcept": false,
+  "type": string,
+  "variables": { ... },
+  "units": { ... },
+  "formula": string,
+  "steps": string[],
+  "answer": { "value": number, "unit": string, "explanation": string }
 }`
 
 const BASE_SYSTEM_PROMPT = `You are a friendly science problem parser for students! Your job is to understand ANY problem description and turn it into structured data for a simulation.
@@ -269,6 +272,46 @@ function parseModelJson(rawText) {
   }
 }
 
+function normalizeMultiConceptShape(problem) {
+  if (!problem || typeof problem !== 'object') return problem
+  if (problem.isMultiConcept !== true || !Array.isArray(problem.stages)) return problem
+
+  const normalizedStages = problem.stages
+    .filter(stage => stage && typeof stage === 'object' && typeof stage.type === 'string')
+    .map(stage => ({
+      ...stage,
+      variables: stage.variables && typeof stage.variables === 'object' ? stage.variables : {},
+      units: stage.units && typeof stage.units === 'object' ? stage.units : {},
+    }))
+
+  const normalizedTransitions = Array.isArray(problem.transitions)
+    ? problem.transitions
+      .filter(transition => transition && typeof transition === 'object')
+      .map((transition, index) => ({
+        from: Number.isFinite(transition.from) ? transition.from : index,
+        to: Number.isFinite(transition.to) ? transition.to : index + 1,
+        condition: transition.condition || transition.type || 'stage_complete',
+        value: transition.value ?? transition.conditionValue ?? 0,
+      }))
+    : []
+
+  const firstStage = normalizedStages[0] || { type: 'multi_concept', variables: {}, units: {} }
+  return {
+    ...problem,
+    domain: problem.domain || 'physics',
+    type: problem.type || firstStage.type || 'multi_concept',
+    variables: problem.variables && typeof problem.variables === 'object' ? problem.variables : firstStage.variables,
+    units: problem.units && typeof problem.units === 'object' ? problem.units : firstStage.units,
+    stages: normalizedStages,
+    transitions: normalizedTransitions,
+    formula: typeof problem.formula === 'string' ? problem.formula : '',
+    steps: Array.isArray(problem.steps) ? problem.steps : [],
+    answer: problem.answer && typeof problem.answer === 'object'
+      ? problem.answer
+      : { value: 0, unit: '', explanation: 'Multi-stage pipeline generated.' },
+  }
+}
+
 async function requestProblemParse(problemText, systemPrompt, provider) {
   const requestPayload = {
     provider,
@@ -349,7 +392,7 @@ async function parseWithRetry(problemText, systemPrompt, provider, maxRetries = 
 
   try {
     const rawResponse = await requestProblemParse(problemText, systemPrompt, provider)
-    const parsedProblem = parseModelJson(rawResponse)
+    const parsedProblem = normalizeMultiConceptShape(parseModelJson(rawResponse))
     console.log('Parser parsed JSON output:', parsedProblem)
     return assertValidParsedProblem(parsedProblem)
   } catch (error) {
@@ -364,7 +407,7 @@ async function parseWithRetry(problemText, systemPrompt, provider, maxRetries = 
 
     try {
       const rawResponse = await requestProblemParse(problemText, retryPrompt, provider)
-      const parsedProblem = parseModelJson(rawResponse)
+      const parsedProblem = normalizeMultiConceptShape(parseModelJson(rawResponse))
       console.log('Parser parsed JSON output:', parsedProblem)
       return assertValidParsedProblem(parsedProblem)
     } catch (error) {
