@@ -533,20 +533,10 @@ function ComparatorPanel({ mass, radius, appliedForce }) {
       <div className="flex justify-around">
         {shapes.map((shape, i) => (
           <div key={shape} className="flex flex-col items-center">
-            <div className="relative h-24 w-24">
-              <Canvas camera={{ position: [0, 0, 3], fov: 50 }} style={{ width: '100%', height: '100%' }}>
-                <ambientLight intensity={0.5} />
-                <group position={positions[i]}>
-                  <ComparatorShape
-                    objectType={shape}
-                    mass={mass}
-                    radius={0.5}
-                    angularAccel={angularAccels[i]}
-                    time={time}
-                    color={colors[i]}
-                  />
-                </group>
-              </Canvas>
+            <div className="relative h-24 w-24 rounded-lg border border-[rgba(0,245,255,0.2)] bg-[rgba(0,245,255,0.05)] flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-2xl">●</div>
+              </div>
             </div>
             <p className="mt-1 font-mono-display text-xs text-white">{shape}</p>
             <p className="font-mono text-[10px] text-slate-400">I={momentOfInertias[i].toFixed(2)}</p>
