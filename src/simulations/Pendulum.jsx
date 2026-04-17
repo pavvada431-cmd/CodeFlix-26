@@ -1,10 +1,109 @@
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
+import { Environment, Grid, Text, Html, Line } from '@react-three/drei';
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import Matter from 'matter-js';
 
 const GRAVITY = -9.81;
 const SCALE = 0.1;
+
+function FrostedLabel({ children, position, color = '#00f5ff', scale = [1, 0.3, 1] }) {
+  return (
+    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
+      <div
+        style={{
+          background: 'rgba(10, 15, 30, 0.85)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid ${color}40`,
+          borderRadius: '8px',
+          padding: '8px 16px',
+          color: color,
+          fontFamily: 'monospace',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          whiteSpace: 'nowrap',
+          boxShadow: `0 4px 20px ${color}20`,
+        }}
+      >
+        {children}
+      </div>
+    </Html>
+  );
+}
+
+function GlowTrail({ points, color = '#00ffff', opacity = 0.8 }) {
+  const lineRef = useRef();
+
+  const geometry = useMemo(() => {
+    if (points.length < 2) return null;
+    const positions = new Float32Array(points.length * 3);
+    points.forEach((p, i) => {
+      positions[i * 3] = p.x;
+      positions[i * 3 + 1] = p.y;
+      positions[i * 3 + 2] = p.z;
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    return geo;
+  }, [points]);
+
+  if (!geometry || points.length < 2) return null;
+
+  return (
+    <line ref={lineRef} geometry={geometry}>
+      <lineBasicMaterial
+        color={color}
+        transparent
+        opacity={opacity}
+        linewidth={2}
+      />
+    </line>
+  );
+}
+
+function ForceArrow({ position, direction, length, color, label }) {
+  const geometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    const hw = 0.05;
+    shape.moveTo(0, length);
+    shape.lineTo(-hw, length - 0.15);
+    shape.lineTo(-hw * 0.4, length - 0.15);
+    shape.lineTo(-hw * 0.4, 0);
+    shape.lineTo(hw * 0.4, 0);
+    shape.lineTo(hw * 0.4, length - 0.15);
+    shape.lineTo(hw, length - 0.15);
+    shape.closePath();
+    return new THREE.ExtrudeGeometry(shape, { depth: 0.03, bevelEnabled: false });
+  }, [length]);
+
+  const rotation = useMemo(() => {
+    const angle = Math.atan2(direction[0], -direction[1]);
+    return [0, 0, -angle];
+  }, [direction]);
+
+  if (length < 0.1) return null;
+
+  return (
+    <group position={position}>
+      <mesh geometry={geometry} rotation={rotation} position={[0, 0, 0.1]}>
+        <meshPhysicalMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={0.3}
+          transparent
+          opacity={0.9}
+        />
+      </mesh>
+      {label && (
+        <FrostedLabel position={[direction[0] * 0.8, direction[1] * 0.8, 0.3]} color={color}>
+          {label}
+        </FrostedLabel>
+      )}
+    </group>
+  );
+}
 
 function PendulumScene({
   length,
@@ -17,12 +116,10 @@ function PendulumScene({
   const pivotRef = useRef();
   const rodRef = useRef();
   const bobRef = useRef();
-  const traceRef = useRef();
   const engineRef = useRef();
-  const constraintRef = useRef();
   const bobBodyRef = useRef();
-  const forceArrowTangent = useRef();
-  const forceArrowCentripetal = useRef();
+  const forceArrowTangentRef = useRef();
+  const forceArrowCentripetalRef = useRef();
 
   const [tracePoints, setTracePoints] = useState([]);
   const [amplitude, setAmplitude] = useState(Math.abs(initialAngle));
@@ -61,7 +158,6 @@ function PendulumScene({
       stiffness: 1,
       damping: damping * 0.01,
     });
-    constraintRef.current = constraint;
 
     Matter.Composite.add(engine.world, [bob, constraint]);
 
@@ -102,7 +198,8 @@ function PendulumScene({
 
     if (!isPlaying) return;
 
-    Matter.Engine.update(engineRef.current, delta * 1000);
+    const clampedDelta = Math.min(delta, 0.05);
+    Matter.Engine.update(engineRef.current, clampedDelta * 1000);
 
     const body = bobBodyRef.current;
     const pos = body.position;
@@ -145,7 +242,7 @@ function PendulumScene({
       pivotRef.current.position.set(0, pivotY, 0);
     }
 
-    if (traceRef.current && tracePoints.length < 300) {
+    if (tracePoints.length < 300) {
       setTracePoints(prev => [...prev, new THREE.Vector3(pos.x, pos.y, 0)]);
     }
 
@@ -159,39 +256,33 @@ function PendulumScene({
       });
     }
 
-    if (forceArrowTangent.current) {
+    if (forceArrowTangentRef.current) {
       const tangentScale = Math.abs(tangentForce) * 0.01 * SCALE;
       const tangentDir = tangentForce > 0 ? 1 : -1;
-      forceArrowTangent.current.position.set(
+      forceArrowTangentRef.current.position.set(
         pos.x + tangentDir * 0.3 * SCALE,
         pos.y - 0.3 * SCALE,
         0.2
       );
-      forceArrowTangent.current.scale.set(tangentScale, 0.1, 0.1);
+      forceArrowTangentRef.current.scale.set(tangentScale, 0.1, 0.1);
     }
 
-    if (forceArrowCentripetal.current) {
+    if (forceArrowCentripetalRef.current) {
       const centripetalScale = centripetalForce * 0.01 * SCALE;
       const toPivot = { x: -dx, y: -dy };
       const mag = Math.sqrt(toPivot.x * toPivot.x + toPivot.y * toPivot.y);
       if (mag > 0) {
-        forceArrowCentripetal.current.position.set(
+        forceArrowCentripetalRef.current.position.set(
           pos.x + (toPivot.x / mag) * 0.3 * SCALE,
           pos.y + (toPivot.y / mag) * 0.3 * SCALE,
           0.2
         );
         const arrowAngle = Math.atan2(toPivot.y, toPivot.x);
-        forceArrowCentripetal.current.rotation.z = arrowAngle;
-        forceArrowCentripetal.current.scale.set(centripetalScale, 0.1, 0.1);
+        forceArrowCentripetalRef.current.rotation.z = arrowAngle;
+        forceArrowCentripetalRef.current.scale.set(centripetalScale, 0.1, 0.1);
       }
     }
   });
-
-  const traceGeometry = useMemo(() => {
-    if (tracePoints.length < 2) return null;
-    const geometry = new THREE.BufferGeometry().setFromPoints(tracePoints);
-    return geometry;
-  }, [tracePoints]);
 
   const traceOpacity = useMemo(() => {
     if (damping === 0) return 0.4;
@@ -203,46 +294,76 @@ function PendulumScene({
 
   return (
     <>
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[5, 10, 5]} intensity={0.8} />
+      <fog attach="fog" args={['#0a0a1a', 15, 40]} />
+
+      <ambientLight intensity={0.3} color="#8888aa" />
+
+      <directionalLight
+        position={[10, 20, 5]}
+        intensity={1.5}
+        color="#ffffff"
+        castShadow
+      />
+
+      <pointLight position={[-5, 8, 3]} intensity={0.8} color="#4466aa" />
+      <pointLight position={[5, 3, -3]} intensity={0.5} color="#aa6644" />
 
       <mesh ref={pivotRef} position={[0, length * SCALE, 0]}>
-        <sphereGeometry args={[0.15 * SCALE, 16, 16]} />
-        <meshStandardMaterial color="#666666" metalness={0.8} roughness={0.2} />
+        <sphereGeometry args={[0.15 * SCALE, 32, 32]} />
+        <meshPhysicalMaterial
+          color="#667788"
+          metalness={0.9}
+          roughness={0.1}
+          clearcoat={1}
+          clearcoatRoughness={0.1}
+        />
       </mesh>
 
       <mesh ref={rodRef}>
-        <cylinderGeometry args={[0.03 * SCALE, 0.03 * SCALE, 2, 8]} />
-        <meshStandardMaterial color="#888888" metalness={0.6} roughness={0.3} />
+        <cylinderGeometry args={[0.04 * SCALE, 0.04 * SCALE, 2, 16]} />
+        <meshPhysicalMaterial
+          color="#99aabb"
+          metalness={0.8}
+          roughness={0.2}
+          clearcoat={0.8}
+        />
       </mesh>
 
-      <mesh ref={bobRef} position={[0, 0, 0]}>
-        <sphereGeometry args={[mass * 0.15 * SCALE, 32, 32]} />
-        <meshStandardMaterial color="#e74c3c" metalness={0.3} roughness={0.4} />
-      </mesh>
+      <group>
+        <mesh ref={bobRef} position={[0, 0, 0]}>
+          <sphereGeometry args={[mass * 0.15 * SCALE, 32, 32]} />
+          <meshPhysicalMaterial
+            color="#ff5555"
+            metalness={0.4}
+            roughness={0.2}
+            clearcoat={1}
+            clearcoatRoughness={0.1}
+            emissive="#ff3333"
+            emissiveIntensity={isPlaying ? 0.2 : 0.05}
+          />
+        </mesh>
+        <pointLight
+          position={[0, 0, 0]}
+          color="#ff4444"
+          intensity={0.5}
+          distance={1}
+        />
+      </group>
 
       {showForces && isPlaying && (
         <>
-          <mesh ref={forceArrowTangent} position={[0, 0, 0.2]}>
+          <mesh ref={forceArrowTangentRef} position={[0, 0, 0.2]}>
             <boxGeometry args={[1, 0.1, 0.1]} />
             <meshBasicMaterial color="#ffaa00" transparent opacity={0.8} />
           </mesh>
-          <mesh ref={forceArrowCentripetal} position={[0, 0, 0.2]}>
+          <mesh ref={forceArrowCentripetalRef} position={[0, 0, 0.2]}>
             <boxGeometry args={[1, 0.1, 0.1]} />
             <meshBasicMaterial color="#00ff88" transparent opacity={0.8} />
           </mesh>
         </>
       )}
 
-      {traceGeometry && (
-        <line ref={traceRef} geometry={traceGeometry}>
-          <lineBasicMaterial
-            color="#00ffff"
-            transparent
-            opacity={traceOpacity}
-          />
-        </line>
-      )}
+      <GlowTrail points={tracePoints} color="#00ffff" opacity={traceOpacity} />
 
       <group position={[0, length * SCALE, 0]}>
         <mesh
@@ -253,10 +374,12 @@ function PendulumScene({
           ]}
         >
           <sphereGeometry args={[mass * 0.15 * SCALE, 16, 16]} />
-          <meshStandardMaterial
-            color="#e74c3c"
+          <meshPhysicalMaterial
+            color="#ff5555"
             transparent
-            opacity={0.2}
+            opacity={0.15}
+            metalness={0.4}
+            roughness={0.3}
           />
         </mesh>
         <mesh
@@ -267,113 +390,77 @@ function PendulumScene({
           ]}
         >
           <sphereGeometry args={[mass * 0.15 * SCALE, 16, 16]} />
-          <meshStandardMaterial
-            color="#e74c3c"
+          <meshPhysicalMaterial
+            color="#ff5555"
             transparent
-            opacity={0.2}
+            opacity={0.15}
+            metalness={0.4}
+            roughness={0.3}
           />
         </mesh>
       </group>
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.001, 0]}>
-        <planeGeometry args={[10, 10]} />
-        <meshStandardMaterial color="#1a1a2e" />
+        <planeGeometry args={[20, 20]} />
+        <meshPhysicalMaterial
+          color="#1a1a2e"
+          metalness={0.2}
+          roughness={0.8}
+          clearcoat={0.3}
+        />
       </mesh>
+
+      <Grid
+        position={[0, 0.001, 0]}
+        args={[20, 20]}
+        cellSize={0.5}
+        cellThickness={0.5}
+        cellColor="#2a3a4a"
+        sectionSize={2}
+        sectionThickness={1}
+        sectionColor="#3a5a7a"
+        fadeDistance={20}
+        fadeStrength={1}
+        followCamera={false}
+        infiniteGrid
+      />
+
+      <EffectComposer>
+        <Bloom
+          intensity={0.4}
+          luminanceThreshold={0.6}
+          luminanceSmoothing={0.9}
+          mipmapBlur
+        />
+        <Vignette offset={0.3} darkness={0.6} />
+      </EffectComposer>
     </>
   );
 }
 
 function PendulumLabels({ length, currentAngle, currentVelocity, calculatedPeriod, damping }) {
-  const angleTexture = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.roundRect(0, 0, 256, 64, 8);
-    ctx.fill();
-    ctx.fillStyle = '#00f5ff';
-    ctx.font = 'bold 28px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`θ: ${currentAngle.toFixed(1)}°`, 128, 42);
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.needsUpdate = true;
-    return tex;
-  }, [currentAngle]);
-
-  const velocityTexture = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.roundRect(0, 0, 256, 64, 8);
-    ctx.fill();
-    ctx.fillStyle = '#ff8844';
-    ctx.font = 'bold 28px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`ω: ${currentVelocity.toFixed(2)} rad/s`, 128, 42);
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.needsUpdate = true;
-    return tex;
-  }, [currentVelocity]);
-
-  const periodTexture = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 384;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.roundRect(0, 0, 384, 64, 8);
-    ctx.fill();
-    ctx.fillStyle = '#00ff88';
-    ctx.font = 'bold 24px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`T = 2π√(L/g) = ${calculatedPeriod.toFixed(3)}s`, 192, 38);
-    ctx.font = '16px Arial';
-    ctx.fillStyle = '#888888';
-    ctx.fillText(`L = ${length}m`, 80, 58);
-    ctx.fillText(`g = 9.81 m/s²`, 300, 58);
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.needsUpdate = true;
-    return tex;
-  }, [calculatedPeriod, length]);
-
-  const dampingTexture = useMemo(() => {
-    if (damping === 0) return null;
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(255, 100, 100, 0.8)';
-    ctx.roundRect(0, 0, 256, 64, 8);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 24px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`Damping: ${damping.toFixed(1)}`, 128, 40);
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.needsUpdate = true;
-    return tex;
-  }, [damping]);
-
   return (
     <>
-      <sprite scale={[2, 0.5, 1]} position={[-3, 6, 0]}>
-        <spriteMaterial map={angleTexture} transparent />
-      </sprite>
-      <sprite scale={[2, 0.5, 1]} position={[-3, 5.2, 0]}>
-        <spriteMaterial map={velocityTexture} transparent />
-      </sprite>
-      <sprite scale={[3, 0.5, 1]} position={[0, 7.5, 0]}>
-        <spriteMaterial map={periodTexture} transparent />
-      </sprite>
-      {dampingTexture && (
-        <sprite scale={[2, 0.5, 1]} position={[3, 6, 0]}>
-          <spriteMaterial map={dampingTexture} transparent />
-        </sprite>
-      )}
+      <FrostedLabel position={[-3, 6, 0]} color="#00f5ff">
+        θ: {currentAngle.toFixed(1)}°
+      </FrostedLabel>
+      <FrostedLabel position={[-3, 5.2, 0]} color="#ff8844">
+        ω: {currentVelocity.toFixed(2)} rad/s
+      </FrostedLabel>
+      <FrostedLabel position={[0, 7.5, 0]} color="#00ff88">
+        T = 2π√(L/g) = {calculatedPeriod.toFixed(3)}s
+      </FrostedLabel>
+      {dampingTexture && dampingTexture}
     </>
+  );
+}
+
+function dampingTexture(damping) {
+  if (damping === 0) return null;
+  return (
+    <FrostedLabel position={[3, 6, 0]} color="#ff6666">
+      Damping: {damping.toFixed(1)}
+    </FrostedLabel>
   );
 }
 
@@ -385,11 +472,27 @@ export default function Pendulum({
   isPlaying = false,
   onDataPoint,
 }) {
+  const calculatedPeriod = useMemo(() => {
+    return 2 * Math.PI * Math.sqrt(Math.abs(length) / Math.abs(GRAVITY));
+  }, [length]);
+
+  const [currentAngle, setCurrentAngle] = useState(initialAngle);
+  const [currentVelocity, setCurrentVelocity] = useState(0);
+
+  const handleDataPoint = (data) => {
+    setCurrentAngle(data.angle);
+    setCurrentVelocity(data.velocity);
+
+    if (onDataPoint) {
+      onDataPoint(data);
+    }
+  };
+
   return (
     <Canvas
-      camera={{ position: [2, 3, 8], fov: 60 }}
+      camera={{ position: [2, 3, 10], fov: 50 }}
       shadows
-      style={{ width: '100%', height: '100%', background: '#0a0a0f' }}
+      style={{ width: '100%', height: '100%', background: '#0a0a1a' }}
       onCreated={(state) => {
         if (!state.gl?.getContext) return;
         try {
@@ -414,49 +517,22 @@ export default function Pendulum({
         failIfMajorPerformanceCaveat: false,
       }}
     >
-      <SimulationSceneWithLabels
+      <PendulumScene
         length={length}
         mass={mass}
         initialAngle={initialAngle}
         damping={damping}
         isPlaying={isPlaying}
-        onDataPoint={onDataPoint}
-      />
-    </Canvas>
-  );
-}
-
-function SimulationSceneWithLabels(props) {
-  const [currentAngle, setCurrentAngle] = useState(props.initialAngle);
-  const [currentVelocity, setCurrentVelocity] = useState(0);
-
-  const calculatedPeriod = useMemo(() => {
-    return 2 * Math.PI * Math.sqrt(Math.abs(props.length) / Math.abs(GRAVITY));
-  }, [props.length]);
-
-  const handleDataPoint = (data) => {
-    setCurrentAngle(data.angle);
-    setCurrentVelocity(data.velocity);
-
-    if (props.onDataPoint) {
-      props.onDataPoint(data);
-    }
-  };
-
-  return (
-    <>
-      <PendulumScene
-        {...props}
         onDataPoint={handleDataPoint}
       />
       <PendulumLabels
-        length={props.length}
+        length={length}
         currentAngle={currentAngle}
         currentVelocity={currentVelocity}
         calculatedPeriod={calculatedPeriod}
-        damping={props.damping}
+        damping={damping}
       />
-    </>
+    </Canvas>
   );
 }
 

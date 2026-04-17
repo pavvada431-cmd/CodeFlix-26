@@ -1,5 +1,8 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
 import { Canvas } from '@react-three/fiber'
+import { Html, Environment, Grid, Line } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
+import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 
 const G = 9.81
@@ -23,21 +26,28 @@ function createArrowGeometry(length, headLength = 0.15, headWidth = 0.08) {
   return new THREE.ExtrudeGeometry(shape, extrudeSettings)
 }
 
-function createLabelTexture(text, color = '#ffffff') {
-  const canvas = document.createElement('canvas')
-  canvas.width = 256
-  canvas.height = 64
-  const ctx = canvas.getContext('2d')
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-  ctx.roundRect(0, 0, 256, 64, 8)
-  ctx.fill()
-  ctx.fillStyle = color
-  ctx.font = 'bold 28px Arial'
-  ctx.textAlign = 'center'
-  ctx.fillText(text, 128, 42)
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.needsUpdate = true
-  return texture
+function FrostedLabel({ text, color, position }) {
+  return (
+    <Html position={position} center style={{ pointerEvents: 'none' }}>
+      <div
+        style={{
+          background: 'rgba(10, 15, 30, 0.75)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1px solid ${color}40`,
+          borderRadius: '8px',
+          padding: '6px 12px',
+          fontFamily: 'JetBrains Mono, monospace',
+          fontSize: '11px',
+          color: color,
+          whiteSpace: 'nowrap',
+          boxShadow: `0 0 20px ${color}20`,
+        }}
+      >
+        {text}
+      </div>
+    </Html>
+  )
 }
 
 function CircularTrack({ radius }) {
@@ -45,11 +55,22 @@ function CircularTrack({ radius }) {
     <group rotation={[-Math.PI / 2, 0, 0]}>
       <mesh position={[0, 0, 0]}>
         <torusGeometry args={[radius * SCALE, TRACK_INNER_RADIUS, 16, 100]} />
-        <meshStandardMaterial color="#334455" metalness={0.7} roughness={0.3} />
+        <meshPhysicalMaterial
+          color="#3a4a5a"
+          metalness={0.9}
+          roughness={0.2}
+          clearcoat={0.8}
+          clearcoatRoughness={0.2}
+          envMapIntensity={1.5}
+        />
+      </mesh>
+      <mesh position={[0, 0, 0]}>
+        <torusGeometry args={[radius * SCALE, 0.015, 16, 100]} />
+        <meshBasicMaterial color="#00f5ff" transparent opacity={0.8} />
       </mesh>
       <mesh position={[0, 0, 0]}>
         <ringGeometry args={[radius * SCALE - 0.02, radius * SCALE + 0.02, 64]} />
-        <meshStandardMaterial color="#00f5ff" transparent opacity={0.15} />
+        <meshBasicMaterial color="#00f5ff" transparent opacity={0.08} side={THREE.DoubleSide} />
       </mesh>
     </group>
   )
@@ -59,14 +80,22 @@ function Ball({ position, color = '#00f5ff' }) {
   return (
     <mesh position={position}>
       <sphereGeometry args={[BALL_SIZE, 32, 32]} />
-      <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} emissive={color} emissiveIntensity={0.2} />
+      <meshPhysicalMaterial
+        color={color}
+        metalness={0.8}
+        roughness={0.15}
+        clearcoat={1}
+        clearcoatRoughness={0.1}
+        emissive={color}
+        emissiveIntensity={0.4}
+        envMapIntensity={2}
+      />
     </mesh>
   )
 }
 
 function ForceArrow({ position, direction, length, color, label }) {
   const meshRef = useRef()
-  const [showLabel, setShowLabel] = useState(false)
 
   const geometry = useMemo(() => createArrowGeometry(Math.max(length, 0.05)), [length])
 
@@ -76,45 +105,99 @@ function ForceArrow({ position, direction, length, color, label }) {
     return [0, 0, -angle]
   }, [direction])
 
-  const texture = useMemo(() => createLabelTexture(label, color), [label, color])
+  const labelPosition = useMemo(() => {
+    return [position[0] + direction[0] * (length / 2 + 0.3), position[1] + 0.2, position[2] + direction[1] * (length / 2 + 0.3)]
+  }, [position, direction, length])
 
-  useEffect(() => {
-    setShowLabel(length > 0.05)
-  }, [length])
-
-  if (!showLabel || length < 0.02) return null
+  if (length < 0.02) return null
 
   return (
     <group position={position}>
       <mesh ref={meshRef} geometry={geometry} rotation={rotation} position={[0, length / 2, 0]}>
-        <meshStandardMaterial color={color} transparent opacity={0.9} />
+        <meshPhysicalMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={0.5}
+          transparent
+          opacity={0.9}
+        />
       </mesh>
-      <sprite scale={[0.8, 0.2, 1]} position={[0.4, length / 2 + 0.1, 0]}>
-        <spriteMaterial map={texture} transparent />
-      </sprite>
+      <FrostedLabel text={label} color={color} position={labelPosition} />
     </group>
   )
 }
 
 function BallTrail({ trailPoints }) {
-  const lineRef = useRef()
-
-  useEffect(() => {
-    if (lineRef.current && trailPoints.length > 1) {
-      const positions = []
-      trailPoints.forEach(p => positions.push(p.x, p.y, p.z))
-      const geometry = new THREE.BufferGeometry()
-      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-      lineRef.current.geometry = geometry
-    }
-  }, [trailPoints])
-
   if (trailPoints.length < 2) return null
 
+  const points = trailPoints.map(p => new THREE.Vector3(p.x, p.y, p.z))
+
   return (
-    <line ref={lineRef}>
-      <lineBasicMaterial color="#00ffff" transparent opacity={0.7} />
-    </line>
+    <Line
+      points={points}
+      color="#00ffff"
+      lineWidth={2}
+      transparent
+      opacity={0.6}
+    />
+  )
+}
+
+function Particles({ count = 50, color }) {
+  const mesh = useRef()
+  const particlesRef = useRef(
+    Array.from({ length: count }, () => ({
+      position: new THREE.Vector3(
+        (Math.random() - 0.5) * 8,
+        Math.random() * 4,
+        (Math.random() - 0.5) * 8
+      ),
+      speed: 0.002 + Math.random() * 0.003,
+      offset: Math.random() * Math.PI * 2,
+    }))
+  )
+
+  useFrame(({ clock }) => {
+    if (!mesh.current) return
+    const positions = mesh.current.geometry.attributes.position.array
+    const time = clock.getElapsedTime()
+
+    particlesRef.current.forEach((particle, i) => {
+      const i3 = i * 3
+      positions[i3 + 1] = particle.position.y + Math.sin(time * particle.speed * 100 + particle.offset) * 0.5
+    })
+
+    mesh.current.geometry.attributes.position.needsUpdate = true
+  })
+
+  const positions = useMemo(() => {
+    const pos = new Float32Array(count * 3)
+    particlesRef.current.forEach((p, i) => {
+      pos[i * 3] = p.position.x
+      pos[i * 3 + 1] = p.position.y
+      pos[i * 3 + 2] = p.position.z
+    })
+    return pos
+  }, [count])
+
+  return (
+    <points ref={mesh}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={count}
+          array={positions}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.03}
+        color={color}
+        transparent
+        opacity={0.6}
+        sizeAttenuation
+      />
+    </points>
   )
 }
 
@@ -153,19 +236,19 @@ function GraphPanel({ mode, mass, angularVelocity, radius, dataHistory }) {
       }
 
       if (mode === 'angularVelocity') {
-        const avgOmega = dataHistory.length > 0 
+        const avgOmega = dataHistory.length > 0
           ? dataHistory.reduce((sum, d) => sum + (d.omega || angularVelocity), 0) / dataHistory.length
           : angularVelocity
-        
+
         ctx.fillStyle = '#666'
         ctx.font = '10px monospace'
         ctx.fillText('Angular Velocity vs Time', padding + 5, 18)
-        
+
         ctx.fillStyle = '#00ff88'
         ctx.font = '9px monospace'
         ctx.fillText(`ω = ${avgOmega.toFixed(2)} rad/s`, width / 2 - 30, height / 2)
         ctx.fillText('(Uniform Circular Motion)', width / 2 - 50, height / 2 + 12)
-        
+
         ctx.strokeStyle = '#00ff88'
         ctx.lineWidth = 2
         ctx.beginPath()
@@ -188,7 +271,7 @@ function GraphPanel({ mode, mass, angularVelocity, radius, dataHistory }) {
           ctx.stroke()
           ctx.setLineDash([])
         }
-        
+
         ctx.fillStyle = '#888'
         ctx.fillText('t →', width - padding - 20, height - 8)
         ctx.fillText('ω →', padding + 3, padding - 10)
@@ -198,17 +281,17 @@ function GraphPanel({ mode, mass, angularVelocity, radius, dataHistory }) {
         ctx.fillStyle = '#666'
         ctx.font = '10px monospace'
         ctx.fillText('Centripetal Force vs Radius', padding + 5, 18)
-        
+
         const g = 9.81
         const rValues = []
         const fValues = []
-        
+
         for (let r = 0.5; r <= 5; r += 0.25) {
           rValues.push(r)
           const Fc = mass * angularVelocity * angularVelocity * r
           fValues.push(Fc)
         }
-        
+
         const maxF = Math.max(...fValues)
         const minF = 0
 
@@ -231,12 +314,12 @@ function GraphPanel({ mode, mass, angularVelocity, radius, dataHistory }) {
         const currentFc = mass * angularVelocity * angularVelocity * radius
         const cx = padding + (radius - 0.5) / 4.5 * (width - 2 * padding)
         const cy = height - padding - ((currentFc - minF) / (maxF - minF || 1)) * (height - 2 * padding)
-        
+
         ctx.fillStyle = '#00ffff'
         ctx.beginPath()
         ctx.arc(cx, cy, 5, 0, Math.PI * 2)
         ctx.fill()
-        
+
         ctx.fillStyle = '#888'
         ctx.fillText('r →', width - padding - 20, height - 8)
         ctx.fillText('Fc →', padding + 3, padding - 10)
@@ -420,14 +503,6 @@ function SimulationScene({
   const arrowScale = Math.min(centripetalForce * 0.02, 0.6)
   const velocityScale = Math.min(speed * 0.1, 0.5)
 
-  const infoTextures = useMemo(() => ({
-    speed: createLabelTexture(`v = ${speed.toFixed(2)} m/s`, '#00ffff'),
-    centripetal: createLabelTexture(`Fc = ${centripetalForce.toFixed(1)} N`, '#ff4444'),
-    omega: createLabelTexture(`ω = ${angularVelocity.toFixed(2)} rad/s`, '#ffff00'),
-    radius: createLabelTexture(`r = ${radius.toFixed(1)} m`, '#88ff88'),
-    normal: createLabelTexture(`N = ${normalForce.toFixed(1)} N`, '#ffff00'),
-  }), [speed, centripetalForce, angularVelocity, radius, normalForce])
-
   if (isConicalMode) {
     const conicalBallAngle = angularVelocity * displayElapsed
     const horizontalR = radius * SCALE * Math.cos(tiltAngle)
@@ -438,17 +513,21 @@ function SimulationScene({
 
     return (
       <>
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[5, 10, 5]} intensity={0.8} />
+        <ambientLight intensity={0.15} />
+        <directionalLight position={[5, 10, 5]} intensity={1.2} color="#ffffff" castShadow />
+        <pointLight position={[-5, 5, -5]} intensity={0.8} color="#ff8800" />
+        <pointLight position={[5, 3, 5]} intensity={0.5} color="#00f5ff" />
+
+        <Environment preset="city" />
 
         <group>
           <mesh position={[0, 2.5, 0]}>
             <cylinderGeometry args={[0.1, 0.1, 0.3, 16]} />
-            <meshStandardMaterial color="#445566" metalness={0.7} />
+            <meshPhysicalMaterial color="#445566" metalness={0.9} roughness={0.2} clearcoat={0.8} />
           </mesh>
           <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[0.5, 3, 64]} />
-            <meshStandardMaterial color="#1a2a3a" side={THREE.DoubleSide} transparent opacity={0.5} />
+            <meshPhysicalMaterial color="#1a2a3a" side={THREE.DoubleSide} transparent opacity={0.7} metalness={0.5} roughness={0.3} />
           </mesh>
 
           <mesh position={[ballX, 2.5, ballZ]}>
@@ -460,52 +539,60 @@ function SimulationScene({
 
           <mesh position={[ballX, ballY, ballZ]}>
             <sphereGeometry args={[BALL_SIZE, 32, 32]} />
-            <meshStandardMaterial color="#ff8800" metalness={0.6} emissive="#ff4400" emissiveIntensity={0.3} />
+            <meshPhysicalMaterial color="#ff8800" metalness={0.8} roughness={0.15} clearcoat={1} emissive="#ff4400" emissiveIntensity={0.5} />
           </mesh>
         </group>
 
-        <sprite scale={[1, 0.25, 1]} position={[-2, 3, 0]}>
-          <spriteMaterial map={infoTextures.omega} transparent />
-        </sprite>
-        <sprite scale={[1, 0.25, 1]} position={[-2, 2.7, 0]}>
-          <spriteMaterial map={infoTextures.radius} transparent />
-        </sprite>
-        <sprite scale={[1, 0.25, 1]} position={[1.5, 3, 0]}>
-          <spriteMaterial map={infoTextures.speed} transparent />
-        </sprite>
-        <sprite scale={[1, 0.25, 1]} position={[1.5, 2.7, 0]}>
-          <spriteMaterial map={infoTextures.centripetal} transparent />
-        </sprite>
+        <FrostedLabel text={`ω = ${angularVelocity.toFixed(2)} rad/s`} color="#ffff00" position={[-2, 3, 0]} />
+        <FrostedLabel text={`r = ${radius.toFixed(1)} m`} color="#88ff88" position={[-2, 2.6, 0]} />
+        <FrostedLabel text={`v = ${speed.toFixed(2)} m/s`} color="#00ffff" position={[1.5, 3, 0]} />
+        <FrostedLabel text={`Fc = ${centripetalForce.toFixed(1)} N`} color="#ff4444" position={[1.5, 2.6, 0]} />
+        <FrostedLabel text={funFact} color="#ff88ff" position={[0, 0.5, 0]} />
 
-        <sprite scale={[2, 0.3, 1]} position={[0, 0.5, 0]}>
-          <spriteMaterial map={createLabelTexture(funFact, '#ff88ff')} transparent />
-        </sprite>
+        <Particles count={30} color="#00f5ff" />
+
+        <fog attach="fog" args={['#0a0f1e', 8, 20]} />
       </>
     )
   }
 
   return (
     <>
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[5, 10, 5]} intensity={0.8} />
+      <ambientLight intensity={0.15} />
+      <directionalLight position={[5, 10, 5]} intensity={1.2} color="#ffffff" castShadow />
+      <pointLight position={[-5, 5, -5]} intensity={0.8} color="#ff4444" />
+      <pointLight position={[5, 3, 5]} intensity={0.5} color="#00f5ff" />
+      <spotLight position={[0, 8, 0]} intensity={0.6} color="#ffffff" angle={0.5} penumbra={0.5} />
 
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
-        <planeGeometry args={[10, 10]} />
-        <meshStandardMaterial color="#0a0f1e" />
-      </mesh>
+      <Environment preset="city" />
+
+      <Grid
+        position={[0, -0.01, 0]}
+        args={[20, 20]}
+        cellSize={0.5}
+        cellThickness={0.5}
+        cellColor="#1a2a3a"
+        sectionSize={2}
+        sectionThickness={1}
+        sectionColor="#00f5ff"
+        fadeDistance={15}
+        fadeStrength={1}
+        followCamera={false}
+        infiniteGrid
+      />
 
       {isBankedCurve && (
         <group rotation={[0, 0, 0]}>
           <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[radius * SCALE - 0.5, radius * SCALE + 0.5, 64]} />
-            <meshStandardMaterial color="#ffaa00" transparent opacity={0.3} side={THREE.DoubleSide} />
+            <meshPhysicalMaterial color="#ffaa00" transparent opacity={0.3} side={THREE.DoubleSide} emissive="#ffaa00" emissiveIntensity={0.2} />
           </mesh>
         </group>
       )}
 
       <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[radius * SCALE - 0.1, radius * SCALE + 0.1, 64]} />
-        <meshStandardMaterial color="#00f5ff" transparent opacity={0.1} side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#00f5ff" transparent opacity={0.1} side={THREE.DoubleSide} />
       </mesh>
 
       <CircularTrack radius={radius} />
@@ -540,27 +627,18 @@ function SimulationScene({
         </>
       )}
 
-      <sprite scale={[1, 0.25, 1]} position={[-2.5, 0.8, 0]}>
-        <spriteMaterial map={infoTextures.speed} transparent />
-      </sprite>
-      <sprite scale={[1, 0.25, 1]} position={[-2.5, 0.55, 0]}>
-        <spriteMaterial map={infoTextures.centripetal} transparent />
-      </sprite>
-      <sprite scale={[1, 0.25, 1]} position={[1.5, 0.8, 0]}>
-        <spriteMaterial map={infoTextures.omega} transparent />
-      </sprite>
-      <sprite scale={[1, 0.25, 1]} position={[1.5, 0.55, 0]}>
-        <spriteMaterial map={infoTextures.radius} transparent />
-      </sprite>
+      <FrostedLabel text={`v = ${speed.toFixed(2)} m/s`} color="#00ffff" position={[-2.5, 0.9, 0]} />
+      <FrostedLabel text={`Fc = ${centripetalForce.toFixed(1)} N`} color="#ff4444" position={[-2.5, 0.6, 0]} />
+      <FrostedLabel text={`ω = ${angularVelocity.toFixed(2)} rad/s`} color="#ffff00" position={[1.5, 0.9, 0]} />
+      <FrostedLabel text={`r = ${radius.toFixed(1)} m`} color="#88ff88" position={[1.5, 0.6, 0]} />
       {isBankedCurve && (
-        <sprite scale={[1, 0.25, 1]} position={[0, 0.8, 0]}>
-          <spriteMaterial map={infoTextures.normal} transparent />
-        </sprite>
+        <FrostedLabel text={`N = ${normalForce.toFixed(1)} N`} color="#ffff00" position={[0, 0.9, 0]} />
       )}
+      <FrostedLabel text={funFact} color="#ff88ff" position={[0, -0.4, 0]} />
 
-      <sprite scale={[2, 0.3, 1]} position={[0, -0.5, 0]}>
-        <spriteMaterial map={createLabelTexture(funFact, '#ff88ff')} transparent />
-      </sprite>
+      <Particles count={50} color="#00f5ff" />
+
+      <fog attach="fog" args={['#0a0f1e', 10, 25]} />
     </>
   )
 }
@@ -728,15 +806,23 @@ export default function CircularMotion({
             console.warn('WebGL initialization warning:', e.message);
           }
         }}
-        camera={{ position: [0, 5, 6], fov: 60 }}
+        camera={{ position: [0, 5, 8], fov: 50 }}
         style={{ width: '100%', height: '100%', background: '#0a0f1e' }}
-        gl={{ 
-          antialias: true, 
+        gl={{
+          antialias: true,
           alpha: false,
           powerPreference: 'high-performance',
           failIfMajorPerformanceCaveat: false,
         }}
       >
+        <OrbitControls
+          enableDamping
+          dampingFactor={0.05}
+          minDistance={3}
+          maxDistance={15}
+          maxPolarAngle={Math.PI / 2}
+        />
+
         <SimulationScene
           radius={radius}
           mass={mass}
@@ -748,6 +834,19 @@ export default function CircularMotion({
           isBankedCurve={isBankedCurve}
           bankAngle={bankAngle}
         />
+
+        <EffectComposer>
+          <Bloom
+            intensity={0.4}
+            luminanceThreshold={0.2}
+            luminanceSmoothing={0.9}
+            mipmapBlur
+          />
+          <Vignette
+            offset={0.3}
+            darkness={0.6}
+          />
+        </EffectComposer>
       </Canvas>
 
       <MiniMap

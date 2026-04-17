@@ -22,11 +22,13 @@
   "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.0",
+    "@react-three/postprocessing": "^3.0.4",
     "@types/katex": "^0.16.8",
     "axios": "^1.15.0",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^4.18.2",
+    "framer-motion": "^12.38.0",
     "katex": "^0.16.45",
     "lucide-react": "^1.8.0",
     "matter-js": "^0.20.0",
