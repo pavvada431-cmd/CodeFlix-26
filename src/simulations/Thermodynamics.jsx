@@ -6,6 +6,8 @@ import * as THREE from 'three'
 
 const K_BOLTZMANN = 1.0
 const PARTICLE_MASS = 1.0
+const R_IDEAL = 8.314
+const EFFECTIVE_MOLES_PER_PARTICLE = 0.01
 const HISTOGRAM_BINS = 20
 const HISTOGRAM_UPDATE_INTERVAL = 500
 
@@ -431,14 +433,19 @@ function SimulationScene({ numParticles, temperature, volume, isPlaying, onDataU
     if (now - lastDataTimeRef.current > 50) {
       const avgKE = totalKE / numParticles
       const area = boxSize * boxSize * 6
-      const pressure = (totalMomentumTransfer * 60) / (area * numParticles)
+      const measuredPressure = (totalMomentumTransfer * 60) / (area * numParticles)
+      const nMoles = numParticles * EFFECTIVE_MOLES_PER_PARTICLE
+      const pressure = (nMoles * R_IDEAL * temperature) / Math.max(volume, 1e-6)
       const rmsSpeed = Math.sqrt(2 * avgKE / PARTICLE_MASS)
 
       onDataUpdate?.({
+        t_s: state.clock.elapsedTime,
         t: state.clock.elapsedTime,
         P: Math.max(pressure, 0.01),
+        measuredPressure_Pa: Math.max(measuredPressure, 0.01),
         V: volume,
         T: temperature,
+        n_mol: nMoles,
         avgKE,
         rmsSpeed,
       })
@@ -599,16 +606,35 @@ export default function Thermodynamics({
   const [particlesSnapshot, setParticlesSnapshot] = useState([])
 
   const processAnimationRef = useRef(null)
+  const cumulativeWorkRef = useRef(0)
+  const previousPVRef = useRef(null)
 
   const handleDataUpdate = useCallback((data) => {
-    setCurrentData(data)
+    // Work done by the gas is the area under the P-V curve:
+    // W = ∫ P dV. We accumulate numerically with the trapezoidal rule.
+    if (previousPVRef.current) {
+      const dV = data.V - previousPVRef.current.V
+      const avgP = 0.5 * (data.P + previousPVRef.current.P)
+      cumulativeWorkRef.current += avgP * dV
+    }
+    previousPVRef.current = { P: data.P, V: data.V }
+
+    const enriched = {
+      ...data,
+      processType: processType || 'equilibrium',
+      idealGasResidual: data.P * data.V - (data.n_mol || 0) * R_IDEAL * data.T,
+      workEstimate_J: data.P * (data.V - volume),
+      workByGas_J: cumulativeWorkRef.current,
+      equation: 'PV=nRT',
+    }
+    setCurrentData(enriched)
     setDataHistory(prev => {
-      const newHistory = [...prev, data]
+      const newHistory = [...prev, enriched]
       if (newHistory.length > 500) return newHistory.slice(-500)
       return newHistory
     })
-    onDataPoint?.(data)
-  }, [onDataPoint])
+    onDataPoint?.(enriched)
+  }, [onDataPoint, processType, volume])
 
   const runProcess = useCallback((type) => {
     if (processAnimationRef.current) {
@@ -634,10 +660,13 @@ export default function Thermodynamics({
         setCurrentTemp(newTemp)
         const newVolume = startVolume * (1 + progress * 0.5)
         setCurrentVolume(newVolume)
+      } else if (type === 'isochoric') {
+        setCurrentVolume(startVolume)
+        setCurrentTemp(startTemp * (1 + progress * 0.5))
       } else if (type === 'adiabatic') {
         const newVolume = startVolume * (1 - progress * 0.5)
         setCurrentVolume(newVolume)
-        setCurrentTemp(startTemp * Math.pow(newVolume / startVolume, 1.4))
+        setCurrentTemp(startTemp * Math.pow(startVolume / Math.max(newVolume, 1e-6), 0.4))
       }
 
       if (progress < 1) {
@@ -652,6 +681,8 @@ export default function Thermodynamics({
     if (processAnimationRef.current) {
       cancelAnimationFrame(processAnimationRef.current)
     }
+    cumulativeWorkRef.current = 0
+    previousPVRef.current = null
     setProcessType(null)
     setCurrentVolume(volume)
     setCurrentTemp(temperature)
@@ -666,6 +697,9 @@ export default function Thermodynamics({
 
   const boxSize = currentVolume ** (1/3)
   const currentPressure = currentData?.P || 0.1
+  const nMoles = numParticles * EFFECTIVE_MOLES_PER_PARTICLE
+  const idealPressure = (nMoles * R_IDEAL * currentTemp) / Math.max(currentVolume, 1e-6)
+  const processWork = currentData ? currentData.P * (currentVolume - volume) : 0
   const avgKE = currentData?.avgKE || 0
   const rmsSpeed = currentData?.rmsSpeed || 0
 
@@ -705,6 +739,8 @@ export default function Thermodynamics({
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono-display text-[10px]">
           <span className="text-[#00f5ff]">P:</span>
           <span className="text-white">{currentPressure.toFixed(3)} Pa</span>
+          <span className="text-[#66ccff]">nRT/V:</span>
+          <span className="text-white">{idealPressure.toFixed(3)} Pa</span>
           <span className="text-[#ff8800]">V:</span>
           <span className="text-white">{currentVolume.toFixed(2)} m³</span>
           <span className="text-[#ff4444]">T:</span>
@@ -713,6 +749,8 @@ export default function Thermodynamics({
           <span className="text-white">{avgKE.toFixed(2)} J</span>
           <span className="text-[#ffff00]">v_rms:</span>
           <span className="text-white">{rmsSpeed.toFixed(2)} m/s</span>
+          <span className="text-[#ff88ff]">W≈∫PdV:</span>
+          <span className="text-white">{processWork.toFixed(2)} J</span>
           <span className="text-[#ff88ff]">N:</span>
           <span className="text-white">{numParticles}</span>
         </div>
@@ -772,6 +810,19 @@ export default function Thermodynamics({
             <div>Adiabatic (Q=0, T changes)</div>
             <div className="text-[8px] text-slate-500">PVᵞ=const</div>
           </button>
+          <button
+            onClick={() => runProcess('isochoric')}
+            disabled={processType !== null}
+            className={`rounded px-3 py-1.5 text-left font-mono-display text-[10px] transition disabled:opacity-40 ${
+              processType === 'isochoric'
+                ? 'border-[rgba(0,255,255,0.5)] bg-[rgba(0,255,255,0.2)] text-[#00ffff]'
+                : 'border-[rgba(100,100,100,0.3)] bg-[rgba(50,50,50,0.3)] text-slate-400 hover:bg-[rgba(80,80,80,0.3)]'
+            }`}
+            style={{ borderWidth: '1px', borderStyle: 'solid' }}
+          >
+            <div>Isochoric (V=const, T↑)</div>
+            <div className="text-[8px] text-slate-500">P/T=const</div>
+          </button>
         </div>
 
         {processType && (
@@ -792,6 +843,7 @@ export default function Thermodynamics({
         <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border border-[rgba(255,136,0,0.5)] bg-[rgba(0,0,0,0.7)] px-4 py-2 font-mono-display text-xs text-[#ff8800]">
           {processType === 'isothermal' && 'Isothermal Process: T = const, V decreasing'}
           {processType === 'isobaric' && 'Isobaric Process: P = const, T increasing'}
+          {processType === 'isochoric' && 'Isochoric Process: V = const, P increases'}
           {processType === 'adiabatic' && 'Adiabatic Process: Q = 0, T changing'}
         </div>
       )}
@@ -810,9 +862,11 @@ Thermodynamics.getSceneConfig = (variables = {}) => {
   const { numParticles = 50, temperature = 300, volume = 8 } = variables
 
   const N = numParticles
+  const nMoles = N * EFFECTIVE_MOLES_PER_PARTICLE
   const kT = K_BOLTZMANN * temperature
   const avgKE = 1.5 * kT
   const v_rms = Math.sqrt(3 * kT / PARTICLE_MASS)
+  const pressure = (nMoles * R_IDEAL * temperature) / Math.max(volume, 1e-6)
 
   return {
     name: 'Thermodynamics',
@@ -822,11 +876,13 @@ Thermodynamics.getSceneConfig = (variables = {}) => {
       numParticles: N,
       temperature,
       volume,
+      nMoles,
+      pressure,
       avgKE,
       v_rms,
     },
     calculations: {
-      idealGasLaw: `PV = NkT`,
+      idealGasLaw: `PV = nRT = ${pressure.toFixed(3)}×${volume.toFixed(2)} Pa·m³`,
       avgKineticEnergy: `⟨KE⟩ = 3/2 kT = ${avgKE.toFixed(2)} J`,
       rmsSpeed: `v_rms = √(3kT/m) = ${v_rms.toFixed(2)} m/s`,
     },

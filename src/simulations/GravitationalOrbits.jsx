@@ -5,6 +5,13 @@ import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 
 const G = 6.674e-3;
+
+function gravitationalAcceleration(position, centralMass) {
+  const r2 = position.x * position.x + position.z * position.z;
+  const r = Math.sqrt(r2) + 1e-9;
+  const factor = (-G * centralMass) / (r * r * r);
+  return { ax: factor * position.x, az: factor * position.z, r };
+}
 const SCALE = 1;
 
 function FrostedLabel({ children, position, color = '#00f5ff' }) {
@@ -176,7 +183,8 @@ function SimulationScene({
   }, [isPlaying]);
 
   useEffect(() => {
-    const circularV = Math.sqrt(G * centralMass / initialDistance);
+    const safeDistance = Math.max(0.05, initialDistance);
+    const circularV = Math.sqrt(G * centralMass / safeDistance);
     let vx = 0;
     let vz = initialVelocity;
 
@@ -188,14 +196,14 @@ function SimulationScene({
         vz = circularV * 1.1;
         break;
       case 'escape':
-        vz = Math.sqrt(2 * G * centralMass / initialDistance) * 0.9;
+        vz = Math.sqrt(2 * G * centralMass / safeDistance) * 0.9;
         break;
       default:
         vz = circularV;
     }
 
-    const newPos = { x: initialDistance, y: 0, z: 0 };
-    const newVel = { x, y: 0, z: vz };
+    const newPos = { x: safeDistance, y: 0, z: 0 };
+    const newVel = { x: vx, y: 0, z: vz };
     setPosition(newPos);
     setVelocity(newVel);
     posRef.current = newPos;
@@ -231,22 +239,21 @@ function SimulationScene({
         const p2 = pos2Ref.current;
         const v2 = vel2Ref.current;
 
-        const dx12 = p2.x - p1.x;
-        const dz12 = p2.z - p1.z;
-        const r12 = Math.sqrt(dx12 * dx12 + dz12 * dz12) + 0.001;
-        const F12 = G * orbitingMass * orbitingMass / (r12 * r12);
+          const ax1Prev = gravitationalAcceleration(p1, centralMass).ax;
+          const az1Prev = gravitationalAcceleration(p1, centralMass).az;
+          const ax2Prev = gravitationalAcceleration(p2, centralMass).ax;
+          const az2Prev = gravitationalAcceleration(p2, centralMass).az;
 
-        const ax1 = F12 * dx12 / r12 / orbitingMass;
-        const az1 = F12 * dz12 / r12 / orbitingMass;
+          const newP1 = { x: p1.x + v1.x * dt + 0.5 * ax1Prev * dt * dt, y: 0, z: p1.z + v1.z * dt + 0.5 * az1Prev * dt * dt };
+          const newP2 = { x: p2.x + v2.x * dt + 0.5 * ax2Prev * dt * dt, y: 0, z: p2.z + v2.z * dt + 0.5 * az2Prev * dt * dt };
 
-        const ax2 = -F12 * dx12 / r12 / orbitingMass;
-        const az2 = -F12 * dz12 / r12 / orbitingMass;
+          const ax1Next = gravitationalAcceleration(newP1, centralMass).ax;
+          const az1Next = gravitationalAcceleration(newP1, centralMass).az;
+          const ax2Next = gravitationalAcceleration(newP2, centralMass).ax;
+          const az2Next = gravitationalAcceleration(newP2, centralMass).az;
 
-        const newV1 = { x: v1.x + ax1 * dt, y: 0, z: v1.z + az1 * dt };
-        const newP1 = { x: p1.x + newV1.x * dt, y: 0, z: p1.z + newV1.z * dt };
-
-        const newV2 = { x: v2.x + ax2 * dt, y: 0, z: v2.z + az2 * dt };
-        const newP2 = { x: p2.x + newV2.x * dt, y: 0, z: p2.z + newV2.z * dt };
+          const newV1 = { x: v1.x + 0.5 * (ax1Prev + ax1Next) * dt, y: 0, z: v1.z + 0.5 * (az1Prev + az1Next) * dt };
+          const newV2 = { x: v2.x + 0.5 * (ax2Prev + ax2Next) * dt, y: 0, z: v2.z + 0.5 * (az2Prev + az2Next) * dt };
 
         posRef.current = newP1;
         velRef.current = newV1;
@@ -268,10 +275,17 @@ function SimulationScene({
           const r1 = Math.sqrt(newP1.x * newP1.x + newP1.z * newP1.z);
           const KE1 = 0.5 * orbitingMass * speed1 * speed1;
           const PE1 = -G * centralMass * orbitingMass / r1;
-          const L1 = orbitingMass * r1 * speed1;
+          const L1 = orbitingMass * (newP1.x * newV1.z - newP1.z * newV1.x);
 
           onDataUpdate?.({
-            t: elapsedRef.current,
+            t_s: elapsedRef.current,
+            r_m: r1,
+            v_mps: speed1,
+            KE_J: KE1,
+            PE_J: PE1,
+            totalEnergy_J: KE1 + PE1,
+            angularMomentum_kgm2ps: L1,
+            integrationMethod: 'velocity-verlet',
             r: r1,
             v: speed1,
             KE: KE1,
@@ -284,13 +298,18 @@ function SimulationScene({
       } else {
         const p = posRef.current;
         const v = velRef.current;
-        const r = Math.sqrt(p.x * p.x + p.z * p.z);
-        const a = G * centralMass / (r * r);
-        const ax = -a * p.x / r;
-        const az = -a * p.z / r;
-
-        const newV = { x: v.x + ax * dt, y: 0, z: v.z + az * dt };
-        const newP = { x: p.x + newV.x * dt, y: 0, z: p.z + newV.z * dt };
+        const prevAcc = gravitationalAcceleration(p, centralMass);
+        const newP = {
+          x: p.x + v.x * dt + 0.5 * prevAcc.ax * dt * dt,
+          y: 0,
+          z: p.z + v.z * dt + 0.5 * prevAcc.az * dt * dt,
+        };
+        const nextAcc = gravitationalAcceleration(newP, centralMass);
+        const newV = {
+          x: v.x + 0.5 * (prevAcc.ax + nextAcc.ax) * dt,
+          y: 0,
+          z: v.z + 0.5 * (prevAcc.az + nextAcc.az) * dt,
+        };
 
         posRef.current = newP;
         velRef.current = newV;
@@ -305,10 +324,17 @@ function SimulationScene({
           const dist = Math.sqrt(newP.x * newP.x + newP.z * newP.z);
           const KE = 0.5 * orbitingMass * speed * speed;
           const PE = -G * centralMass * orbitingMass / dist;
-          const L = orbitingMass * dist * speed;
+          const L = orbitingMass * (newP.x * newV.z - newP.z * newV.x);
 
           onDataUpdate?.({
-            t: elapsedRef.current,
+            t_s: elapsedRef.current,
+            r_m: dist,
+            v_mps: speed,
+            KE_J: KE,
+            PE_J: PE,
+            totalEnergy_J: KE + PE,
+            angularMomentum_kgm2ps: L,
+            integrationMethod: 'velocity-verlet',
             r: dist,
             v: speed,
             KE,
@@ -542,6 +568,7 @@ GravitationalOrbits.getSceneConfig = (variables = {}) => {
 
   const circularV = Math.sqrt(G * centralMass / initialDistance);
   const escapeV = Math.sqrt(2 * G * centralMass / initialDistance);
+  const keplerPeriod = 2 * Math.PI * Math.sqrt(Math.pow(initialDistance, 3) / (G * centralMass));
   const PE = -G * centralMass * orbitingMass / initialDistance;
   const KE = 0.5 * orbitingMass * circularV * circularV;
   const totalE = PE + KE;
@@ -556,10 +583,12 @@ GravitationalOrbits.getSceneConfig = (variables = {}) => {
       initialDistance,
       circularVelocity: circularV,
       escapeVelocity: escapeV,
+      keplerPeriod,
     },
     calculations: {
       circularVelocity: `v = √(GM/r) = ${circularV.toFixed(3)} m/s`,
       escapeVelocity: `v_esc = √(2GM/r) = ${escapeV.toFixed(3)} m/s`,
+      keplerPeriod: `T = 2π√(r³/GM) = ${keplerPeriod.toFixed(3)} s`,
       orbitalEnergy: `E = KE + PE = ${totalE.toFixed(3)} J`,
       gravitationalForce: `F = GMm/r² = ${(G * centralMass * orbitingMass / (initialDistance * initialDistance)).toFixed(3)} N`,
     },

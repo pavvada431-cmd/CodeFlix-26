@@ -1,10 +1,9 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { Environment, Grid, Text, Html, Line, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 
-const G = 9.81;
 const CEILING_Y = 2.5;
 const CEILING_THICKNESS = 0.15;
 const CEILING_WIDTH = 3;
@@ -203,9 +202,22 @@ function SimulationScene({
   const isPlayingRef = useRef(isPlaying);
   const resonanceModeRef = useRef(resonanceMode);
 
-  const omega = useMemo(() => Math.sqrt(springConstant / mass), [springConstant, mass]);
-  const omegaD = useMemo(() => omega * Math.sqrt(1 - (damping * damping) / (4 * mass * mass)), [omega, damping, mass]);
-  const period = 2 * Math.PI / omega;
+  const safeMass = useMemo(() => Math.max(1e-4, Number(mass) || 0), [mass]);
+  const safeSpringConstant = useMemo(() => Math.max(0, Number(springConstant) || 0), [springConstant]);
+  const safeDamping = useMemo(() => Math.max(0, Number(damping) || 0), [damping]);
+  const omega = useMemo(
+    () => (safeSpringConstant > 0 ? Math.sqrt(safeSpringConstant / safeMass) : 0),
+    [safeSpringConstant, safeMass]
+  );
+  const dampingRatio = useMemo(
+    () => (safeSpringConstant > 0 ? safeDamping / (2 * Math.sqrt(safeSpringConstant * safeMass)) : 0),
+    [safeDamping, safeSpringConstant, safeMass]
+  );
+  const dampedOmega = useMemo(
+    () => (dampingRatio < 1 ? omega * Math.sqrt(Math.max(0, 1 - dampingRatio * dampingRatio)) : 0),
+    [dampingRatio, omega]
+  );
+  const period = dampedOmega > 1e-9 ? (2 * Math.PI) / dampedOmega : Infinity;
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
@@ -222,49 +234,74 @@ function SimulationScene({
       startTimeRef.current = performance.now() / 1000;
     }
 
-    const A = initialDisplacement;
-    const b = damping;
-    const m = mass;
-    const k = springConstant;
-    const omegaVal = omega;
-    const omegaDVal = omegaD;
+    const b = safeDamping;
+    const m = safeMass;
+    const k = safeSpringConstant;
+    let displacementState = Number.isFinite(initialDisplacement) ? initialDisplacement : 0;
+    let velocityState = 0;
+    let previousTime = performance.now() / 1000;
 
     const update = () => {
       const currentTime = performance.now() / 1000;
       const elapsed = pausedTimeRef.current + (startTimeRef.current > 0 ? currentTime - startTimeRef.current : 0);
-
-      let displacement, velocity;
+      const dt = Math.min(0.03, Math.max(0.001, currentTime - previousTime));
+      previousTime = currentTime;
+      let displacement = displacementState;
+      let velocity = velocityState;
 
       if (resonanceModeRef.current) {
         const drivingAmplitude = 0.3;
         const envelope = Math.min(1, elapsed / 5);
-        displacement = drivingAmplitude * envelope * Math.sin(omegaVal * elapsed);
-        velocity = drivingAmplitude * envelope * omegaVal * Math.cos(omegaVal * elapsed);
+        displacement = drivingAmplitude * envelope * Math.sin(omega * elapsed);
+        velocity = drivingAmplitude * envelope * omega * Math.cos(omega * elapsed);
 
         if (elapsed > 8) {
           onResonanceEnd?.();
         }
-      } else if (b === 0) {
-        displacement = A * Math.cos(omegaVal * elapsed);
-        velocity = -A * omegaVal * Math.sin(omegaVal * elapsed);
       } else {
-        const expFactor = Math.exp(-b * elapsed / (2 * m));
-        displacement = A * expFactor * Math.cos(omegaDVal * elapsed);
-        velocity = -A * expFactor * (
-          (b / (2 * m)) * Math.cos(omegaDVal * elapsed) +
-          omegaDVal * Math.sin(omegaDVal * elapsed)
-        );
+        // Damped spring-mass model in SI units:
+        // m x'' + b x' + k x = 0  =>  x'' = (-k x - b x')/m.
+        // -k x is Hooke restoring force, -b x' is viscous damping force.
+        const acceleration = (-k * displacementState - b * velocityState) / m;
+        velocityState += acceleration * dt;
+        displacementState += velocityState * dt;
+        if (!Number.isFinite(displacementState) || !Number.isFinite(velocityState)) {
+          displacementState = 0;
+          velocityState = 0;
+        }
+        displacement = displacementState;
+        velocity = velocityState;
       }
 
       setCurrentDisplacement(displacement);
       setCurrentVelocity(velocity);
 
       if (currentTime - lastDataTimeRef.current > 0.05) {
+        const springForce = -k * displacement;
+        const dampingForce = -b * velocity;
+        const netForce = springForce + dampingForce;
+        const acceleration = netForce / m;
         const ke = 0.5 * m * velocity * velocity;
         const pe = 0.5 * k * displacement * displacement;
-        const te = resonanceModeRef.current ? ke + pe : 0.5 * k * A * A;
+        const te = ke + pe;
 
         onDataPoint?.({
+          t_s: elapsed,
+          displacement_m: displacement,
+          velocity_mps: velocity,
+          acceleration_mps2: acceleration,
+          springForce_N: springForce,
+          dampingForce_N: dampingForce,
+          netForce_N: netForce,
+          kineticEnergy_J: ke,
+          potentialEnergy_J: pe,
+          totalEnergy_J: te,
+          angularFrequency_radps: omega,
+          dampedAngularFrequency_radps: dampedOmega,
+          period_s: Number.isFinite(period) ? period : null,
+          naturalPeriod_s: omega > 1e-9 ? (2 * Math.PI) / omega : null,
+          dampingRatio,
+          dampingRegime: dampingRatio > 1 ? 'overdamped' : Math.abs(dampingRatio - 1) < 1e-3 ? 'critical' : 'underdamped',
           t: elapsed,
           displacement,
           velocity,
@@ -286,21 +323,21 @@ function SimulationScene({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isPlaying, initialDisplacement, springConstant, mass, damping, resonanceMode, omega, omegaD, onResonanceEnd, onDataPoint]);
+  }, [isPlaying, initialDisplacement, resonanceMode, omega, onResonanceEnd, onDataPoint, dampingRatio, safeDamping, safeMass, safeSpringConstant, dampedOmega, period]);
 
-  const springLength = NATURAL_LENGTH + currentDisplacement;
+  const springLength = Math.max(0.35, NATURAL_LENGTH + currentDisplacement);
   const massY = CEILING_Y - CEILING_THICKNESS / 2 - springLength - MASS_SIZE / 2;
   const massCenter = [0, massY, 0];
 
-  const springForce = springConstant * currentDisplacement;
-  const gravityForce = mass * G;
-  const netForce = -springForce - gravityForce;
+  const springForce = -safeSpringConstant * currentDisplacement;
+  const dampingForce = -safeDamping * currentVelocity;
+  const netForce = springForce + dampingForce;
 
   const springArrowLength = Math.min(Math.abs(springForce) * 0.1, 0.8);
-  const gravityArrowLength = Math.min(gravityForce * 0.1, 0.8);
+  const dampingArrowLength = Math.min(Math.abs(dampingForce) * 0.1, 0.8);
 
-  const springDir = currentDisplacement > 0 ? [0, -1] : [0, 1];
-  const gravityDir = [0, -1];
+  const springDir = springForce >= 0 ? [0, 1] : [0, -1];
+  const dampingDir = dampingForce >= 0 ? [0, 1] : [0, -1];
   const netDir = netForce > 0 ? [0, 1] : [0, -1];
   const netArrowLength = Math.min(Math.abs(netForce) * 0.15, 0.6);
 
@@ -348,10 +385,10 @@ function SimulationScene({
       />
       <ForceArrow
         position={[massCenter[0] - MASS_SIZE / 2 - 0.15, massCenter[1], massCenter[2]]}
-        direction={gravityDir}
-        length={gravityArrowLength}
-        color="#ff4444"
-        label={`Fg = ${gravityForce.toFixed(1)}N`}
+        direction={dampingDir}
+        length={dampingArrowLength}
+        color="#ff8844"
+        label={`Fd = ${dampingForce.toFixed(1)}N`}
       />
       <ForceArrow
         position={[massCenter[0], massCenter[1] + MASS_SIZE / 2 + 0.15, massCenter[2]]}
@@ -368,11 +405,14 @@ function SimulationScene({
         ω₀ = {omega.toFixed(2)} rad/s
       </FrostedLabel>
       <FrostedLabel position={[-2, CEILING_Y - 0.2, 0]} color="#ff88ff">
-        T = {period.toFixed(2)} s
+        T{dampingRatio < 1 ? 'd' : ''} = {Number.isFinite(period) ? period.toFixed(2) : '∞'} s
+      </FrostedLabel>
+      <FrostedLabel position={[-2, CEILING_Y - 0.55, 0]} color="#ffaa88">
+        ζ = {dampingRatio.toFixed(2)} ({dampingRatio > 1 ? 'overdamped' : Math.abs(dampingRatio - 1) < 1e-3 ? 'critical' : 'underdamped'})
       </FrostedLabel>
 
       <FrostedLabel position={[2, massY + 1.2, 0]} color="#88ffff">
-        KE: {(0.5 * mass * currentVelocity * currentVelocity).toFixed(2)}J | PE: {(0.5 * springConstant * currentDisplacement * currentDisplacement).toFixed(2)}J
+        KE: {(0.5 * safeMass * currentVelocity * currentVelocity).toFixed(2)}J | PE: {(0.5 * safeSpringConstant * currentDisplacement * currentDisplacement).toFixed(2)}J
       </FrostedLabel>
 
       <mesh position={[0, CEILING_Y - CEILING_THICKNESS / 2 - springLength, 0]} rotation={[0, 0, 0]}>
@@ -462,8 +502,15 @@ export default function SpringMass({
 }
 
 SpringMass.getSceneConfig = (variables = {}) => {
-  const { springConstant = 50, mass = 2, initialDisplacement = 0.5 } = variables;
-  const omega = Math.sqrt(springConstant / mass);
+  const { springConstant = 50, mass = 2, initialDisplacement = 0.5, damping = 0 } = variables;
+  const safeMass = Math.max(1e-4, Number(mass) || 0);
+  const safeSpringConstant = Math.max(0, Number(springConstant) || 0);
+  const safeDamping = Math.max(0, Number(damping) || 0);
+  const omega = safeSpringConstant > 0 ? Math.sqrt(safeSpringConstant / safeMass) : 0;
+  const dampingRatio = safeSpringConstant > 0 ? safeDamping / (2 * Math.sqrt(Math.max(1e-9, safeSpringConstant * safeMass))) : 0;
+  const omegaD = dampingRatio < 1 ? omega * Math.sqrt(Math.max(0, 1 - dampingRatio * dampingRatio)) : 0;
+  const period = omegaD > 1e-9 ? (2 * Math.PI) / omegaD : Infinity;
+  const frequency = Number.isFinite(period) && period > 0 ? 1 / period : 0;
 
   return {
     name: 'Spring-Mass System',
@@ -475,13 +522,15 @@ SpringMass.getSceneConfig = (variables = {}) => {
       initialDisplacement,
       naturalFrequency: omega / (2 * Math.PI),
       angularFrequency: omega,
-      period: 2 * Math.PI / omega,
+      period: Number.isFinite(period) ? period : null,
+      dampingRatio,
     },
     calculations: {
-      potentialEnergy: `PE = ½kA² = ${(0.5 * springConstant * initialDisplacement * initialDisplacement).toFixed(2)} J`,
+      potentialEnergy: `PE = ½kA² = ${(0.5 * safeSpringConstant * initialDisplacement * initialDisplacement).toFixed(2)} J`,
       kineticEnergy: 'KE = ½mv²',
-      period: `T = 2π√(m/k) = ${(2 * Math.PI * Math.sqrt(mass / springConstant)).toFixed(2)} s`,
-      frequency: `f = 1/T = ${(1 / (2 * Math.PI * Math.sqrt(mass / springConstant))).toFixed(2)} Hz`,
+      period: `T${dampingRatio < 1 ? 'd' : ''} = ${Number.isFinite(period) ? period.toFixed(2) : '∞'} s`,
+      frequency: `f = ${frequency.toFixed(2)} Hz`,
+      dampingRegime: `ζ = ${dampingRatio.toFixed(2)} (${dampingRatio > 1 ? 'overdamped' : Math.abs(dampingRatio - 1) < 1e-3 ? 'critical' : 'underdamped'})`,
     },
   };
 };

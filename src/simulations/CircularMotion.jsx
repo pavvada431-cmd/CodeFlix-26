@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Html, Environment, Grid, Line } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import { OrbitControls } from '@react-three/drei'
@@ -236,6 +236,7 @@ function GraphPanel({ mode, mass, angularVelocity, radius, dataHistory }) {
       }
 
       if (mode === 'angularVelocity') {
+        const omegaScale = Math.max(0.1, Math.abs(angularVelocity) * 1.5)
         const avgOmega = dataHistory.length > 0
           ? dataHistory.reduce((sum, d) => sum + (d.omega || angularVelocity), 0) / dataHistory.length
           : angularVelocity
@@ -252,8 +253,8 @@ function GraphPanel({ mode, mass, angularVelocity, radius, dataHistory }) {
         ctx.strokeStyle = '#00ff88'
         ctx.lineWidth = 2
         ctx.beginPath()
-        ctx.moveTo(padding, height - padding - (avgOmega / (angularVelocity * 1.5)) * (height - 2 * padding))
-        ctx.lineTo(width - padding, height - padding - (avgOmega / (angularVelocity * 1.5)) * (height - 2 * padding))
+        ctx.moveTo(padding, height - padding - (avgOmega / omegaScale) * (height - 2 * padding))
+        ctx.lineTo(width - padding, height - padding - (avgOmega / omegaScale) * (height - 2 * padding))
         ctx.stroke()
 
         if (dataHistory.length > 1) {
@@ -264,7 +265,7 @@ function GraphPanel({ mode, mass, angularVelocity, radius, dataHistory }) {
           dataHistory.slice(-50).forEach((d, i) => {
             const x = padding + (i / 49) * (width - 2 * padding)
             const omega = d.omega || angularVelocity
-            const y = height - padding - (omega / (angularVelocity * 1.5)) * (height - 2 * padding)
+            const y = height - padding - (omega / omegaScale) * (height - 2 * padding)
             if (i === 0) ctx.moveTo(x, y)
             else ctx.lineTo(x, y)
           })
@@ -282,7 +283,6 @@ function GraphPanel({ mode, mass, angularVelocity, radius, dataHistory }) {
         ctx.font = '10px monospace'
         ctx.fillText('Centripetal Force vs Radius', padding + 5, 18)
 
-        const g = 9.81
         const rValues = []
         const fValues = []
 
@@ -359,8 +359,15 @@ function SimulationScene({
   stringCut,
   isBankedCurve,
   bankAngle,
+  frictionCoefficient = 0.6,
 }) {
-  const [displayPosition, setDisplayPosition] = useState({ x: radius * SCALE, y: 0.15, z: 0 })
+  const safeRadius = Math.max(1e-4, Number(radius) || 0)
+  const safeMass = Math.max(1e-4, Number(mass) || 0)
+  const safeOmega = Number.isFinite(Number(angularVelocity)) ? Number(angularVelocity) : 0
+  const safeFrictionCoefficient = Math.max(0, Number(frictionCoefficient) || 0)
+  const safeBankAngle = Number.isFinite(Number(bankAngle)) ? Number(bankAngle) : 0
+
+  const [displayPosition, setDisplayPosition] = useState({ x: safeRadius * SCALE, y: 0.15, z: 0 })
   const [displayTrail, setDisplayTrail] = useState([])
   const [displayElapsed, setDisplayElapsed] = useState(0)
 
@@ -371,18 +378,25 @@ function SimulationScene({
   const isPlayingRef = useRef(isPlaying)
   const stringCutRef = useRef(stringCut)
 
-  const flyingPosRef = useRef({ x: radius * SCALE, y: 0.15, z: 0 })
+  const flyingPosRef = useRef({ x: safeRadius * SCALE, y: 0.15, z: 0 })
   const flyingVelRef = useRef({ x: 0, y: 0, z: 0 })
   const trailRef = useRef([])
   const elapsedRef = useRef(0)
 
-  const speed = radius * angularVelocity
-  const centripetalAcceleration = radius * angularVelocity * angularVelocity
-  const centripetalForce = mass * centripetalAcceleration
-  const normalForce = mass * G / Math.cos(bankAngle || 0)
+  // Circular motion equations in SI units:
+  // v = ωr, a_c = v²/r = ω²r, F_c = m a_c, T = 2π/|ω|.
+  const tangentialVelocity = safeRadius * safeOmega
+  const speed = Math.abs(tangentialVelocity)
+  const centripetalAcceleration = safeRadius * safeOmega * safeOmega
+  const centripetalForce = safeMass * centripetalAcceleration
+  const period = Math.abs(safeOmega) > 1e-9 ? (2 * Math.PI) / Math.abs(safeOmega) : Infinity
+  const maxStaticFriction = safeFrictionCoefficient * safeMass * G
+  const frictionRequired = centripetalForce
+  const frictionIsSufficient = maxStaticFriction + 1e-9 >= frictionRequired
+  const normalForce = safeMass * G / Math.max(1e-6, Math.abs(Math.cos(safeBankAngle)))
 
-  const weightlessnessOmega = Math.sqrt(G / radius)
-  const funFact = `Weightlessness at ω = √(g/r) = ${weightlessnessOmega.toFixed(2)} rad/s`
+  const weightlessnessOmega = safeRadius > 1e-9 ? Math.sqrt(G / safeRadius) : Infinity
+  const funFact = `Weightlessness at ω = √(g/r) = ${Number.isFinite(weightlessnessOmega) ? weightlessnessOmega.toFixed(2) : '∞'} rad/s`
 
   useEffect(() => {
     isPlayingRef.current = isPlaying
@@ -393,13 +407,13 @@ function SimulationScene({
   }, [stringCut])
 
   useEffect(() => {
-    flyingPosRef.current = { x: radius * SCALE, y: 0.15, z: 0 }
+    flyingPosRef.current = { x: safeRadius * SCALE, y: 0.15, z: 0 }
     flyingVelRef.current = { x: 0, y: 0, z: 0 }
     trailRef.current = []
     pausedTimeRef.current = 0
     startTimeRef.current = 0
     elapsedRef.current = 0
-  }, [radius, angularVelocity])
+  }, [safeRadius, safeOmega])
 
   useEffect(() => {
     if (!isPlayingRef.current) {
@@ -414,10 +428,10 @@ function SimulationScene({
       startTimeRef.current = performance.now() / 1000
     }
 
-    const radiusVal = radius
-    const omegaVal = angularVelocity
-    const massVal = mass
-    const speedVal = radiusVal * omegaVal
+    const radiusVal = safeRadius
+    const omegaVal = safeOmega
+    const massVal = safeMass
+    const speedVal = Math.abs(radiusVal * omegaVal)
     const caVal = radiusVal * omegaVal * omegaVal
     const cfVal = massVal * caVal
     const callback = onDataPoint
@@ -458,13 +472,27 @@ function SimulationScene({
           setDisplayTrail([...trailRef.current])
 
           callback?.({
-            t: elapsedVal,
+            t_s: elapsedVal,
             angle,
+            speed_mps: speedVal,
             speed: speedVal,
+            centripetalAcceleration_mps2: caVal,
             centripetalAcceleration: caVal,
+            centripetalForce_N: cfVal,
             centripetalForce: cfVal,
+            radius_m: radiusVal,
             radius: radiusVal,
+            omega_radps: omegaVal,
             omega: omegaVal,
+            period_s: period,
+            centripetalAccelerationVector_mps2: { x: caVal * (-Math.cos(angle)), y: 0, z: caVal * (-Math.sin(angle)) },
+            centripetalForceVector_N: { x: cfVal * (-Math.cos(angle)), y: 0, z: cfVal * (-Math.sin(angle)) },
+            frictionCheck: {
+              mu: safeFrictionCoefficient,
+              maxStaticFriction_N: maxStaticFriction,
+              requiredFriction_N: frictionRequired,
+              isSufficient: frictionIsSufficient,
+            },
           })
           lastDataTimeRef.current = currentTime
         }
@@ -481,7 +509,7 @@ function SimulationScene({
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [radius, angularVelocity, mass, onDataPoint])
+  }, [safeRadius, safeOmega, safeMass, onDataPoint, period, safeFrictionCoefficient, maxStaticFriction, frictionRequired, frictionIsSufficient])
 
   const tiltAngle = isConicalMode ? Math.atan2(centripetalAcceleration, G) : 0
 
@@ -489,24 +517,25 @@ function SimulationScene({
 
   const centripetalDir = useMemo(() => {
     if (stringCut) return [0, 0]
-    const angle = angularVelocity * displayElapsed
+    const angle = safeOmega * displayElapsed
     const cx = -Math.cos(angle)
     const cz = -Math.sin(angle)
     return [cx, cz]
-  }, [displayElapsed, angularVelocity, stringCut])
+  }, [displayElapsed, safeOmega, stringCut])
 
   const tangentDir = useMemo(() => {
-    const angle = angularVelocity * displayElapsed + (stringCut ? 0 : Math.PI / 2)
-    return [Math.cos(angle), Math.sin(angle)]
-  }, [displayElapsed, angularVelocity, stringCut])
+    const angle = safeOmega * displayElapsed
+    const directionSign = safeOmega >= 0 ? 1 : -1
+    return [directionSign * -Math.sin(angle), directionSign * Math.cos(angle)]
+  }, [displayElapsed, safeOmega])
 
   const arrowScale = Math.min(centripetalForce * 0.02, 0.6)
   const velocityScale = Math.min(speed * 0.1, 0.5)
 
   if (isConicalMode) {
-    const conicalBallAngle = angularVelocity * displayElapsed
-    const horizontalR = radius * SCALE * Math.cos(tiltAngle)
-    const verticalDrop = radius * SCALE * Math.sin(tiltAngle)
+    const conicalBallAngle = safeOmega * displayElapsed
+    const horizontalR = safeRadius * SCALE * Math.cos(tiltAngle)
+    const verticalDrop = safeRadius * SCALE * Math.sin(tiltAngle)
     const ballX = horizontalR * Math.cos(conicalBallAngle)
     const ballZ = horizontalR * Math.sin(conicalBallAngle)
     const ballY = 2.5 - verticalDrop
@@ -543,8 +572,8 @@ function SimulationScene({
           </mesh>
         </group>
 
-        <FrostedLabel text={`ω = ${angularVelocity.toFixed(2)} rad/s`} color="#ffff00" position={[-2, 3, 0]} />
-        <FrostedLabel text={`r = ${radius.toFixed(1)} m`} color="#88ff88" position={[-2, 2.6, 0]} />
+        <FrostedLabel text={`ω = ${safeOmega.toFixed(2)} rad/s`} color="#ffff00" position={[-2, 3, 0]} />
+        <FrostedLabel text={`r = ${safeRadius.toFixed(1)} m`} color="#88ff88" position={[-2, 2.6, 0]} />
         <FrostedLabel text={`v = ${speed.toFixed(2)} m/s`} color="#00ffff" position={[1.5, 3, 0]} />
         <FrostedLabel text={`Fc = ${centripetalForce.toFixed(1)} N`} color="#ff4444" position={[1.5, 2.6, 0]} />
         <FrostedLabel text={funFact} color="#ff88ff" position={[0, 0.5, 0]} />
@@ -584,18 +613,18 @@ function SimulationScene({
       {isBankedCurve && (
         <group rotation={[0, 0, 0]}>
           <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[radius * SCALE - 0.5, radius * SCALE + 0.5, 64]} />
+            <ringGeometry args={[safeRadius * SCALE - 0.5, safeRadius * SCALE + 0.5, 64]} />
             <meshPhysicalMaterial color="#ffaa00" transparent opacity={0.3} side={THREE.DoubleSide} emissive="#ffaa00" emissiveIntensity={0.2} />
           </mesh>
         </group>
       )}
 
       <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[radius * SCALE - 0.1, radius * SCALE + 0.1, 64]} />
+        <ringGeometry args={[safeRadius * SCALE - 0.1, safeRadius * SCALE + 0.1, 64]} />
         <meshBasicMaterial color="#00f5ff" transparent opacity={0.1} side={THREE.DoubleSide} />
       </mesh>
 
-      <CircularTrack radius={radius} />
+      <CircularTrack radius={safeRadius} />
       <Ball position={[currentPos.x, currentPos.y, currentPos.z]} color={stringCut ? '#ff8800' : '#00f5ff'} />
       <BallTrail trailPoints={displayTrail} />
 
@@ -629,8 +658,8 @@ function SimulationScene({
 
       <FrostedLabel text={`v = ${speed.toFixed(2)} m/s`} color="#00ffff" position={[-2.5, 0.9, 0]} />
       <FrostedLabel text={`Fc = ${centripetalForce.toFixed(1)} N`} color="#ff4444" position={[-2.5, 0.6, 0]} />
-      <FrostedLabel text={`ω = ${angularVelocity.toFixed(2)} rad/s`} color="#ffff00" position={[1.5, 0.9, 0]} />
-      <FrostedLabel text={`r = ${radius.toFixed(1)} m`} color="#88ff88" position={[1.5, 0.6, 0]} />
+      <FrostedLabel text={`ω = ${safeOmega.toFixed(2)} rad/s`} color="#ffff00" position={[1.5, 0.9, 0]} />
+      <FrostedLabel text={`r = ${safeRadius.toFixed(1)} m`} color="#88ff88" position={[1.5, 0.6, 0]} />
       {isBankedCurve && (
         <FrostedLabel text={`N = ${normalForce.toFixed(1)} N`} color="#ffff00" position={[0, 0.9, 0]} />
       )}
@@ -727,17 +756,22 @@ export default function CircularMotion({
   radius = 2,
   mass = 1,
   angularVelocity = 2,
+  frictionCoefficient = 0.6,
   isPlaying = false,
   onDataPoint,
 }) {
   const [isConicalMode, setIsConicalMode] = useState(false)
   const [isBankedCurve, setIsBankedCurve] = useState(false)
   const [stringCut, setStringCut] = useState(false)
-  const [ballPosition, setBallPosition] = useState({ x: radius * SCALE, y: 0.15, z: 0 })
+  const safeRadius = Math.max(1e-4, Number(radius) || 0)
+  const safeMass = Math.max(1e-4, Number(mass) || 0)
+  const safeOmega = Number.isFinite(Number(angularVelocity)) ? Number(angularVelocity) : 0
+  const safeFrictionCoefficient = Math.max(0, Number(frictionCoefficient) || 0)
+  const [ballPosition, setBallPosition] = useState({ x: safeRadius * SCALE, y: 0.15, z: 0 })
   const [dataHistory, setDataHistory] = useState([])
   const [graphMode, setGraphMode] = useState('angularVelocity')
 
-  const bankAngle = isBankedCurve ? Math.atan2(angularVelocity * angularVelocity * radius, G) : 0
+  const bankAngle = isBankedCurve ? Math.atan2(safeOmega * safeOmega * safeRadius, G) : 0
 
   const handleDataUpdate = useCallback((data) => {
     setDataHistory(prev => {
@@ -757,15 +791,15 @@ export default function CircularMotion({
   }, [dataHistory, onDataPoint])
 
   const handleCutString = useCallback(() => {
-    setBallPosition({ x: radius * SCALE, y: 0.15, z: 0 })
+    setBallPosition({ x: safeRadius * SCALE, y: 0.15, z: 0 })
     setStringCut(true)
-  }, [radius])
+  }, [safeRadius])
 
   const handleReset = useCallback(() => {
     setStringCut(false)
     setDataHistory([])
-    setBallPosition({ x: radius * SCALE, y: 0.15, z: 0 })
-  }, [radius])
+    setBallPosition({ x: safeRadius * SCALE, y: 0.15, z: 0 })
+  }, [safeRadius])
 
   const handleToggleMode = useCallback(() => {
     setIsConicalMode(prev => !prev)
@@ -781,10 +815,9 @@ export default function CircularMotion({
     setDataHistory([])
   }, [])
 
-  const speed = radius * angularVelocity
-  const centripetalAcceleration = radius * angularVelocity * angularVelocity
-  const centripetalForce = mass * centripetalAcceleration
-  const weightlessnessOmega = Math.sqrt(G / radius)
+  const speed = Math.abs(safeRadius * safeOmega)
+  const centripetalAcceleration = safeRadius * safeOmega * safeOmega
+  const centripetalForce = safeMass * centripetalAcceleration
 
   return (
     <div className="relative h-full w-full">
@@ -826,15 +859,16 @@ export default function CircularMotion({
         />
 
         <SimulationScene
-          radius={radius}
-          mass={mass}
-          angularVelocity={angularVelocity}
+          radius={safeRadius}
+          mass={safeMass}
+          angularVelocity={safeOmega}
           isPlaying={isPlaying}
           onDataPoint={handleDataUpdate}
           isConicalMode={isConicalMode}
           stringCut={stringCut}
           isBankedCurve={isBankedCurve}
           bankAngle={bankAngle}
+          frictionCoefficient={safeFrictionCoefficient}
         />
 
         <EffectComposer>
@@ -852,10 +886,10 @@ export default function CircularMotion({
       </Canvas>
 
       <MiniMap
-        radius={radius}
+        radius={safeRadius}
         ballPosition={ballPosition}
         isPlaying={isPlaying}
-        angularVelocity={angularVelocity}
+        angularVelocity={safeOmega}
         stringCut={stringCut}
       />
 
@@ -908,7 +942,7 @@ export default function CircularMotion({
 
       {isConicalMode && (
         <div className="absolute left-4 top-20 rounded-full border border-[rgba(255,136,0,0.5)] bg-[rgba(0,0,0,0.7)] px-4 py-2 font-mono-display text-xs text-[#ff8800]">
-          θ = tan⁻¹(ω²r/g) = {(Math.atan2(angularVelocity * angularVelocity * radius, G) * 180 / Math.PI).toFixed(1)}°
+          θ = tan⁻¹(ω²r/g) = {(Math.atan2(safeOmega * safeOmega * safeRadius, G) * 180 / Math.PI).toFixed(1)}°
         </div>
       )}
 
@@ -929,13 +963,13 @@ export default function CircularMotion({
           <div className="mb-2 font-mono-display text-xs text-slate-400">LIVE DATA</div>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono-display text-[10px]">
             <span className="text-[#00ffff]">v:</span>
-            <span className="text-white">{(radius * angularVelocity).toFixed(2)} m/s</span>
+            <span className="text-white">{speed.toFixed(2)} m/s</span>
             <span className="text-[#ff4444]">Fc:</span>
-            <span className="text-white">{(mass * radius * angularVelocity * angularVelocity).toFixed(2)} N</span>
+            <span className="text-white">{centripetalForce.toFixed(2)} N</span>
             <span className="text-[#88ff88]">aᶜ:</span>
-            <span className="text-white">{(radius * angularVelocity * angularVelocity).toFixed(2)} m/s²</span>
+            <span className="text-white">{centripetalAcceleration.toFixed(2)} m/s²</span>
             <span className="text-[#ffff00]">ω:</span>
-            <span className="text-white">{angularVelocity.toFixed(2)} rad/s</span>
+            <span className="text-white">{safeOmega.toFixed(2)} rad/s</span>
           </div>
         </div>
       </div>
@@ -969,9 +1003,9 @@ export default function CircularMotion({
           </div>
           <GraphPanel
             mode={graphMode}
-            mass={mass}
-            angularVelocity={angularVelocity}
-            radius={radius}
+            mass={safeMass}
+            angularVelocity={safeOmega}
+            radius={safeRadius}
             dataHistory={dataHistory}
           />
         </div>
@@ -1001,30 +1035,39 @@ export default function CircularMotion({
 }
 
 CircularMotion.getSceneConfig = (variables = {}) => {
-  const { radius = 2, mass = 1, angularVelocity = 2 } = variables
-  const speed = radius * angularVelocity
-  const centripetalAcceleration = radius * angularVelocity * angularVelocity
-  const centripetalForce = mass * centripetalAcceleration
-  const weightlessnessOmega = Math.sqrt(G / radius)
+  const { radius = 2, mass = 1, angularVelocity = 2, frictionCoefficient = 0.6 } = variables
+  const safeRadius = Math.max(1e-4, Number(radius) || 0)
+  const safeMass = Math.max(1e-4, Number(mass) || 0)
+  const safeOmega = Number.isFinite(Number(angularVelocity)) ? Number(angularVelocity) : 0
+  const safeFrictionCoefficient = Math.max(0, Number(frictionCoefficient) || 0)
+  const speed = Math.abs(safeRadius * safeOmega)
+  const centripetalAcceleration = safeRadius * safeOmega * safeOmega
+  const centripetalForce = safeMass * centripetalAcceleration
+  const period = Math.abs(safeOmega) > 1e-9 ? (2 * Math.PI) / Math.abs(safeOmega) : Infinity
+  const weightlessnessOmega = safeRadius > 1e-9 ? Math.sqrt(G / safeRadius) : Infinity
+  const maxStaticFriction = safeFrictionCoefficient * safeMass * G
 
   return {
     name: 'Circular Motion',
     description: 'Uniform circular motion with centripetal force analysis',
     type: 'circular_motion',
     physics: {
-      radius,
-      mass,
-      angularVelocity,
+      radius: safeRadius,
+      mass: safeMass,
+      angularVelocity: safeOmega,
       speed,
       centripetalAcceleration,
       centripetalForce,
       weightlessnessOmega,
+      period,
+      frictionCoefficient: safeFrictionCoefficient,
     },
     calculations: {
       centripetalForce: `Fc = mv²/r = ${centripetalForce.toFixed(2)} N`,
       centripetalAccel: `ac = v²/r = ${centripetalAcceleration.toFixed(2)} m/s²`,
-      period: `T = 2π/ω = ${(2 * Math.PI / angularVelocity).toFixed(2)} s`,
-      weightlessnessCondition: `ω = √(g/r) = ${weightlessnessOmega.toFixed(2)} rad/s`,
+      period: `T = 2π/|ω| = ${Number.isFinite(period) ? period.toFixed(2) : '∞'} s`,
+      frictionCheck: `μmg ${maxStaticFriction >= centripetalForce ? '≥' : '<'} mv²/r (${maxStaticFriction.toFixed(2)} ${maxStaticFriction >= centripetalForce ? '≥' : '<'} ${centripetalForce.toFixed(2)} N)`,
+      weightlessnessCondition: `ω = √(g/r) = ${Number.isFinite(weightlessnessOmega) ? weightlessnessOmega.toFixed(2) : '∞'} rad/s`,
     },
   }
 }

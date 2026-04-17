@@ -32,7 +32,7 @@ function FrostedLabel({ position, color = '#00f5ff', children }) {
 }
 
 function lensEquation(f, u) {
-  if (Math.abs(f) < 0.001) return Infinity
+  if (Math.abs(f) < 0.001 || Math.abs(u) < 0.001) return Infinity
   return 1 / (1 / f - 1 / u)
 }
 
@@ -40,6 +40,10 @@ function magnification(f, u) {
   const v = lensEquation(f, u)
   if (!isFinite(v)) return 0
   return -v / u
+}
+
+function signedFocalLength(lensType, focalLength) {
+  return lensType === 'concave' ? -Math.abs(focalLength) : Math.abs(focalLength)
 }
 
 function createLensGeometry(type, width, height) {
@@ -517,7 +521,7 @@ export default function Optics({
   const [animationProgress, setAnimationProgress] = useState(0)
 
   const u = objectDistance
-  const f = focalLength
+  const f = signedFocalLength(lensType, focalLength)
   const v = lensEquation(f, u) * SCENE_SCALE
   const m = magnification(f, u)
   const imageHeight = objectHeight * Math.abs(m)
@@ -550,13 +554,17 @@ export default function Optics({
   useEffect(() => {
     if (onDataPoint) {
       onDataPoint({
+        objectDistance_m: u,
+        imageDistance_m: v / SCENE_SCALE,
+        focalLength_m: f,
+        magnification: m,
+        signConvention: mode === 'lens' ? 'thin-lens Cartesian sign convention' : 'mirror sign convention',
+        imageType: imageReal ? 'real' : imageVirtual ? 'virtual' : 'none',
         objectDistance: u,
         imageDistance: v / SCENE_SCALE,
-        magnification: m,
-        imageType: imageReal ? 'real' : imageVirtual ? 'virtual' : 'none',
       })
     }
-  }, [u, v, m, imageReal, imageVirtual, onDataPoint])
+  }, [u, v, m, imageReal, imageVirtual, onDataPoint, f, mode])
 
   const objectPos = { x: -u * SCENE_SCALE, y: 0 }
 
@@ -803,8 +811,9 @@ export default function Optics({
 Optics.getSceneConfig = (variables = {}) => {
   const { lensType = 'convex', focalLength = 2, objectDistance = 4, objectHeight = 1 } = variables
 
-  const v = lensEquation(focalLength, objectDistance) * SCENE_SCALE
-  const m = magnification(focalLength, objectDistance)
+  const signedF = signedFocalLength(lensType, focalLength)
+  const v = lensEquation(signedF, objectDistance) * SCENE_SCALE
+  const m = magnification(signedF, objectDistance)
 
   return {
     name: 'Optics',
@@ -812,14 +821,14 @@ Optics.getSceneConfig = (variables = {}) => {
     type: 'optics',
     physics: {
       lensType,
-      focalLength,
+      focalLength: signedF,
       objectDistance,
       objectHeight,
       imageDistance: v / SCENE_SCALE,
       magnification: m,
     },
     calculations: {
-      lensEquation: `1/v = 1/f - 1/u`,
+      lensEquation: `1/f = 1/do + 1/di`,
       magnification: `m = -v/u = ${m.toFixed(3)}`,
       imageDistance: `v = ${isFinite(v) ? (v / SCENE_SCALE).toFixed(2) : '∞'} m`,
     },

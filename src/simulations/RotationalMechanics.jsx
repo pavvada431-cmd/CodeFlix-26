@@ -344,8 +344,14 @@ function SimulationScene({
   )
 
   const torqueCalc = useMemo(
-    () => radius * appliedForce * Math.sin(forcePosition * Math.PI / 180),
-    [radius, appliedForce, forcePosition]
+    // Torque magnitude uses the full cross-product relation:
+    // |τ| = |r × F| = r F sin(φ). In this scene, force is applied tangentially
+    // so φ = 90° and sin(φ)=1, but we keep the term explicit for clarity.
+    () => {
+      const phi = Math.PI / 2
+      return radius * appliedForce * Math.sin(phi)
+    },
+    [radius, appliedForce]
   )
 
   const angularAccel = torqueCalc / momentOfInertia
@@ -395,7 +401,15 @@ function SimulationScene({
       setAngularMomentum(L)
 
       onDataPoint?.({
-        t: state.t,
+        t_s: state.t,
+        theta_rad: state.theta,
+        omega_radps: state.omega,
+        alpha_radps2: state.alpha,
+        torque_Nm: torqueCalc,
+        momentOfInertia_kgm2: I,
+        angularMomentum_kgm2ps: L,
+        torqueVector_Nm: { x: 0, y: 0, z: torqueCalc },
+        angularMomentumConserved: Math.abs(torqueCalc) < 1e-9,
         theta: state.theta,
         omega: state.omega,
         alpha: state.alpha,
@@ -774,8 +788,9 @@ RotationalMechanics.getSceneConfig = (variables = {}) => {
     },
     calculations: {
       momentOfInertia: `I = ${getInertiaLabel(objectType)} = ${I.toFixed(3)} kg·m²`,
-      torque: `τ = rF = ${torque.toFixed(2)} N·m`,
+      torque: `τ = |r × F| = rF = ${torque.toFixed(2)} N·m`,
       angularAcceleration: `α = τ/I = ${alpha.toFixed(2)} rad/s²`,
+      angularMomentum: `L = Iω`,
     },
   }
 }

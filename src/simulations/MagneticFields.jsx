@@ -4,8 +4,8 @@ import { Environment, Grid, Html, Line, OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
-const G = 9.81
 const BALL_SIZE = 0.3
+const DEFAULT_PARTICLE_MASS = 9.11e-31
 
 function createArrowGeometry(length, headLength = 0.15, headWidth = 0.08) {
   const shape = new THREE.Shape()
@@ -143,8 +143,10 @@ function VelocityArrow({ position, direction, length, color }) {
 function SimulationScene({
   charge,
   velocity,
+  velocityParallel = 0,
   magneticField,
   electricField,
+  particleMass = DEFAULT_PARTICLE_MASS,
   isPlaying,
   onDataPoint,
   mode,
@@ -155,16 +157,21 @@ function SimulationScene({
   const [dataHistory, setDataHistory] = useState([])
 
   const posRef = useRef({ x: -3, y: 0, z: 0 })
-  const velRef = useRef({ x: velocity, y: 0, z: 0 })
+  const velRef = useRef({ x: velocity, y: 0, z: velocityParallel })
   const startTimeRef = useRef(0)
   const animationRef = useRef(null)
   const isPlayingRef = useRef(isPlaying)
   const trailRef = useRef([])
 
-  const lorentzForce = Math.abs(charge) * velocity * magneticField
-  const radius = Math.abs(velocity) * Math.abs(charge) / magneticField || 10
-  const period = 2 * Math.PI * Math.abs(charge) / magneticField || 100
-  const speed = velocity
+  const speedPerp = Math.abs(velocity)
+  const lorentzForce = Math.abs(charge) * speedPerp * Math.abs(magneticField)
+  const radius = (Math.abs(charge) > 1e-30 && Math.abs(magneticField) > 1e-30)
+    ? (particleMass * speedPerp) / (Math.abs(charge) * Math.abs(magneticField))
+    : Infinity
+  const period = (Math.abs(charge) > 1e-30 && Math.abs(magneticField) > 1e-30)
+    ? (2 * Math.PI * particleMass) / (Math.abs(charge) * Math.abs(magneticField))
+    : Infinity
+  const speed = Math.sqrt(velocity * velocity + velocityParallel * velocityParallel)
 
   const fieldLines = useMemo(() => {
     const lines = []
@@ -188,7 +195,7 @@ function SimulationScene({
 
   useEffect(() => {
     posRef.current = { x: -3, y: 0, z: 0 }
-    velRef.current = { x: velocity, y: 0, z: 0 }
+    velRef.current = { x: velocity, y: 0, z: velocityParallel }
     trailRef.current = []
     startTimeRef.current = 0
   }, [velocity, magneticField, charge])
@@ -210,7 +217,7 @@ function SimulationScene({
     const q = charge
     const B = magneticField
     const E = electricField || 0
-    const m = Math.abs(charge) * 1e5 || 1
+    const m = Math.max(1e-35, Math.abs(particleMass))
     const callback = onDataPoint
     const vSign = velocity >= 0 ? 1 : -1
 
@@ -219,35 +226,46 @@ function SimulationScene({
       const elapsed = startTimeRef.current > 0 ? currentTime - startTimeRef.current : 0
       setDisplayTime(elapsed)
 
+      // Lorentz force: F = q(E + v × B). Here B is along +z and E is along +y.
       const fx = q * velRef.current.y * B
       const fy = -q * velRef.current.x * B + q * E
       const fz = 0
 
       velRef.current.x += (fx / m) * dt
       velRef.current.y += (fy / m) * dt
+      velRef.current.z += (fz / m) * dt
 
       posRef.current.x += velRef.current.x * dt
       posRef.current.y += velRef.current.y * dt
+      posRef.current.z += velRef.current.z * dt
 
       const newPos = { ...posRef.current }
       trailRef.current = [...trailRef.current.slice(-199), newPos]
       setDisplayPosition(newPos)
       setDisplayTrail([...trailRef.current])
 
-      const currentSpeed = Math.sqrt(velRef.current.x ** 2 + velRef.current.y ** 2)
+      const currentSpeed = Math.sqrt(velRef.current.x ** 2 + velRef.current.y ** 2 + velRef.current.z ** 2)
       const kineticEnergy = 0.5 * m * currentSpeed ** 2
 
       const dataPoint = {
-        t: elapsed,
+        t_s: elapsed,
         x: posRef.current.x,
         y: posRef.current.y,
+        z: posRef.current.z,
         vx: velRef.current.x,
         vy: velRef.current.y,
+        vz: velRef.current.z,
         speed: currentSpeed,
-        kineticEnergy,
-        lorentzForce: Math.abs(q) * currentSpeed * B,
-        radius,
+        kineticEnergy_J: kineticEnergy,
+        lorentzForce_N: Math.abs(q) * Math.sqrt(velRef.current.x ** 2 + velRef.current.y ** 2) * Math.abs(B),
+        radius_m: radius,
+        period_s: period,
+        rightHandRule: q >= 0 ? 'positive charge follows right-hand rule' : 'negative charge reverses direction',
+        helixPitch_m: Math.abs(velRef.current.z) * (Number.isFinite(period) ? period : 0),
         time: elapsed,
+        kineticEnergy,
+        lorentzForce: Math.abs(q) * Math.sqrt(velRef.current.x ** 2 + velRef.current.y ** 2) * Math.abs(B),
+        radius,
       }
       setDataHistory(prev => [...prev.slice(-199), dataPoint])
 
@@ -256,9 +274,9 @@ function SimulationScene({
       }
 
       if (posRef.current.x > 5 || posRef.current.x < -5 || 
-          posRef.current.y > 5 || posRef.current.y < -5) {
+          posRef.current.y > 5 || posRef.current.y < -5 || posRef.current.z > 5 || posRef.current.z < -5) {
         posRef.current = { x: -3, y: 0, z: 0 }
-        velRef.current = { x: velocity, y: 0, z: 0 }
+        velRef.current = { x: velocity, y: 0, z: velocityParallel }
         trailRef.current = []
       }
 
@@ -273,7 +291,7 @@ function SimulationScene({
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [charge, velocity, magneticField, electricField, onDataPoint, radius])
+  }, [charge, velocity, velocityParallel, magneticField, electricField, onDataPoint, radius, period, particleMass])
 
   const infoLabels = useMemo(
     () => ({
@@ -555,6 +573,8 @@ function GraphPanel({ dataHistory, mode, charge, magneticField, velocity }) {
 export default function MagneticFields({
   charge = 1.6e-19,
   velocity = 1e6,
+  velocityParallel = 0.2e6,
+  particleMass = DEFAULT_PARTICLE_MASS,
   magneticField = 0.5,
   electricField = 0,
   isPlaying = false,
@@ -564,8 +584,11 @@ export default function MagneticFields({
   const [mode, setMode] = useState('default')
   const [graphMode, setGraphMode] = useState('trajectory')
 
-  const lorentzForce = Math.abs(charge) * velocity * magneticField
-  const radius = Math.abs(velocity) * Math.abs(charge) / magneticField || 10
+  const speedPerp = Math.abs(velocity)
+  const lorentzForce = Math.abs(charge) * speedPerp * Math.abs(magneticField)
+  const radius = (Math.abs(charge) > 1e-30 && Math.abs(magneticField) > 1e-30)
+    ? (particleMass * speedPerp) / (Math.abs(charge) * Math.abs(magneticField))
+    : Infinity
 
   const handleDataPoint = useCallback((data) => {
     setDataHistory(prev => [...prev.slice(-199), data])
@@ -608,8 +631,10 @@ export default function MagneticFields({
         <SimulationScene
           charge={charge}
           velocity={velocity}
+          velocityParallel={velocityParallel}
           magneticField={magneticField}
           electricField={electricField}
+          particleMass={particleMass}
           isPlaying={isPlaying}
           onDataPoint={handleDataPoint}
           mode={mode}
@@ -676,7 +701,7 @@ export default function MagneticFields({
           <span className="text-[#00ffff]">F:</span>
           <span className="text-white">{lorentzForce.toExponential(2)} N</span>
           <span className="text-[#88ff88]">r:</span>
-          <span className="text-white">{radius.toFixed(2)} m</span>
+          <span className="text-white">{Number.isFinite(radius) ? radius.toFixed(2) : '∞'} m</span>
           <span className="text-[#ffff00]">B:</span>
           <span className="text-white">{magneticField.toFixed(2)} T</span>
           <span className="text-[#ff4444]">q:</span>
@@ -744,9 +769,14 @@ export default function MagneticFields({
 }
 
 MagneticFields.getSceneConfig = (variables = {}) => {
-  const { charge = 1.6e-19, velocity = 1e6, magneticField = 0.5, electricField = 0 } = variables
-  const lorentzForce = Math.abs(charge) * velocity * magneticField
-  const radius = Math.abs(velocity) * Math.abs(charge) / magneticField
+  const { charge = 1.6e-19, velocity = 1e6, magneticField = 0.5, electricField = 0, particleMass = DEFAULT_PARTICLE_MASS, velocityParallel = 0.2e6 } = variables
+  const lorentzForce = Math.abs(charge) * Math.abs(velocity) * Math.abs(magneticField)
+  const radius = (Math.abs(charge) > 1e-30 && Math.abs(magneticField) > 1e-30)
+    ? (particleMass * Math.abs(velocity)) / (Math.abs(charge) * Math.abs(magneticField))
+    : Infinity
+  const period = (Math.abs(charge) > 1e-30 && Math.abs(magneticField) > 1e-30)
+    ? (2 * Math.PI * particleMass) / (Math.abs(charge) * Math.abs(magneticField))
+    : Infinity
 
   return {
     name: 'Magnetic Fields',
@@ -757,13 +787,16 @@ MagneticFields.getSceneConfig = (variables = {}) => {
       velocity,
       magneticField,
       electricField,
+      particleMass,
+      velocityParallel,
       lorentzForce,
       radius,
+      period,
     },
     calculations: {
       lorentzForce: `F = qvB = ${lorentzForce.toExponential(2)} N`,
-      radius: `r = mv/(qB) = ${radius.toFixed(2)} m`,
-      period: `T = 2πm/(qB) = ${(2 * Math.PI * Math.abs(charge) / magneticField).toFixed(2)} s`,
+      radius: `r = mv/(qB) = ${Number.isFinite(radius) ? radius.toExponential(3) : '∞'} m`,
+      period: `T = 2πm/(qB) = ${Number.isFinite(period) ? period.toExponential(3) : '∞'} s`,
     },
   }
 }

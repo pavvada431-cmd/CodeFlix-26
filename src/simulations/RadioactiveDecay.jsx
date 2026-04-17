@@ -412,12 +412,19 @@ function AtomCluster({
     const N_remaining = initialAtoms - decayedAtoms.size - flashingAtoms.size
     const activity = lambda * N_remaining
     const decayRate = newDecays / dt
+    const theoreticalN = initialAtoms * Math.exp(-lambda * elapsed)
+    const halfLifeMarkers = [halfLife, 2 * halfLife, 3 * halfLife]
 
     onDataUpdate?.({
+      t_s: elapsed,
       t: elapsed,
       N_remaining,
+      N_theoretical: theoreticalN,
       decayRate,
       activity,
+      halfLife_s: halfLife,
+      halfLifeMarkers_s: halfLifeMarkers,
+      chainDecayActive: Boolean(chainDecay),
     })
   })
 
@@ -468,13 +475,17 @@ export default function RadioactiveDecay({
       if (newHistory.length > 500) return newHistory.slice(-500)
       return newHistory
     })
-    setDecayCount(prev => {
-      if (data.N_remaining < (prev.prevN || initialAtoms)) {
-        setLastDecay(Date.now())
-      }
-      return { count: data.N_remaining, prevN: data.N_remaining }
+    const currentDecayCount = Math.max(0, initialAtoms - (data.N_remaining ?? initialAtoms))
+    setDecayCount(currentDecayCount)
+    if (currentDecayCount > 0) {
+      setLastDecay(Date.now())
+    }
+    onDataPoint?.({
+      ...data,
+      decayCount: currentDecayCount,
+      halfLifeFormula: 't1/2 = ln(2)/λ',
+      decayLaw: 'N(t)=N0 exp(-λt)',
     })
-    onDataPoint?.(data)
   }, [onDataPoint, initialAtoms])
 
   useEffect(() => {
@@ -684,6 +695,7 @@ RadioactiveDecay.getSceneConfig = (variables = {}) => {
       decayConstant: `λ = ln(2)/t½ = ${lambda.toFixed(4)} s⁻¹`,
       activity: `A = λN₀ = ${activity0.toFixed(2)} Bq`,
       decayLaw: `N(t) = N₀e^(-λt)`,
+      halfLifeMarkers: `t½ markers at ${halfLife.toFixed(2)}, ${(2 * halfLife).toFixed(2)}, ${(3 * halfLife).toFixed(2)} s`,
     },
   }
 }

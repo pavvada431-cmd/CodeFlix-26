@@ -202,13 +202,11 @@ function FloatingObject({
       const radius = objectHeight / 2
 
       let submergedFraction = 0
-      if (pos.y + radius > WATER_LEVEL) {
-        if (pos.y - radius < WATER_LEVEL) {
-          submergedFraction = (pos.y + radius - WATER_LEVEL) / (2 * radius)
-          submergedFraction = Math.max(0, Math.min(1, submergedFraction))
-        } else {
-          submergedFraction = 1
-        }
+      if (pos.y + radius > WATER_LEVEL && pos.y - radius < WATER_LEVEL) {
+        submergedFraction = (WATER_LEVEL - (pos.y - radius)) / (2 * radius)
+        submergedFraction = Math.max(0, Math.min(1, submergedFraction))
+      } else if (pos.y + radius <= WATER_LEVEL) {
+        submergedFraction = 1
       }
 
       const buoyancyForce = submergedFraction * maxBuoyancy
@@ -234,6 +232,10 @@ function FloatingObject({
         velocity: velocityRef.current,
         acceleration,
         submergedFraction,
+        displacedVolume_m3: submergedFraction * objectVolume,
+        buoyancyForce_N: buoyancyForce,
+        netForce_N: netForce,
+        weight_N: weight,
         buoyancyForce,
         netForce,
       })
@@ -556,14 +558,32 @@ export default function FluidMechanics({
   const [bernoulliMode, setBernoulliMode] = useState(false)
 
   const handlePositionUpdate = useCallback((data) => {
-    setCurrentData(data)
+    const rho = fluidDensity
+    const v1 = 1.2
+    const v2 = 2.4
+    const p1 = 101325
+    const y1 = WATER_LEVEL
+    const y2 = WATER_LEVEL - 1.2
+    const p2 = p1 + 0.5 * rho * (v1 * v1 - v2 * v2) + rho * G * (y1 - y2)
+    const enriched = {
+      ...data,
+      bernoulli: {
+        P1_Pa: p1,
+        P2_Pa: p2,
+        v1_mps: v1,
+        v2_mps: v2,
+        y1_m: y1,
+        y2_m: y2,
+      },
+    }
+    setCurrentData(enriched)
     setDataHistory(prev => {
-      const newHistory = [...prev, data]
+      const newHistory = [...prev, enriched]
       if (newHistory.length > 300) return newHistory.slice(-300)
       return newHistory
     })
-    onDataPoint?.(data)
-  }, [onDataPoint])
+    onDataPoint?.(enriched)
+  }, [onDataPoint, fluidDensity])
 
   useEffect(() => {
     if (!isPlaying) {
@@ -806,6 +826,7 @@ FluidMechanics.getSceneConfig = (variables = {}) => {
       buoyancyForce: `F_b = ρ_fluid × V × g = ${maxBuoyancy.toFixed(2)} N`,
       weight: `W = mg = ${weight.toFixed(2)} N`,
       netForce: `F_net = F_b - W = ${(maxBuoyancy - weight).toFixed(2)} N`,
+      bernoulli: `P + ½ρv² + ρgy = constant`,
       equilibriumDepth: willFloat
         ? `Equilibrium at ${equilibriumDepth.toFixed(2)}m depth`
         : 'No equilibrium (sinks)',

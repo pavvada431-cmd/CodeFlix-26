@@ -553,14 +553,32 @@ export default function ElectricFields({
   }, [])
 
   useEffect(() => {
-    if (onDataPoint) {
-      onDataPoint({
-        t: performance.now() / 1000,
-        numCharges: charges.length,
-        potentialEnergy,
-        testChargePos: testChargePosition,
-      })
+    if (!onDataPoint) return
+    const { Ex, Ey } = calculateElectricField(charges, testChargePosition.x, testChargePosition.y)
+    const fieldMagnitude = Math.sqrt(Ex * Ex + Ey * Ey)
+    const testChargeC = 1e-6
+    const force = {
+      Fx_N: testChargeC * Ex,
+      Fy_N: testChargeC * Ey,
+      magnitude_N: Math.abs(testChargeC) * fieldMagnitude,
     }
+    const equipotentialSamples = [
+      { x: -1, y: 0, V: calculatePotential(charges, -1, 0) },
+      { x: 0, y: 0, V: calculatePotential(charges, 0, 0) },
+      { x: 1, y: 0, V: calculatePotential(charges, 1, 0) },
+    ]
+    onDataPoint({
+      t_s: performance.now() / 1000,
+      numCharges: charges.length,
+      potentialEnergy_J: potentialEnergy,
+      testChargePos_m: testChargePosition,
+      electricFieldAtTest_NpC: { Ex, Ey, magnitude: fieldMagnitude },
+      testChargeForce_N: force,
+      equipotentialSamples_V: equipotentialSamples,
+      fieldLineDirection: 'away from +q toward -q',
+      potentialEnergy,
+      testChargePos: testChargePosition,
+    })
   }, [charges, potentialEnergy, testChargePosition, onDataPoint])
 
   return (
@@ -791,6 +809,7 @@ ElectricFields.getSceneConfig = (variables = {}) => {
     calculations: {
       coulombForce: `F = kq₁q₂/r²`,
       electricField: `E = kq/r²`,
+      fieldDirection: `Field lines point away from +q and toward -q`,
       potentialEnergy: `U = Σ kqᵢqⱼ/rᵢⱼ = ${potentialEnergy.toExponential(2)} J`,
     },
   }

@@ -3,39 +3,68 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Environment, Stars, Grid, Text, Html, Line, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
-import Matter from 'matter-js';
 
-const GRAVITY = -9.81;
+const G_MAGNITUDE = 9.81;
+const GRAVITY = -G_MAGNITUDE;
 const SCALE = 0.1;
+const PROJECTILE_MASS_KG = 1;
+// Canonical drag coefficient for a smooth sphere in air (kept for reference if drag is enabled).
+const DRAG_COEFFICIENT_SPHERE = 0.47;
 
 function easeOutQuart(t) {
   return 1 - Math.pow(1 - t, 4);
 }
 
+function solveProjectileKinematics(initialVelocity, launchAngle, initialHeight) {
+  const safeSpeed = Math.max(0, Number(initialVelocity) || 0);
+  const safeHeight = Math.max(0, Number(initialHeight) || 0);
+  const angleRad = ((Number(launchAngle) || 0) * Math.PI) / 180;
+  const vx = safeSpeed * Math.cos(angleRad);
+  const vy = safeSpeed * Math.sin(angleRad);
+  // Vertical kinematics in SI units:
+  // y(t) = h0 + vy0*t - 1/2*g*t^2, with g = +9.81 m/s² downward.
+  // Setting y(t)=0 gives: (1/2)g t² - vy0 t - h0 = 0.
+  // The physically valid landing time is the non-negative root:
+  // t_flight = (vy0 + sqrt(vy0² + 2gh0)) / g.
+  const discriminant = Math.max(0, vy * vy + 2 * G_MAGNITUDE * safeHeight);
+  const timeOfFlight = Math.max(0, (vy + Math.sqrt(discriminant)) / G_MAGNITUDE);
+  const timeToApex = vy > 0 ? vy / G_MAGNITUDE : 0;
+  const maxHeight = safeHeight + (vy > 0 ? (vy * vy) / (2 * G_MAGNITUDE) : 0);
+  const range = Math.max(0, vx * timeOfFlight);
+  return { vx, vy, timeOfFlight, maxHeight, range, angleRad, timeToApex };
+}
+
 function calculateTrajectoryPoints(initialVelocity, launchAngle, initialHeight) {
   const points = [];
-  const angleRad = (launchAngle * Math.PI) / 180;
-  const vx = initialVelocity * Math.cos(angleRad);
-  const vy = initialVelocity * Math.sin(angleRad);
-
-  const totalTime = (-vy + Math.sqrt(vy * vy + 2 * GRAVITY * initialHeight)) / GRAVITY;
-  const steps = 60;
-
+  const { vx, vy, timeOfFlight } = solveProjectileKinematics(initialVelocity, launchAngle, initialHeight);
+  const safeHeight = Math.max(0, Number(initialHeight) || 0);
+  const steps = 80;
   for (let i = 0; i <= steps; i++) {
-    const t = (i / steps) * totalTime;
+    const t = (i / steps) * timeOfFlight;
     const x = vx * t;
-    const y = initialHeight + vy * t + 0.5 * GRAVITY * t * t;
-    if (y >= 0) {
-      points.push(new THREE.Vector3(x * SCALE, y * SCALE, 0));
-    }
+    const y = Math.max(0, safeHeight + vy * t + 0.5 * GRAVITY * t * t);
+    points.push(new THREE.Vector3(x * SCALE, y * SCALE, 0));
   }
-
-  if (points.length > 0 && points[points.length - 1].y > 0) {
-    const landingTime = totalTime;
-    points.push(new THREE.Vector3(vx * landingTime * SCALE, 0, 0));
-  }
-
   return points;
+}
+
+function buildProjectileGraphData(initialVelocity, launchAngle, initialHeight, sampleCount = 60) {
+  const { vx, vy, timeOfFlight, maxHeight, range } = solveProjectileKinematics(initialVelocity, launchAngle, initialHeight);
+  const safeHeight = Math.max(0, Number(initialHeight) || 0);
+  return Array.from({ length: sampleCount + 1 }, (_, index) => {
+    const t = timeOfFlight > 0 ? (index / sampleCount) * timeOfFlight : 0;
+    const y = Math.max(0, safeHeight + vy * t + 0.5 * GRAVITY * t * t);
+    return {
+      t,
+      x_m: vx * t,
+      y_m: y,
+      vx_mps: vx,
+      vy_mps: vy + GRAVITY * t,
+      speed_mps: Math.hypot(vx, vy + GRAVITY * t),
+      range_m: range,
+      maxHeight_m: maxHeight,
+    };
+  });
 }
 
 function FrostedLabel({ children, position, color = '#00f5ff', scale = [1, 0.3, 1] }) {
@@ -297,55 +326,36 @@ function MeasurementMarkers() {
   return <>{markers}</>;
 }
 
-function SimulationScene({ initialVelocity, launchAngle, initialHeight, isPlaying }) {
-  const engineRef = useRef();
-  const ballBodyRef = useRef();
-
+function SimulationScene({ initialVelocity, launchAngle, initialHeight, isPlaying, onDataPoint }) {
+  const launchOffsetX = 0.5;
   const [trailPoints, setTrailPoints] = useState([]);
   const [hasLanded, setHasLanded] = useState(false);
-  const [currentHeight, setCurrentHeight] = useState(initialHeight);
-  const [currentVelocity, setCurrentVelocity] = useState(initialVelocity);
+  const [currentHeight, setCurrentHeight] = useState(Math.max(0, initialHeight));
+  const [currentVelocity, setCurrentVelocity] = useState(Math.max(0, initialVelocity));
   const [horizontalDistance, setHorizontalDistance] = useState(0);
   const [showMaxHeight, setShowMaxHeight] = useState(false);
   const [maxHeightReached, setMaxHeightReached] = useState(false);
   const [dustActive, setDustActive] = useState(false);
-  const [ballPosition, setBallPosition] = useState({ x: 0.5 * SCALE, y: initialHeight * SCALE, z: 0 });
+  const [ballPosition, setBallPosition] = useState({ x: launchOffsetX * SCALE, y: Math.max(0, initialHeight) * SCALE, z: 0 });
 
-  const prevHeight = useRef(initialHeight);
   const needsResetRef = useRef(false);
   const prevIsPlayingRef = useRef(false);
+  const elapsedRef = useRef(0);
+  const dustTimeoutRef = useRef(null);
+  const maxHeightTimeoutRef = useRef(null);
+  const landingTriggeredRef = useRef(false);
+
+  const kinematics = useMemo(
+    () => solveProjectileKinematics(initialVelocity, launchAngle, initialHeight),
+    [initialVelocity, launchAngle, initialHeight]
+  );
 
   useEffect(() => {
-    const Engine = Matter.Engine;
-    const engine = Engine.create({
-      gravity: { x: 0, y: GRAVITY / SCALE, z: 0 },
-    });
-    engineRef.current = engine;
-
-    const angleRad = (launchAngle * Math.PI) / 180;
-    const ball = Matter.Bodies.circle(
-      0.5 * SCALE,
-      initialHeight * SCALE,
-      0.2 * SCALE,
-      {
-        restitution: 0.3,
-        friction: 0.5,
-        label: 'ball',
-      }
-    );
-    ballBodyRef.current = ball;
-    Matter.Composite.add(engine.world, ball);
-
-    Matter.Body.setVelocity(ball, {
-      x: initialVelocity * SCALE * Math.cos(angleRad),
-      y: initialVelocity * SCALE * Math.sin(angleRad),
-      z: 0,
-    });
-
     return () => {
-      Matter.Engine.clear(engine);
+      if (dustTimeoutRef.current) clearTimeout(dustTimeoutRef.current);
+      if (maxHeightTimeoutRef.current) clearTimeout(maxHeightTimeoutRef.current);
     };
-  }, [initialVelocity, launchAngle, initialHeight]);
+  }, []);
 
   useEffect(() => {
     if (isPlaying && !prevIsPlayingRef.current) {
@@ -354,88 +364,102 @@ function SimulationScene({ initialVelocity, launchAngle, initialHeight, isPlayin
     prevIsPlayingRef.current = isPlaying;
   }, [isPlaying, initialVelocity, launchAngle, initialHeight]);
 
-  useFrame((state, delta) => {
-    if (!engineRef.current || !ballBodyRef.current) return;
-
+  useFrame((_, delta) => {
     if (needsResetRef.current && isPlaying) {
       needsResetRef.current = false;
-      const angleRad = (launchAngle * Math.PI) / 180;
-      Matter.Body.setVelocity(ballBodyRef.current, {
-        x: initialVelocity * SCALE * Math.cos(angleRad),
-        y: initialVelocity * SCALE * Math.sin(angleRad),
-        z: 0,
-      });
-      Matter.Body.setPosition(ballBodyRef.current, {
-        x: 0.5 * SCALE,
-        y: initialHeight * SCALE,
-        z: 0,
-      });
       setTrailPoints([]);
       setHasLanded(false);
       setMaxHeightReached(false);
       setShowMaxHeight(false);
       setDustActive(false);
-      setBallPosition({ x: 0.5 * SCALE, y: initialHeight * SCALE, z: 0 });
+      setBallPosition({ x: launchOffsetX * SCALE, y: Math.max(0, initialHeight) * SCALE, z: 0 });
+      setCurrentHeight(Math.max(0, initialHeight));
+      setCurrentVelocity(Math.max(0, initialVelocity));
+      setHorizontalDistance(0);
+      elapsedRef.current = 0;
+      landingTriggeredRef.current = false;
+      if (dustTimeoutRef.current) clearTimeout(dustTimeoutRef.current);
+      if (maxHeightTimeoutRef.current) clearTimeout(maxHeightTimeoutRef.current);
     }
 
     if (!isPlaying) return;
+    if (landingTriggeredRef.current) return;
 
     const clampedDelta = Math.min(delta, 0.05);
-    Matter.Engine.update(engineRef.current, clampedDelta * 1000);
+    const t = Math.min(kinematics.timeOfFlight, elapsedRef.current + clampedDelta);
+    elapsedRef.current = t;
 
-    const body = ballBodyRef.current;
-    const pos = body.position;
-    const vel = body.velocity;
+    // Vacuum projectile equations (SI):
+    // x(t)=vx0*t, y(t)=h0+vy0*t-(1/2)gt², vx(t)=constant, vy(t)=vy0-gt.
+    const safeHeight = Math.max(0, Number(initialHeight) || 0);
+    const xFromLaunch = kinematics.vx * t;
+    const y = Math.max(0, safeHeight + kinematics.vy * t + 0.5 * GRAVITY * t * t);
+    const vx = kinematics.vx;
+    const vy = kinematics.vy + GRAVITY * t;
+    const speed = Math.hypot(vx, vy);
 
-    if (
-      Math.abs(pos.x) > 10000 * SCALE ||
-      Math.abs(pos.y) > 10000 * SCALE
-    ) {
-      needsResetRef.current = true;
-      return;
-    }
+    setBallPosition({ x: (launchOffsetX + xFromLaunch) * SCALE, y: y * SCALE, z: 0 });
+    setCurrentHeight(y);
+    setCurrentVelocity(speed);
+    setHorizontalDistance(Math.max(0, xFromLaunch));
 
-    const scaledHeight = pos.y / SCALE;
-    const scaledVel = Math.sqrt(vel.x * vel.x + vel.y * vel.y) / SCALE;
-    const scaledDist = pos.x / SCALE;
+    const kineticEnergy = 0.5 * PROJECTILE_MASS_KG * speed * speed;
+    const potentialEnergy = PROJECTILE_MASS_KG * G_MAGNITUDE * y;
+    const theoreticalRange = (Math.max(0, Number(initialVelocity) || 0) ** 2 * Math.sin(2 * kinematics.angleRad)) / G_MAGNITUDE;
+    const theoreticalMaxHeight = (Math.max(0, kinematics.vy) ** 2) / (2 * G_MAGNITUDE) + Math.max(0, Number(initialHeight) || 0);
+    const theoreticalTimeOfFlight = kinematics.timeOfFlight;
+    onDataPoint?.({
+      t_s: t,
+      x_m: Math.max(0, xFromLaunch),
+      y_m: y,
+      range_vs_time_m: Math.max(0, xFromLaunch),
+      height_vs_time_m: y,
+      vx_mps: vx,
+      vy_mps: vy,
+      speed_mps: speed,
+      ax_mps2: 0,
+      ay_mps2: GRAVITY,
+      g_mps2: G_MAGNITUDE,
+      kineticEnergy_J: kineticEnergy,
+      potentialEnergy_J: potentialEnergy,
+      mechanicalEnergy_J: kineticEnergy + potentialEnergy,
+      range_m: kinematics.range,
+      maxHeight_m: kinematics.maxHeight,
+      timeOfFlight_s: kinematics.timeOfFlight,
+      timeToApex_s: kinematics.timeToApex,
+      rangeFormula_m: theoreticalRange,
+      maxHeightFormula_m: theoreticalMaxHeight,
+      timeOfFlightFormula_s: theoreticalTimeOfFlight,
+      dragCoefficient: DRAG_COEFFICIENT_SPHERE,
+      dragEnabled: false,
+    });
 
-    setBallPosition({ x: pos.x, y: pos.y, z: pos.z });
-    setCurrentHeight(Math.max(0, scaledHeight));
-    setCurrentVelocity(Math.max(0, scaledVel));
-    setHorizontalDistance(Math.max(0, scaledDist));
-
-    if (scaledHeight > prevHeight.current && !maxHeightReached) {
+    if (!maxHeightReached && t <= kinematics.timeToApex + 1e-6) {
       setShowMaxHeight(true);
-    } else if (scaledHeight < prevHeight.current && !maxHeightReached) {
+    } else if (!maxHeightReached && t > kinematics.timeToApex) {
       setMaxHeightReached(true);
-      setTimeout(() => setShowMaxHeight(false), 1000);
+      if (maxHeightTimeoutRef.current) clearTimeout(maxHeightTimeoutRef.current);
+      maxHeightTimeoutRef.current = setTimeout(() => setShowMaxHeight(false), 1000);
     }
-    prevHeight.current = scaledHeight;
 
     setTrailPoints(prev => {
-      const newPoints = [...prev, new THREE.Vector3(pos.x, pos.y, pos.z)];
+      const newPoints = [...prev, new THREE.Vector3((launchOffsetX + xFromLaunch) * SCALE, y * SCALE, 0)];
       if (newPoints.length > 200) {
         return newPoints.slice(-200);
       }
       return newPoints;
     });
 
-    if (pos.y <= 0.15 * SCALE && !hasLanded) {
+    if (t >= kinematics.timeOfFlight - 1e-4 && !landingTriggeredRef.current) {
+      landingTriggeredRef.current = true;
       setHasLanded(true);
       setDustActive(true);
-      Matter.Body.setVelocity(body, { x: 0, y: 0, z: 0 });
-    }
-
-    if (hasLanded && dustActive) {
-      setTimeout(() => setDustActive(false), 2000);
+      if (dustTimeoutRef.current) clearTimeout(dustTimeoutRef.current);
+      dustTimeoutRef.current = setTimeout(() => setDustActive(false), 2000);
     }
   });
 
-  const maxHeight = useMemo(() => {
-    const angleRad = (launchAngle * Math.PI) / 180;
-    const vy = initialVelocity * Math.sin(angleRad);
-    return initialHeight + (vy * vy) / (2 * Math.abs(GRAVITY));
-  }, [initialVelocity, launchAngle, initialHeight]);
+  const maxHeight = kinematics.maxHeight;
 
   return (
     <>
@@ -533,6 +557,7 @@ export default function ProjectileMotion({
   launchAngle = 45,
   height = 2,
   isPlaying = false,
+  onDataPoint,
 }) {
   return (
     <Canvas
@@ -568,6 +593,7 @@ export default function ProjectileMotion({
         launchAngle={launchAngle}
         initialHeight={height}
         isPlaying={isPlaying}
+        onDataPoint={onDataPoint}
       />
       <OrbitControls
         enableDamping
@@ -583,12 +609,8 @@ export default function ProjectileMotion({
 
 ProjectileMotion.getSceneConfig = (variables = {}) => {
   const { initialVelocity = 30, launchAngle = 45, height = 2 } = variables;
-
-  const angleRad = (launchAngle * Math.PI) / 180;
-  const vx = initialVelocity * Math.cos(angleRad);
-  const vy = initialVelocity * Math.sin(angleRad);
-  const maxHeight = height + (vy * vy) / (2 * Math.abs(GRAVITY));
-  const range = (2 * vx * vy) / Math.abs(GRAVITY);
+  const { vx, vy, maxHeight, range, timeOfFlight } = solveProjectileKinematics(initialVelocity, launchAngle, height);
+  const graphData = buildProjectileGraphData(initialVelocity, launchAngle, height);
 
   return {
     name: 'Projectile Motion',
@@ -607,16 +629,22 @@ ProjectileMotion.getSceneConfig = (variables = {}) => {
     predictedTrajectory: calculateTrajectoryPoints(initialVelocity, launchAngle, height).map(
       p => ({ x: p.x / SCALE, y: p.y / SCALE, z: p.z / SCALE })
     ),
+    graphData,
     physics: {
-      gravity: GRAVITY,
+      gravity: -G_MAGNITUDE,
       initialVelocity,
       launchAngle,
       initialHeight: height,
+      initialVelocityComponents: { vx_mps: vx, vy_mps: vy },
     },
     calculations: {
+      gravity: `g = 9.81 m/s²`,
+      horizontalRangeFormula: `R = v²sin(2θ)/g = ${range.toFixed(2)} m`,
+      maximumHeightFormula: `H = h₀ + v²sin²(θ)/(2g) = ${maxHeight.toFixed(2)} m`,
+      timeOfFlightFormula: `T = (v·sinθ + √((v·sinθ)² + 2gh₀))/g = ${timeOfFlight.toFixed(2)} s`,
       maxHeight: maxHeight.toFixed(2),
       range: range.toFixed(2),
-      timeOfFlight: (2 * vy / Math.abs(GRAVITY)).toFixed(2),
+      timeOfFlight: timeOfFlight.toFixed(2),
     },
   };
 };

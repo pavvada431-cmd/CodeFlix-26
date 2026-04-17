@@ -3,7 +3,6 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Environment, Grid, Text, Html, Line, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
-import Matter from 'matter-js';
 
 const GRAVITY = -9.81;
 const SCALE = 0.1;
@@ -116,8 +115,8 @@ function PendulumScene({
   const pivotRef = useRef();
   const rodRef = useRef();
   const bobRef = useRef();
-  const engineRef = useRef();
-  const bobBodyRef = useRef();
+  const thetaRef = useRef((initialAngle * Math.PI) / 180);
+  const omegaRef = useRef(0);
   const forceArrowTangentRef = useRef();
   const forceArrowCentripetalRef = useRef();
 
@@ -126,45 +125,13 @@ function PendulumScene({
   const showForces = true;
 
   const timeRef = useRef(0);
+  const lastDataRef = useRef(0);
+  const initialEnergyRef = useRef(0);
   const needsResetRef = useRef(false);
   const prevIsPlayingRef = useRef(false);
 
   const maxLeftAngle = useMemo(() => -Math.abs(initialAngle), [initialAngle]);
   const maxRightAngle = useMemo(() => Math.abs(initialAngle), [initialAngle]);
-
-  useEffect(() => {
-    const Engine = Matter.Engine;
-    const engine = Engine.create({
-      gravity: { x: 0, y: GRAVITY / SCALE, z: 0 },
-    });
-    engineRef.current = engine;
-
-    const pivot = { x: 0, y: length * SCALE, z: 0 };
-    const bobX = pivot.x + Math.sin(initialAngle * Math.PI / 180) * length * SCALE;
-    const bobY = pivot.y - Math.cos(initialAngle * Math.PI / 180) * length * SCALE;
-
-    const bob = Matter.Bodies.circle(bobX, bobY, mass * 0.1 * SCALE, {
-      mass: mass,
-      friction: 0,
-      frictionAir: damping * 0.01,
-      label: 'pendulum-bob',
-    });
-    bobBodyRef.current = bob;
-
-    const constraint = Matter.Constraint.create({
-      pointA: pivot,
-      bodyB: bob,
-      length: 0,
-      stiffness: 1,
-      damping: damping * 0.01,
-    });
-
-    Matter.Composite.add(engine.world, [bob, constraint]);
-
-    return () => {
-      Matter.Engine.clear(engine);
-    };
-  }, [length, mass, initialAngle, damping]);
 
   useEffect(() => {
     if (isPlaying && !prevIsPlayingRef.current) {
@@ -173,24 +140,19 @@ function PendulumScene({
     prevIsPlayingRef.current = isPlaying;
   }, [isPlaying, initialAngle, length, mass, damping]);
 
-  useFrame((state, delta) => {
-    if (!engineRef.current || !bobBodyRef.current) return;
+  useFrame((_, delta) => {
+    const safeLength = Math.max(0.05, Number(length) || 0.05);
+    const safeMass = Math.max(0.01, Number(mass) || 0.01);
+    const dampingCoeff = Math.max(0, Number(damping) || 0);
 
     if (needsResetRef.current && isPlaying) {
       needsResetRef.current = false;
       timeRef.current = 0;
-
-      const pivot = { x: 0, y: length * SCALE, z: 0 };
-      const bobX = pivot.x + Math.sin(initialAngle * Math.PI / 180) * length * SCALE;
-      const bobY = pivot.y - Math.cos(initialAngle * Math.PI / 180) * length * SCALE;
-
-      Matter.Body.setPosition(bobBodyRef.current, { x: bobX, y: bobY, z: 0 });
-      Matter.Body.setVelocity(bobBodyRef.current, { x: 0, y: 0, z: 0 });
-      Matter.Body.setAngularVelocity(bobBodyRef.current, 0);
-
-      if (engineRef.current.gravity) {
-        engineRef.current.gravity.y = GRAVITY / SCALE;
-      }
+      lastDataRef.current = 0;
+      thetaRef.current = (initialAngle * Math.PI) / 180;
+      omegaRef.current = 0;
+      // Reference energy at t=0 for drift checks.
+      initialEnergyRef.current = safeMass * Math.abs(GRAVITY) * safeLength * (1 - Math.cos(thetaRef.current));
 
       setTracePoints([]);
       setAmplitude(Math.abs(initialAngle));
@@ -199,30 +161,35 @@ function PendulumScene({
     if (!isPlaying) return;
 
     const clampedDelta = Math.min(delta, 0.05);
-    Matter.Engine.update(engineRef.current, clampedDelta * 1000);
-
-    const body = bobBodyRef.current;
-    const pos = body.position;
-    const vel = body.velocity;
-
-    if (
-      Math.abs(pos.x) > 10000 * SCALE ||
-      Math.abs(pos.y) > 10000 * SCALE
-    ) {
-      needsResetRef.current = true;
-      return;
+    const subSteps = Math.max(1, Math.ceil(clampedDelta / 0.01));
+    const dt = clampedDelta / subSteps;
+    // Nonlinear damped pendulum equation (undergraduate level):
+    // θ'' = -(g/L)sin(θ) - bθ'
+    // where b has units s^-1 (effective angular damping coefficient).
+    for (let i = 0; i < subSteps; i++) {
+      const theta = thetaRef.current;
+      const omega = omegaRef.current;
+      const alpha = -(Math.abs(GRAVITY) / safeLength) * Math.sin(theta) - dampingCoeff * omega;
+      omegaRef.current += alpha * dt;
+      thetaRef.current += omegaRef.current * dt;
     }
 
-    const pivotY = length * SCALE;
-    const dx = pos.x - 0;
-    const dy = pos.y - pivotY;
-    const angle = Math.atan2(dx, -dy);
-    const angleDeg = angle * 180 / Math.PI;
-
-    const tangentForce = mass * GRAVITY * Math.sin(angle);
-    const centripetalForce = mass * (vel.x * vel.x + vel.y * vel.y) / (length * SCALE);
-
-    const velocity = Math.sqrt(vel.x * vel.x + vel.y * vel.y) / SCALE;
+    const angle = thetaRef.current;
+    const angleDeg = (angle * 180) / Math.PI;
+    const pivotY = safeLength * SCALE;
+    const bobX = Math.sin(angle) * safeLength * SCALE;
+    const bobY = pivotY - Math.cos(angle) * safeLength * SCALE;
+    const tangentialVelocity = omegaRef.current * safeLength;
+    const alpha = -(Math.abs(GRAVITY) / safeLength) * Math.sin(angle) - dampingCoeff * omegaRef.current;
+    const tangentialAcceleration = alpha * safeLength;
+    const radialAcceleration = omegaRef.current * omegaRef.current * safeLength;
+    const tangentForce = safeMass * tangentialAcceleration;
+    const centripetalForce = safeMass * radialAcceleration;
+    const tensionForce = Math.max(0, safeMass * (Math.abs(GRAVITY) * Math.cos(angle) + radialAcceleration));
+    const smallAnglePeriod = 2 * Math.PI * Math.sqrt(safeLength / Math.abs(GRAVITY));
+    const dampingDiscriminant = Math.max(0, Math.abs(GRAVITY) / safeLength - (dampingCoeff * dampingCoeff) / 4);
+    const dampedAngularFrequency = dampingDiscriminant > 0 ? Math.sqrt(dampingDiscriminant) : 0;
+    const dampedPeriod = dampedAngularFrequency > 1e-9 ? (2 * Math.PI) / dampedAngularFrequency : Infinity;
 
     const currentAmplitude = Math.abs(angleDeg);
     if (currentAmplitude < amplitude * 0.9) {
@@ -230,38 +197,60 @@ function PendulumScene({
     }
 
     if (rodRef.current && bobRef.current) {
-      const rodLength = length * SCALE;
+      const rodLength = safeLength * SCALE;
       rodRef.current.position.set(0, pivotY - rodLength / 2, 0);
       rodRef.current.rotation.z = angle;
       rodRef.current.scale.y = rodLength / 2;
 
-      bobRef.current.position.set(pos.x, pos.y, pos.z);
+      bobRef.current.position.set(bobX, bobY, 0);
     }
 
     if (pivotRef.current) {
       pivotRef.current.position.set(0, pivotY, 0);
     }
 
-    if (tracePoints.length < 300) {
-      setTracePoints(prev => [...prev, new THREE.Vector3(pos.x, pos.y, 0)]);
-    }
+    setTracePoints(prev => [...prev.slice(-299), new THREE.Vector3(bobX, bobY, 0)]);
 
-    timeRef.current += delta;
+    timeRef.current += clampedDelta;
 
-    if (onDataPoint && timeRef.current % 0.1 < delta) {
+    if (onDataPoint && timeRef.current - lastDataRef.current >= 0.05) {
+      const potentialEnergy = safeMass * Math.abs(GRAVITY) * safeLength * (1 - Math.cos(angle));
+      const kineticEnergy = 0.5 * safeMass * tangentialVelocity * tangentialVelocity;
+      const totalEnergy = kineticEnergy + potentialEnergy;
+      const referenceEnergy = Math.max(1e-9, initialEnergyRef.current || totalEnergy);
+      const energyDriftPercent = ((totalEnergy - referenceEnergy) / referenceEnergy) * 100;
       onDataPoint({
-        t: timeRef.current,
+        t_s: timeRef.current,
+        theta_rad: angle,
+        angle_deg: angleDeg,
         angle: angleDeg,
-        velocity: velocity,
+        angularVelocity_radps: omegaRef.current,
+        angularAcceleration_radps2: alpha,
+        tangentialVelocity_mps: tangentialVelocity,
+        tangentialAcceleration_mps2: tangentialAcceleration,
+        radialAcceleration_mps2: radialAcceleration,
+        velocity_mps: tangentialVelocity,
+        velocity: tangentialVelocity,
+        tangentialForce_N: tangentForce,
+        centripetalForce_N: centripetalForce,
+        tension_N: tensionForce,
+        kineticEnergy_J: kineticEnergy,
+        potentialEnergy_J: potentialEnergy,
+        totalEnergy_J: totalEnergy,
+        energyDrift_percent: energyDriftPercent,
+        smallAnglePeriod_s: smallAnglePeriod,
+        dampedPeriod_s: Number.isFinite(dampedPeriod) ? dampedPeriod : null,
+        dampingCoefficient_per_s: dampingCoeff,
       });
+      lastDataRef.current = timeRef.current;
     }
 
     if (forceArrowTangentRef.current) {
       const tangentScale = Math.abs(tangentForce) * 0.01 * SCALE;
       const tangentDir = tangentForce > 0 ? 1 : -1;
       forceArrowTangentRef.current.position.set(
-        pos.x + tangentDir * 0.3 * SCALE,
-        pos.y - 0.3 * SCALE,
+        bobX + tangentDir * 0.3 * SCALE,
+        bobY - 0.3 * SCALE,
         0.2
       );
       forceArrowTangentRef.current.scale.set(tangentScale, 0.1, 0.1);
@@ -269,12 +258,12 @@ function PendulumScene({
 
     if (forceArrowCentripetalRef.current) {
       const centripetalScale = centripetalForce * 0.01 * SCALE;
-      const toPivot = { x: -dx, y: -dy };
+      const toPivot = { x: -bobX, y: pivotY - bobY };
       const mag = Math.sqrt(toPivot.x * toPivot.x + toPivot.y * toPivot.y);
       if (mag > 0) {
         forceArrowCentripetalRef.current.position.set(
-          pos.x + (toPivot.x / mag) * 0.3 * SCALE,
-          pos.y + (toPivot.y / mag) * 0.3 * SCALE,
+          bobX + (toPivot.x / mag) * 0.3 * SCALE,
+          bobY + (toPivot.y / mag) * 0.3 * SCALE,
           0.2
         );
         const arrowAngle = Math.atan2(toPivot.y, toPivot.x);
@@ -286,7 +275,8 @@ function PendulumScene({
 
   const traceOpacity = useMemo(() => {
     if (damping === 0) return 0.4;
-    return Math.max(0.1, 0.6 - (amplitude / Math.abs(initialAngle)) * 0.5);
+    const initialAmplitude = Math.max(1e-6, Math.abs(initialAngle));
+    return Math.max(0.1, 0.6 - (amplitude / initialAmplitude) * 0.5);
   }, [damping, amplitude, initialAngle]);
 
   const ghostLeftAngle = maxLeftAngle * Math.PI / 180;
@@ -440,6 +430,8 @@ function PendulumScene({
 }
 
 function PendulumLabels({ length, currentAngle, currentVelocity, calculatedPeriod, damping }) {
+  const safeLength = Math.max(0.05, Number(length) || 0.05);
+  const safeDamping = Math.max(0, Number(damping) || 0);
   return (
     <>
       <FrostedLabel position={[-3, 6, 0]} color="#00f5ff">
@@ -449,9 +441,12 @@ function PendulumLabels({ length, currentAngle, currentVelocity, calculatedPerio
         ω: {currentVelocity.toFixed(2)} rad/s
       </FrostedLabel>
       <FrostedLabel position={[0, 7.5, 0]} color="#00ff88">
-        T = 2π√(L/g) = {calculatedPeriod.toFixed(3)}s
+        T₀ = 2π√(L/g) = {calculatedPeriod.toFixed(3)} s
       </FrostedLabel>
-      {dampingTexture && dampingTexture}
+      <FrostedLabel position={[0, 7.1, 0]} color="#88ccff">
+        L = {safeLength.toFixed(2)} m
+      </FrostedLabel>
+      {dampingTexture(safeDamping)}
     </>
   );
 }
@@ -482,7 +477,7 @@ export default function Pendulum({
 
   const handleDataPoint = (data) => {
     setCurrentAngle(data.angle);
-    setCurrentVelocity(data.velocity);
+    setCurrentVelocity(data.angularVelocity_radps ?? 0);
 
     if (onDataPoint) {
       onDataPoint(data);
@@ -552,7 +547,7 @@ Pendulum.getSceneConfig = (variables = {}) => {
 
   return {
     name: 'Pendulum Motion',
-    description: 'Physics simulation of simple pendulum with Matter.js',
+    description: 'Nonlinear pendulum dynamics with damping and energy tracking',
     camera: { position: [0, 3, 12], fov: 50 },
     lighting: [
       { type: 'ambient', intensity: 0.6 },
@@ -579,6 +574,7 @@ Pendulum.getSceneConfig = (variables = {}) => {
     calculations: {
       period: period.toFixed(3),
       angularFrequency: (2 * Math.PI / period).toFixed(3),
+      nonlinearEquation: `θ'' = -(g/L)sin(θ) - bθ'`,
     },
   };
 };

@@ -527,7 +527,7 @@ function WaveScene({
 }) {
   const k = (2 * PI) / wavelength
   const omega = 2 * PI * frequency
-  const waveSpeed = (omega / k).toFixed(2)
+  const waveSpeed = omega / k
 
   const waveEquation = useMemo(() => {
     switch (waveType) {
@@ -584,12 +584,26 @@ function WaveScene({
     }
 
     onDataPoint?.({
-      t: time,
-      displacement_at_x0: dispX0,
-      displacement_at_x_half_lambda: dispXHalf,
-      energy,
+      t_s: time,
+      displacement_at_x0_m: dispX0,
+      displacement_at_x_half_lambda_m: dispXHalf,
+      energy_J: energy,
+      amplitude_m: amplitude,
+      frequency_Hz: frequency,
+      wavelength_m: wavelength,
+      waveNumber_radpm: k,
+      angularFrequency_radps: omega,
+      waveSpeed_mps: waveSpeed,
+      standingWave: waveType === 'standing' ? {
+        nodePositions_m: [0, wavelength / 2, wavelength, (3 * wavelength) / 2],
+        antinodePositions_m: [wavelength / 4, (3 * wavelength) / 4, (5 * wavelength) / 4],
+      } : undefined,
+      longitudinalPattern: waveType === 'longitudinal' ? {
+        compressionPhase: Math.cos(omega * time),
+        rarefactionPhase: Math.sin(omega * time),
+      } : undefined,
     })
-  }, [time, amplitude, k, omega, wavelength, waveType, onDataPoint, lastDataTime])
+  }, [time, amplitude, k, omega, wavelength, waveType, onDataPoint, lastDataTime, frequency, waveSpeed])
 
   const renderWave = () => {
     switch (waveType) {
@@ -678,7 +692,7 @@ export default function WaveMotion({
 
   const k = (2 * PI) / wavelength
   const omega = 2 * PI * frequency
-  const waveSpeed = providedSpeed || (omega / k).toFixed(2)
+  const waveSpeed = providedSpeed || omega / k
 
   useEffect(() => {
     if (!isPlaying) {
@@ -841,7 +855,7 @@ export default function WaveMotion({
             <span className="text-[#88ff88]">λ:</span>
             <span className="text-white">{wavelength.toFixed(1)} m</span>
             <span className="text-[#ff88ff]">v:</span>
-            <span className="text-white">{waveSpeed} m/s</span>
+            <span className="text-white">{Number(waveSpeed).toFixed(2)} m/s</span>
             <span className="text-[#ffff00]">T:</span>
             <span className="text-white">{(1 / frequency).toFixed(3)} s</span>
           </div>

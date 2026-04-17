@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { Environment, Grid, Text, Html, Line, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
@@ -8,8 +8,45 @@ import Matter from 'matter-js';
 const SCALE = 0.15;
 const TRACK_Y = 0;
 const BALL_RADIUS = 0.4;
+const MIN_MASS = 1e-4;
+const EPS = 1e-9;
 
-function FrostedLabel({ children, position, color = '#00f5ff', scale = [1, 0.3, 1] }) {
+function vecDot(a, b) {
+  return a.x * b.x + a.y * b.y;
+}
+
+function vecSub(a, b) {
+  return { x: a.x - b.x, y: a.y - b.y };
+}
+
+function vecScale(a, s) {
+  return { x: a.x * s, y: a.y * s };
+}
+
+function vecAdd(a, b) {
+  return { x: a.x + b.x, y: a.y + b.y };
+}
+
+function computeCollisionResponse(v1, v2, m1, m2, normal, restitution) {
+  const nMag = Math.hypot(normal.x, normal.y);
+  const n = nMag > EPS ? { x: normal.x / nMag, y: normal.y / nMag } : { x: 1, y: 0 };
+  const relativeVelocity = vecSub(v1, v2);
+  const vRelAlongNormal = vecDot(relativeVelocity, n);
+
+  if (vRelAlongNormal > 0) {
+    return { v1After: v1, v2After: v2 };
+  }
+
+  // Impulse form of restitution equation:
+  // (v2' - v1')·n = e (v1 - v2)·n, with momentum conservation.
+  const impulseMagnitude = (-(1 + restitution) * vRelAlongNormal) / (1 / m1 + 1 / m2);
+  const impulse = vecScale(n, impulseMagnitude);
+  const v1After = vecAdd(v1, vecScale(impulse, 1 / m1));
+  const v2After = vecSub(v2, vecScale(impulse, 1 / m2));
+  return { v1After, v2After };
+}
+
+function FrostedLabel({ children, position, color = '#00f5ff' }) {
   return (
     <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
       <div
@@ -335,6 +372,8 @@ function SimulationScene({
   const lastDataTimeRef = useRef(0);
   const mergedRef = useRef(false);
   const initializedRef = useRef(false);
+  const preCollisionStateRef = useRef(null);
+  const postCollisionStateRef = useRef(null);
 
   const restitution = collisionType === 'elastic' ? 1.0 : collisionType === 'inelastic' ? 0.5 : 0;
 
@@ -348,6 +387,10 @@ function SimulationScene({
     const Engine = Matter.Engine;
     const engine = Engine.create({ gravity: { x: 0, y: 0 } });
     engineRef.current = engine;
+    const m1 = Math.max(MIN_MASS, Number(mass1) || 0);
+    const m2 = Math.max(MIN_MASS, Number(mass2) || 0);
+    const safeV1 = Number.isFinite(Number(velocity1)) ? Number(velocity1) : 0;
+    const safeV2 = Number.isFinite(Number(velocity2)) ? Number(velocity2) : 0;
 
     const b1 = Matter.Bodies.circle(-3 / SCALE, TRACK_Y / SCALE, BALL_RADIUS / SCALE, {
       restitution,
@@ -363,8 +406,10 @@ function SimulationScene({
       label: 'ball2',
     });
 
-    Matter.Body.setVelocity(b1, { x: (velocity1 / SCALE), y: 0 });
-    Matter.Body.setVelocity(b2, { x: (velocity2 / SCALE), y: 0 });
+    Matter.Body.setMass(b1, m1);
+    Matter.Body.setMass(b2, m2);
+    Matter.Body.setVelocity(b1, { x: (safeV1 / SCALE), y: 0 });
+    Matter.Body.setVelocity(b2, { x: (safeV2 / SCALE), y: 0 });
 
     ball1Ref.current = b1;
     ball2Ref.current = b2;
@@ -375,6 +420,17 @@ function SimulationScene({
     mergedRef.current = false;
     startTimeRef.current = 0;
     lastDataTimeRef.current = 0;
+    preCollisionStateRef.current = {
+      v1: { x: safeV1, y: 0 },
+      v2: { x: safeV2, y: 0 },
+      momentum: { x: m1 * safeV1 + m2 * safeV2, y: 0 },
+      kineticEnergy: 0.5 * m1 * safeV1 * safeV1 + 0.5 * m2 * safeV2 * safeV2,
+    };
+    postCollisionStateRef.current = null;
+    setCollisionHappened(false);
+    setV1After(safeV1);
+    setV2After(safeV2);
+    setMergedScale(1);
 
     return () => {
       Matter.Engine.clear(engine);
@@ -401,10 +457,8 @@ function SimulationScene({
     const b1 = ball1Ref.current;
     const b2 = ball2Ref.current;
 
-    const v1Initial = velocity1;
-    const v2Initial = velocity2;
-    const m1 = mass1;
-    const m2 = mass2;
+    const m1 = Math.max(MIN_MASS, Number(mass1) || 0);
+    const m2 = Math.max(MIN_MASS, Number(mass2) || 0);
     const res = restitution;
     const callback = onDataPoint;
     const collisionCallback = onCollision;
@@ -421,10 +475,15 @@ function SimulationScene({
 
       const currentTime = (performance.now() / 1000) - startTimeRef.current;
 
-      const v1 = b1.velocity.x * SCALE;
-      const v2 = b2.velocity.x * SCALE;
-      const pTot = m1 * v1 + m2 * v2;
-      const keTot = 0.5 * m1 * v1 * v1 + 0.5 * m2 * v2 * v2;
+      const v1Vec = { x: b1.velocity.x * SCALE, y: b1.velocity.y * SCALE };
+      const v2Vec = { x: b2.velocity.x * SCALE, y: b2.velocity.y * SCALE };
+      const p1Vec = vecScale(v1Vec, m1);
+      const p2Vec = vecScale(v2Vec, m2);
+      const pTotVec = vecAdd(p1Vec, p2Vec);
+      const pTot = Math.hypot(pTotVec.x, pTotVec.y);
+      const ke1 = 0.5 * m1 * vecDot(v1Vec, v1Vec);
+      const ke2 = 0.5 * m2 * vecDot(v2Vec, v2Vec);
+      const keTot = ke1 + ke2;
 
       setPTotal(pTot);
       setKeTotal(keTot);
@@ -432,18 +491,53 @@ function SimulationScene({
       setBall2Pos(displayPos2);
 
       if (currentTime - lastDataTimeRef.current > 0.05) {
+        const beforeState = preCollisionStateRef.current;
+        const afterState = collisionOccurredRef.current && postCollisionStateRef.current
+          ? postCollisionStateRef.current
+          : {
+              v1: v1Vec,
+              v2: v2Vec,
+              momentum: pTotVec,
+              kineticEnergy: keTot,
+            };
+        const momentumError = beforeState
+          ? Math.hypot(afterState.momentum.x - beforeState.momentum.x, afterState.momentum.y - beforeState.momentum.y)
+          : 0;
+        const kineticError = beforeState ? Math.abs(afterState.kineticEnergy - beforeState.kineticEnergy) : 0;
+        const collisionDimension = (Math.abs(v1Vec.y) > 1e-6 || Math.abs(v2Vec.y) > 1e-6) ? '2D' : '1D';
+
         callback?.({
-          t: currentTime,
-          v1,
-          v2,
-          p_total: pTot,
-          KE_total: keTot,
+          t_s: currentTime,
+          collisionDimension,
+          position1_m: displayPos1,
+          position2_m: displayPos2,
+          v1_mps: v1Vec.x,
+          v2_mps: v2Vec.x,
+          v1_vector_mps: v1Vec,
+          v2_vector_mps: v2Vec,
+          p1_vector_kgmps: p1Vec,
+          p2_vector_kgmps: p2Vec,
+          p_total_vector_kgmps: pTotVec,
+          p_total_kgmps: pTot,
+          kineticEnergy1_J: ke1,
+          kineticEnergy2_J: ke2,
+          kineticEnergy_total_J: keTot,
+          momentum_conserved: collisionOccurredRef.current ? momentumError < 1e-5 : true,
+          kinetic_expected_conserved: collisionType === 'elastic',
+          kinetic_conserved: collisionType === 'elastic' ? kineticError < 1e-5 : true,
+          restitution_coefficient: res,
+          energyBars: {
+            before: beforeState
+              ? { kineticTotal_J: beforeState.kineticEnergy, momentumMagnitude_kgmps: Math.hypot(beforeState.momentum.x, beforeState.momentum.y) }
+              : null,
+            after: { kineticTotal_J: keTot, momentumMagnitude_kgmps: pTot },
+          },
         });
         lastDataTimeRef.current = currentTime;
       }
 
       if (!collisionOccurredRef.current) {
-        const dist = Math.abs(pos1.x - pos2.x);
+        const dist = Math.hypot(pos1.x - pos2.x, pos1.y - pos2.y);
         if (dist <= (BALL_RADIUS * 2 / SCALE) + 0.01) {
           collisionOccurredRef.current = true;
 
@@ -452,21 +546,76 @@ function SimulationScene({
 
           setTimeout(() => setShowBurst(false), 500);
 
-          const v1AfterCalc = ((m1 - res * m2) * v1Initial + (1 + res) * m2 * v2Initial) / (m1 + m2);
-          const v2AfterCalc = ((m2 - res * m1) * v2Initial + (1 + res) * m1 * v1Initial) / (m1 + m2);
+          const beforeV1 = { x: b1.velocity.x * SCALE, y: b1.velocity.y * SCALE };
+          const beforeV2 = { x: b2.velocity.x * SCALE, y: b2.velocity.y * SCALE };
+          const normalVector = { x: pos2.x - pos1.x, y: pos2.y - pos1.y };
+          const normMag = Math.hypot(normalVector.x, normalVector.y);
+          const n = normMag > EPS ? { x: normalVector.x / normMag, y: normalVector.y / normMag } : { x: 1, y: 0 };
+          preCollisionStateRef.current = {
+            v1: beforeV1,
+            v2: beforeV2,
+            momentum: vecAdd(vecScale(beforeV1, m1), vecScale(beforeV2, m2)),
+            kineticEnergy: 0.5 * m1 * vecDot(beforeV1, beforeV1) + 0.5 * m2 * vecDot(beforeV2, beforeV2),
+          };
 
-          setV1After(v1AfterCalc);
-          setV2After(v2AfterCalc);
+          let afterV1;
+          let afterV2;
+          if (colType === 'perfectly_inelastic') {
+            const common = vecScale(preCollisionStateRef.current.momentum, 1 / (m1 + m2));
+            afterV1 = common;
+            afterV2 = common;
+          } else {
+            const response = computeCollisionResponse(beforeV1, beforeV2, m1, m2, n, res);
+            afterV1 = response.v1After;
+            afterV2 = response.v2After;
+          }
 
+          Matter.Body.setVelocity(b1, { x: afterV1.x / SCALE, y: afterV1.y / SCALE });
+          Matter.Body.setVelocity(b2, { x: afterV2.x / SCALE, y: afterV2.y / SCALE });
+          setV1After(afterV1.x);
+          setV2After(afterV2.x);
+
+          const pBeforeVec = preCollisionStateRef.current.momentum;
+          const pAfterVec = vecAdd(vecScale(afterV1, m1), vecScale(afterV2, m2));
+          const keBefore = preCollisionStateRef.current.kineticEnergy;
+          const keAfter = 0.5 * m1 * vecDot(afterV1, afterV1) + 0.5 * m2 * vecDot(afterV2, afterV2);
+          const approachSpeed = vecDot(vecSub(beforeV1, beforeV2), n);
+          const separationSpeed = vecDot(vecSub(afterV2, afterV1), n);
+          const restitutionMeasured = approachSpeed > EPS ? separationSpeed / approachSpeed : 0;
+          postCollisionStateRef.current = {
+            v1: afterV1,
+            v2: afterV2,
+            momentum: pAfterVec,
+            kineticEnergy: keAfter,
+          };
+
+          const collisionDimension = (Math.abs(beforeV1.y) > 1e-6 || Math.abs(beforeV2.y) > 1e-6 || Math.abs(afterV1.y) > 1e-6 || Math.abs(afterV2.y) > 1e-6)
+            ? '2D'
+            : '1D';
           collisionCallback?.({
-            v1Before: v1Initial,
-            v2Before: v2Initial,
-            v1After: v1AfterCalc,
-            v2After: v2AfterCalc,
-            pBefore: m1 * v1Initial + m2 * v2Initial,
-            pAfter: m1 * v1AfterCalc + m2 * v2AfterCalc,
-            keBefore: 0.5 * m1 * v1Initial * v1Initial + 0.5 * m2 * v2Initial * v2Initial,
-            keAfter: 0.5 * m1 * v1AfterCalc * v1AfterCalc + 0.5 * m2 * v2AfterCalc * v2AfterCalc,
+            collisionDimension,
+            v1Before: beforeV1.x,
+            v2Before: beforeV2.x,
+            v1After: afterV1.x,
+            v2After: afterV2.x,
+            v1BeforeVector: beforeV1,
+            v2BeforeVector: beforeV2,
+            v1AfterVector: afterV1,
+            v2AfterVector: afterV2,
+            pBefore: Math.hypot(pBeforeVec.x, pBeforeVec.y),
+            pAfter: Math.hypot(pAfterVec.x, pAfterVec.y),
+            pBeforeVector: pBeforeVec,
+            pAfterVector: pAfterVec,
+            keBefore,
+            keAfter,
+            restitution: res,
+            restitutionMeasured,
+            momentumConserved: Math.hypot(pAfterVec.x - pBeforeVec.x, pAfterVec.y - pBeforeVec.y) < 1e-5,
+            kineticConserved: colType === 'elastic' ? Math.abs(keAfter - keBefore) < 1e-5 : true,
+            energyBars: {
+              before: { body1_J: 0.5 * m1 * vecDot(beforeV1, beforeV1), body2_J: 0.5 * m2 * vecDot(beforeV2, beforeV2), total_J: keBefore },
+              after: { body1_J: 0.5 * m1 * vecDot(afterV1, afterV1), body2_J: 0.5 * m2 * vecDot(afterV2, afterV2), total_J: keAfter },
+            },
           });
 
           if (colType === 'perfectly_inelastic' && !mergedRef.current) {
@@ -496,13 +645,13 @@ function SimulationScene({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isPlaying, mass1, mass2, velocity1, velocity2, collisionType, onDataPoint, onCollision, isNewtonCradle, restitution]);
+  }, [isPlaying, mass1, mass2, collisionType, onDataPoint, onCollision, isNewtonCradle, restitution]);
 
   const scale1 = collisionType === 'perfectly_inelastic' && collisionHappened ? mergedScale : 1;
   const scale2 = collisionType === 'perfectly_inelastic' && collisionHappened ? Math.min(2, 1 + (1 - mergedScale)) : 1;
 
-  const v1Display = collisionHappened ? v1After : velocity1;
-  const v2Display = collisionHappened ? v2After : velocity2;
+  const v1Display = collisionHappened ? v1After : (Number.isFinite(Number(velocity1)) ? Number(velocity1) : 0);
+  const v2Display = collisionHappened ? v2After : (Number.isFinite(Number(velocity2)) ? Number(velocity2) : 0);
 
   if (isNewtonCradle) {
     return (
@@ -695,13 +844,17 @@ export default function Collisions({
   isPlaying = false,
   onDataPoint,
 }) {
+  const safeMass1 = Math.max(MIN_MASS, Number(mass1) || 0);
+  const safeMass2 = Math.max(MIN_MASS, Number(mass2) || 0);
+  const safeVelocity1 = Number.isFinite(Number(velocity1)) ? Number(velocity1) : 0;
+  const safeVelocity2 = Number.isFinite(Number(velocity2)) ? Number(velocity2) : 0;
   const [isNewtonCradle, setIsNewtonCradle] = useState(false);
   const [showScreenShake, setShowScreenShake] = useState(false);
   const [conservationData, setConservationData] = useState({
-    pBefore: mass1 * velocity1 + mass2 * velocity2,
-    pAfter: mass1 * velocity1 + mass2 * velocity2,
-    keBefore: 0.5 * mass1 * velocity1 * velocity1 + 0.5 * mass2 * velocity2 * velocity2,
-    keAfter: 0.5 * mass1 * velocity1 * velocity1 + 0.5 * mass2 * velocity2 * velocity2,
+    pBefore: safeMass1 * safeVelocity1 + safeMass2 * safeVelocity2,
+    pAfter: safeMass1 * safeVelocity1 + safeMass2 * safeVelocity2,
+    keBefore: 0.5 * safeMass1 * safeVelocity1 * safeVelocity1 + 0.5 * safeMass2 * safeVelocity2 * safeVelocity2,
+    keAfter: 0.5 * safeMass1 * safeVelocity1 * safeVelocity1 + 0.5 * safeMass2 * safeVelocity2 * safeVelocity2,
     keLost: 0,
     collisionHappened: false,
   });
@@ -721,8 +874,8 @@ export default function Collisions({
   }, []);
 
   const resetConservationData = useCallback(() => {
-    const pBefore = mass1 * velocity1 + mass2 * velocity2;
-    const keBefore = 0.5 * mass1 * velocity1 * velocity1 + 0.5 * mass2 * velocity2 * velocity2;
+    const pBefore = safeMass1 * safeVelocity1 + safeMass2 * safeVelocity2;
+    const keBefore = 0.5 * safeMass1 * safeVelocity1 * safeVelocity1 + 0.5 * safeMass2 * safeVelocity2 * safeVelocity2;
     setConservationData({
       pBefore,
       pAfter: pBefore,
@@ -731,7 +884,7 @@ export default function Collisions({
       keLost: 0,
       collisionHappened: false,
     });
-  }, [mass1, mass2, velocity1, velocity2, collisionType]);
+  }, [safeMass1, safeMass2, safeVelocity1, safeVelocity2]);
 
   useEffect(() => {
     requestAnimationFrame(resetConservationData);
@@ -775,10 +928,10 @@ export default function Collisions({
         }}
       >
         <SimulationScene
-          mass1={mass1}
-          mass2={mass2}
-          velocity1={velocity1}
-          velocity2={velocity2}
+          mass1={safeMass1}
+          mass2={safeMass2}
+          velocity1={safeVelocity1}
+          velocity2={safeVelocity2}
           collisionType={collisionType}
           isPlaying={isPlaying}
           onDataPoint={onDataPoint}
@@ -819,35 +972,45 @@ export default function Collisions({
 
 Collisions.getSceneConfig = (variables = {}) => {
   const { mass1 = 1, mass2 = 1, velocity1 = 5, velocity2 = -5, collisionType = 'elastic' } = variables;
-
-  const pBefore = mass1 * velocity1 + mass2 * velocity2;
-  const keBefore = 0.5 * mass1 * velocity1 * velocity1 + 0.5 * mass2 * velocity2 * velocity2;
+  const m1 = Math.max(MIN_MASS, Number(mass1) || 0);
+  const m2 = Math.max(MIN_MASS, Number(mass2) || 0);
+  const v1 = Number.isFinite(Number(velocity1)) ? Number(velocity1) : 0;
+  const v2 = Number.isFinite(Number(velocity2)) ? Number(velocity2) : 0;
+  const pBefore = m1 * v1 + m2 * v2;
+  const keBefore = 0.5 * m1 * v1 * v1 + 0.5 * m2 * v2 * v2;
 
   const restitution = collisionType === 'elastic' ? 1 : collisionType === 'inelastic' ? 0.5 : 0;
-  const v1After = ((mass1 - restitution * mass2) * velocity1 + (1 + restitution) * mass2 * velocity2) / (mass1 + mass2);
-  const v2After = ((mass2 - restitution * mass1) * velocity2 + (1 + restitution) * mass1 * velocity1) / (mass1 + mass2);
-  const keAfter = 0.5 * mass1 * v1After * v1After + 0.5 * mass2 * v2After * v2After;
+  const v1After = ((m1 - restitution * m2) * v1 + (1 + restitution) * m2 * v2) / (m1 + m2);
+  const v2After = ((m2 - restitution * m1) * v2 + (1 + restitution) * m1 * v1) / (m1 + m2);
+  const keAfter = 0.5 * m1 * v1After * v1After + 0.5 * m2 * v2After * v2After;
 
   return {
     name: 'Collision Simulation',
     description: `Two-body ${collisionType.replace('_', ' ')} collision`,
     type: 'collisions',
     physics: {
-      mass1,
-      mass2,
-      velocity1,
-      velocity2,
+      mass1: m1,
+      mass2: m2,
+      velocity1: v1,
+      velocity2: v2,
       collisionType,
       restitution,
       v1After,
       v2After,
+      vectors: {
+        v1Before: { x: v1, y: 0 },
+        v2Before: { x: v2, y: 0 },
+        v1After: { x: v1After, y: 0 },
+        v2After: { x: v2After, y: 0 },
+      },
     },
     calculations: {
-      momentumBefore: `p = ${mass1}v1 + ${mass2}v2 = ${pBefore.toFixed(2)} kg·m/s`,
-      momentumAfter: `p' = ${mass1}v1' + ${mass2}v2' = ${pBefore.toFixed(2)} kg·m/s`,
+      momentumBefore: `p = ${m1}v1 + ${m2}v2 = ${pBefore.toFixed(2)} kg·m/s`,
+      momentumAfter: `p' = ${m1}v1' + ${m2}v2' = ${(m1 * v1After + m2 * v2After).toFixed(2)} kg·m/s`,
       keBefore: `KE = ${keBefore.toFixed(2)} J`,
       keAfter: `KE' = ${keAfter.toFixed(2)} J`,
       keLost: `ΔKE = ${(keBefore - keAfter).toFixed(2)} J`,
+      restitutionEquation: `e = (v2' - v1') / (v1 - v2) = ${((v1 - v2) !== 0 ? ((v2After - v1After) / (v1 - v2)).toFixed(2) : '0.00')}`,
     },
   };
 };
