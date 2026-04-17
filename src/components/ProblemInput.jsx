@@ -64,6 +64,8 @@ export default function ProblemInput({
     setLoading(true)
     setError('')
     setSuccess(false)
+    setConnected(true)
+    onApiStatusChange?.(true)  // Mark as connected while loading
 
     try {
       const parsedData = await parseProblem(trimmedProblem, provider)
