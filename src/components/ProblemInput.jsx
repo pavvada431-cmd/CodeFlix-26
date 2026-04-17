@@ -16,14 +16,18 @@ const AI_PROVIDERS = [
 ]
 
 const EXAMPLES = [
-  { label: 'Inclined Plane', text: 'A 10kg block slides down a 30-degree frictionless incline. Find acceleration and normal force.' },
-  { label: 'Projectile', text: 'A ball is launched at 20 m/s at 45 degrees. Find range and flight time.' },
-  { label: 'Pendulum', text: 'A simple pendulum has length 2 m. Calculate period near Earth.' },
-  { label: 'Spring-Mass', text: 'A 2kg mass attached to a spring with k=100 N/m is displaced and released.' },
-  { label: 'Circular Motion', text: 'A 1kg mass moves in a circle with radius 2m at 3 rad/s. Find centripetal force.' },
-  { label: 'Collision', text: 'Two 2kg balls collide elastically. Ball 1 at 5 m/s hits stationary Ball 2.' },
-  { label: 'Wave Motion', text: 'A wave has frequency 5 Hz and wavelength 2 m. Calculate wave speed.' },
-  { label: 'Free Fall', text: 'A ball is dropped from height 45 m. Find time to fall and final velocity.' },
+  { label: '🎯 Projectile', text: 'A ball is launched at 20 m/s at 45 degrees. Find range and flight time.' },
+  { label: '⏱️ Pendulum', text: 'A simple pendulum has length 2 m. Calculate period.' },
+  { label: '📐 Inclined Plane', text: 'A 10kg block slides down a 30-degree ramp with friction 0.2.' },
+  { label: '🔄 Spring', text: 'A 2kg mass attached to a spring with k=100 N/m is displaced and released.' },
+  { label: '💥 Collision', text: 'Two balls collide elastically. Ball 1 (2kg) at 5 m/s hits Ball 2 (3kg) at rest.' },
+  { label: '🧪 Methane', text: 'Show me the methane molecule CH4 and explain its structure.' },
+  { label: '🌊 Wave', text: 'A wave has frequency 5 Hz and wavelength 2 m. Calculate wave speed.' },
+  { label: '⚡ Electric', text: 'Two charges of 1e-6 C are 0.1 m apart. Find the force between them.' },
+  { label: '☀️ Orbit', text: 'A satellite orbits Earth at 400 km altitude. Calculate orbital velocity.' },
+  { label: '🫧 Buoyancy', text: 'A wooden block (density 600 kg/m³) with volume 0.1 m³ floats in water.' },
+  { label: '🔬 Gas', text: '2 moles of ideal gas at 300 K in 0.05 m³. Find the pressure.' },
+  { label: '☢️ Decay', text: 'A sample has 1000 atoms with half-life of 5 seconds. How much remains after 15s?' },
 ]
 
 export default function ProblemInput({
@@ -91,13 +95,13 @@ export default function ProblemInput({
 
   return (
     <Panel
-      title="Problem"
-      subtitle="Describe a scenario and parse it into simulation variables."
-      action={<Badge variant={connected ? 'success' : 'error'}>{connected ? 'Online' : 'Offline'}</Badge>}
+      title="📝 Describe Your Problem"
+      subtitle="Type or click an example to get started!"
+      action={<Badge variant={connected ? 'success' : 'error'}>{connected ? '🟢 Online' : '🔴 Offline'}</Badge>}
     >
       <div className="space-y-4">
         <div className="space-y-2">
-          <label className="text-xs text-[#9ca3af]" htmlFor="ai-provider">Provider</label>
+          <label className="text-xs text-[#9ca3af]" htmlFor="ai-provider">🤖 AI Model</label>
           <Select
             id="ai-provider"
             value={provider}
@@ -111,7 +115,7 @@ export default function ProblemInput({
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs text-[#9ca3af]" htmlFor="problem-input">Problem input</label>
+          <label className="text-xs text-[#9ca3af]" htmlFor="problem-input">✏️ Your Problem</label>
           <Textarea
             id="problem-input"
             ref={textareaRef}
@@ -123,7 +127,7 @@ export default function ProblemInput({
               if (error) setError('')
               setSuccess(false)
             }}
-            placeholder="Describe your physics or chemistry problem..."
+            placeholder="Type your physics or chemistry problem here... You can use casual language!"
             disabled={isBusy}
             maxLength={MAX_INPUT_LENGTH}
             className="min-h-36"
@@ -132,13 +136,13 @@ export default function ProblemInput({
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs text-[#9ca3af]">Example problems</p>
+          <p className="text-xs text-[#9ca3af]">💡 Try these examples (click to use)</p>
           <div className="flex flex-wrap gap-2">
             {EXAMPLES.map((example) => (
               <Button
                 key={example.label}
                 variant="ghost"
-                className="px-2 py-1 text-xs"
+                className="px-2 py-1 text-xs hover:bg-[rgba(0,245,255,0.1)]"
                 onClick={() => handleExampleClick(example.text)}
                 disabled={isBusy}
               >
@@ -148,19 +152,31 @@ export default function ProblemInput({
           </div>
         </div>
 
-        <Button variant="primary" className="w-full" onClick={handleSolve} disabled={isBusy || !sanitizedText.trim()}>
-          {loading ? 'Parsing problem...' : 'Solve'}
+        <Button variant="primary" className="w-full text-base py-3" onClick={handleSolve} disabled={isBusy || !sanitizedText.trim()}>
+          {loading ? '⏳ Analyzing your problem...' : '🚀 Solve & Simulate'}
         </Button>
 
-        {loading ? <Badge variant="accent">Parsing problem...</Badge> : null}
-        {success ? <Badge variant="success">Parsed successfully</Badge> : null}
+        {loading ? (
+          <div className="flex items-center gap-2 text-[#00f5ff]">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#00f5ff] border-t-transparent"></div>
+            <span className="text-sm">Processing...</span>
+          </div>
+        ) : null}
+        {success ? <Badge variant="success">✅ Parsed successfully! Check the simulation!</Badge> : null}
         {error ? (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
-            <p className="text-sm text-red-400 font-medium">Error parsing problem</p>
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4">
+            <p className="text-sm text-red-400 font-medium">❌ Oops! Something went wrong</p>
             <p className="mt-1 text-xs text-red-300">{error}</p>
-            <p className="mt-2 text-xs text-red-400">
-              💡 Try: Describe a physics problem with specific values and units
-            </p>
+            <div className="mt-3 rounded bg-[rgba(0,0,0,0.3)] p-2">
+              <p className="text-xs text-slate-400">
+                💡 <span className="text-[#00f5ff]">Tips:</span>
+              </p>
+              <ul className="mt-1 space-y-1 text-xs text-slate-400">
+                <li>• Include numbers with units (like "20 m/s" or "45 degrees")</li>
+                <li>• Describe what you want to find (like "find the range")</li>
+                <li>• Click an example above to see how it's done!</li>
+              </ul>
+            </div>
           </div>
         ) : null}
       </div>

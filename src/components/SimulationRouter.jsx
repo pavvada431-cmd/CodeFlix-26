@@ -16,6 +16,7 @@ const ElectricFields = lazy(() => import('../simulations/ElectricFields'))
 const Optics = lazy(() => import('../simulations/Optics'))
 const RadioactiveDecay = lazy(() => import('../simulations/RadioactiveDecay'))
 const MagneticFields = lazy(() => import('../simulations/MagneticFields'))
+const OrganicChemistry = lazy(() => import('../simulations/OrganicChemistry'))
 
 function SimulationNotSupported({ simulationType }) {
   return (
@@ -278,6 +279,13 @@ export default function SimulationRouter({
           isPlaying,
         }
 
+      case 'organic_chemistry':
+        return {
+          compound: resolvedVariables.compound ?? 'methane',
+          reactionType: resolvedVariables.reactionType ?? 'combustion',
+          isPlaying,
+        }
+
       default:
         return {}
     }
@@ -335,6 +343,8 @@ export default function SimulationRouter({
         return <RadioactiveDecay {...simulationProps} {...commonProps} />
       case 'electromagnetic':
         return <MagneticFields {...simulationProps} {...commonProps} />
+      case 'organic_chemistry':
+        return <OrganicChemistry {...simulationProps} {...commonProps} />
       default:
         return <SimulationNotSupported simulationType={resolvedSimulationType} />
     }

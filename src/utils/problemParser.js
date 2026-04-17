@@ -1,4 +1,5 @@
 import { assertValidParsedProblem } from './validator'
+import { cleanProblemText, detectProblemType, extractVariables, normalizeProblemText } from './problemCleaner'
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
 const AI_PROXY_URL = `${API_BASE_URL}/ai`
@@ -91,6 +92,28 @@ const VARIABLE_SCHEMAS = {
     optional: ['electricField'],
     units: { charge: 'C', velocity: 'm/s', magneticField: 'T', electricField: 'N/C' },
   },
+  titration: {
+    required: ['acidConcentration', 'baseConcentration'],
+    optional: ['volume', 'indicator'],
+    units: { acidConcentration: 'M', baseConcentration: 'M', volume: 'mL' },
+  },
+  combustion: {
+    required: ['fuel', 'oxygenAmount'],
+    optional: ['enthalpy', 'temperature'],
+    units: { fuel: 'mol', oxygenAmount: 'mol', enthalpy: 'kJ/mol' },
+  },
+  stoichiometry: {
+    required: ['reactantAmount', 'molarMass'],
+    optional: ['productAmount', 'yield'],
+    units: { reactantAmount: 'mol', molarMass: 'g/mol', productAmount: 'mol' },
+  },
+  organic_chemistry: {
+    required: ['compound', 'reactionType'],
+    optional: ['temperature', 'catalyst', 'product'],
+    units: { temperature: '°C', catalyst: 'type' },
+    compounds: ['methane', 'ethane', 'propane', 'butane', 'ethanol', 'acetic acid', 'benzene'],
+    reactionTypes: ['combustion', 'substitution', 'addition', 'elimination', 'esterification', 'polymerization'],
+  },
 }
 
 const MULTI_CONCEPT_PROMPT = `IMPORTANT: This problem may involve MULTIPLE physics concepts happening sequentially.
@@ -131,11 +154,23 @@ If the problem is SINGLE concept only, return:
   answer: { value: number, unit: string, explanation: string }
 }`
 
-const BASE_SYSTEM_PROMPT = `You are a physics problem parser. Extract all variables and identify the problem type(s) from the user's input. Return ONLY a valid JSON object with no markdown, no explanation.
+const BASE_SYSTEM_PROMPT = `You are a friendly science problem parser for students! Your job is to understand ANY problem description and turn it into structured data for a simulation.
+
+You can understand problems written in many ways:
+- Casual: "a ball thrown up at 20 meters per second"
+- Technical: "projectile launched with v=20m/s at 45°"
+- Mixed: "a 2kg mass slides down a ramp at 30 degrees"
+- Partial: "calculate what happens with a pendulum"
+- Short: "ball at 30m/s"
+- Even typos and informal language!
 
 ${MULTI_CONCEPT_PROMPT}
 
 AVAILABLE TYPES: ${Object.keys(VARIABLE_SCHEMAS).join(' | ')}
+
+If you CANNOT determine the exact type but understand the concept, pick the closest match and fill in reasonable defaults.
+Always provide a "steps" array explaining how to solve the problem.
+Always provide an "answer" with the main result.
 
 For MULTI-CONCEPT problems, identify the sequence of physics concepts and how they transition.
 EXAMPLES of transitions:
@@ -332,7 +367,14 @@ export async function parseProblem(problemText, provider = 'openai') {
     throw new Error('problemText must be a non-empty string')
   }
 
-  return parseWithRetry(problemText, BASE_SYSTEM_PROMPT, provider, 2)
+  const normalized = normalizeProblemText(problemText)
+  const cleanedText = normalized.cleaned
+  
+  console.log('Problem type detected:', normalized.detectedType)
+  console.log('Variables extracted:', normalized.extractedVariables)
+  console.log('Cleaned problem text:', cleanedText)
+
+  return parseWithRetry(cleanedText, BASE_SYSTEM_PROMPT, provider, 2)
 }
 
 export { VARIABLE_SCHEMAS }

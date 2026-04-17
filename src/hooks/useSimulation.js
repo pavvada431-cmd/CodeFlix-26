@@ -143,6 +143,8 @@ export const SUPPORTED_SIMULATION_TYPES = [
   'optics_mirror',
   'radioactive_decay',
   'electromagnetic',
+  'organic_chemistry',
+  'stoichiometry',
 ]
 
 export const SIMULATION_DISPLAY_NAMES = {
@@ -165,6 +167,8 @@ export const SIMULATION_DISPLAY_NAMES = {
   circuit: 'Electric Circuit',
   titration: 'Titration',
   combustion: 'Combustion',
+  organic_chemistry: 'Organic Chemistry',
+  stoichiometry: 'Stoichiometry',
 }
 
 export const SIMULATION_ICONS = {
@@ -184,6 +188,8 @@ export const SIMULATION_ICONS = {
   optics_mirror: '🪞',
   radioactive_decay: '☢️',
   electromagnetic: '🧲',
+  organic_chemistry: '🧪',
+  stoichiometry: '⚖️',
 }
 
 export const SIMULATION_CATEGORIES = {
@@ -194,6 +200,7 @@ export const SIMULATION_CATEGORIES = {
   'Electricity & Magnetism': ['electric_field', 'electromagnetic'],
   'Optics': ['optics_lens', 'optics_mirror'],
   'Nuclear': ['radioactive_decay'],
+  'Chemistry': ['organic_chemistry', 'stoichiometry', 'titration', 'combustion'],
 }
 
 export const SIMULATION_COLORS = {
@@ -213,4 +220,6 @@ export const SIMULATION_COLORS = {
   optics_mirror: '#c0c0c0',
   radioactive_decay: '#00ff00',
   electromagnetic: '#ff0088',
+  organic_chemistry: '#a855f7',
+  stoichiometry: '#f97316',
 }

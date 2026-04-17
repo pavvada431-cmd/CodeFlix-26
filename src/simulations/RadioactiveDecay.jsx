@@ -485,14 +485,30 @@ export default function RadioactiveDecay({
     <div className="relative h-full w-full">
       <Canvas
         onCreated={(state) => {
-        try {
-          state.gl.getContext("webgl2") || state.gl.getContext("webgl");
-        } catch (e) {
-          console.warn("WebGL initialization warning:", e);
-        }
-      }}
-      camera={{ position: [0, 0, 8], fov: 50 }}
+          if (!state.gl?.getContext) return;
+          try {
+            const gl = state.gl.getContext('webgl2') || state.gl.getContext('webgl');
+            if (gl && gl.canvas) {
+              gl.canvas.addEventListener('webglcontextlost', (e) => {
+                e.preventDefault();
+                console.warn('WebGL context lost');
+              });
+              gl.canvas.addEventListener('webglcontextrestored', () => {
+                console.warn('WebGL context restored');
+              });
+            }
+          } catch (e) {
+            console.warn('WebGL initialization warning:', e.message);
+          }
+        }}
+        camera={{ position: [0, 2, 10], fov: 60 }}
         style={{ width: '100%', height: '100%', background: '#0a0f1e' }}
+        gl={{ 
+          antialias: true, 
+          alpha: false,
+          powerPreference: 'high-performance',
+          failIfMajorPerformanceCaveat: false,
+        }}
       >
         <ambientLight intensity={0.6} />
         <directionalLight position={[5, 10, 5]} intensity={1} />
