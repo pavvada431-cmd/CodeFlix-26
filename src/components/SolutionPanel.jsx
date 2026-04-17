@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { formatNumber } from '../utils/formatters'
+import { AnimatedCounter, VariableSlider } from './LoadingStates'
 import Panel from './ui/Panel'
 import Badge from './ui/Badge'
 
@@ -20,37 +21,57 @@ function toLabel(value) {
 
 function getSliderConfig(value) {
   const safeValue = Number.isFinite(value) ? Math.abs(value) : 1
-  
-  // Smart range calculation
-  let min, max, step
-  
+
+  let min
+  let max
+  let step
+
   if (safeValue === 0) {
-    min = -1
+    min = 0
     max = 1
-    step = 0.1
-  } else if (safeValue < 0.1) {
-    min = safeValue * 0.01
-    max = safeValue * 100
-    step = safeValue * 0.001
+    step = 0.05
   } else if (safeValue < 1) {
     min = safeValue * 0.1
     max = safeValue * 10
-    step = safeValue * 0.01
+    step = Math.max(safeValue * 0.02, 0.01)
   } else if (safeValue < 100) {
-    min = safeValue * 0.1
+    min = safeValue * 0.2
     max = safeValue * 3
-    step = Math.max(safeValue * 0.01, 0.1)
+    step = Math.max(safeValue * 0.02, 0.1)
   } else {
     min = safeValue * 0.5
     max = safeValue * 2
-    step = Math.max(safeValue * 0.01, 1)
+    step = Math.max(safeValue * 0.02, 1)
   }
-  
+
   return {
-    min: Math.max(0, min), // Prevent negative for most physics values
-    max: Math.max(min + 0.1, max),
-    step: step || 0.01,
+    min: Math.max(0, min),
+    max: Math.max(min + step, max),
+    step,
   }
+}
+
+function getSnapValues(unit, key, value) {
+  const unitValue = String(unit ?? '').toLowerCase()
+  const keyValue = String(key ?? '').toLowerCase()
+  const base = [0, 1, 2, 5, 10, 20, 25, 30, 45, 50, 60, 75, 90, 100]
+
+  if (unitValue.includes('°') || keyValue.includes('angle')) {
+    return [0, 15, 30, 45, 60, 75, 90]
+  }
+  if (unitValue.includes('m/s') || keyValue.includes('velocity') || keyValue.includes('speed')) {
+    return [0, 5, 10, 15, 20, 25, 30, 40, 50]
+  }
+  if (unitValue.includes('kg') || keyValue.includes('mass')) {
+    return [0, 0.5, 1, 2, 5, 10, 20, 50, 100]
+  }
+  if (unitValue.includes('m') || keyValue.includes('distance') || keyValue.includes('length')) {
+    return [0, 0.5, 1, 2, 5, 10, 20, 50, 100]
+  }
+  if (Number.isFinite(value) && Math.abs(value) < 1) {
+    return [0, 0.1, 0.2, 0.5, 1, 2]
+  }
+  return base
 }
 
 export default function SolutionPanel({ parsedData, onVariableChange }) {
@@ -62,10 +83,13 @@ export default function SolutionPanel({ parsedData, onVariableChange }) {
   if (!parsedData) {
     return (
       <Panel title="Solution" subtitle="Steps and variables appear after solving a problem.">
-        <p className="text-sm text-[#9ca3af]">No parsed data yet.</p>
+        <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>No parsed data yet.</p>
       </Panel>
     )
   }
+
+  const answerValue = Number(parsedData.answer?.value)
+  const answerUnit = parsedData.answer?.unit || ''
 
   return (
     <Panel
@@ -74,68 +98,57 @@ export default function SolutionPanel({ parsedData, onVariableChange }) {
       action={<Badge variant="neutral">{String(parsedData.domain ?? 'physics').toUpperCase()}</Badge>}
     >
       <div className="space-y-4">
-        <div className="rounded-xl border border-[#1f2937] bg-[#0b0f17] p-3">
-          <p className="text-xs text-[#9ca3af]">Answer</p>
-          <p className="mt-1 text-sm font-medium text-[#e5e7eb]">
-            {formatNumber(parsedData.answer?.value)}{' '}
-            <span className="text-[#22d3ee]">{parsedData.answer?.unit}</span>
-          </p>
+        <div className="rounded-xl border p-3" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
+          <p className="text-xs" style={{ color: 'var(--color-text-dim)' }}>Answer</p>
+          <div className="mt-1 text-lg font-semibold">
+            <AnimatedCounter
+              value={answerValue}
+              unit={answerUnit}
+              formatter={formatNumber}
+              significantDelta={Math.max(Math.abs(answerValue) * 0.1, 0.5)}
+            />
+          </div>
           {parsedData.answer?.explanation ? (
-            <p className="mt-2 text-xs text-[#9ca3af]">{parsedData.answer.explanation}</p>
+            <p className="mt-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>{parsedData.answer.explanation}</p>
           ) : null}
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs text-[#9ca3af]">Steps</p>
+          <p className="text-xs" style={{ color: 'var(--color-text-dim)' }}>Steps</p>
           {(parsedData.steps ?? []).slice(0, 6).map((step, index) => (
-            <div key={`${index + 1}-${step}`} className="rounded-xl border border-[#1f2937] bg-[#0b0f17] p-3">
-              <p className="text-xs text-[#9ca3af]">Step {index + 1}</p>
-              <p className="mt-1 text-sm text-[#e5e7eb]">{step}</p>
+            <div
+              key={`${index + 1}-${step}`}
+              className="rounded-xl border p-3"
+              style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)' }}
+            >
+              <p className="text-xs" style={{ color: 'var(--color-text-dim)' }}>Step {index + 1}</p>
+              <p className="mt-1 text-sm" style={{ color: 'var(--color-text)' }}>{step}</p>
             </div>
           ))}
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-[#9ca3af]">Variables</p>
+            <p className="text-xs" style={{ color: 'var(--color-text-dim)' }}>Variables</p>
             <Badge variant="neutral">{variableEntries.length}</Badge>
           </div>
           {variableEntries.map(([key, value]) => {
             const sliderConfig = getSliderConfig(value)
-            const percentage = sliderConfig.max > sliderConfig.min 
-              ? ((value - sliderConfig.min) / (sliderConfig.max - sliderConfig.min)) * 100
-              : 50
-            
+            const unit = parsedData.units?.[key] || ''
             return (
-              <label key={key} className="block rounded-xl border border-[#1f2937] bg-[#0b0f17] p-3 hover:border-[#22d3ee]/50 transition-colors cursor-pointer">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-medium text-[#e5e7eb]">{toLabel(key)}</span>
-                  <span className="text-xs font-mono text-[#22d3ee] bg-[#0a0d14] px-2 py-1 rounded">
-                    {formatNumber(value)} {parsedData.units?.[key] || ''}
-                  </span>
-                </div>
-                <div className="relative mb-2">
-                  <input
-                    type="range"
-                    min={sliderConfig.min}
-                    max={sliderConfig.max}
-                    step={sliderConfig.step}
-                    value={value}
-                    onChange={(event) => {
-                      const newValue = Number(event.target.value)
-                      onVariableChange?.(key, newValue)
-                    }}
-                    className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[#1f2937] accent-[#22d3ee] hover:accent-[#06b6d4] transition-all"
-                    style={{
-                      background: `linear-gradient(to right, #22d3ee 0%, #22d3ee ${Math.max(0, Math.min(100, percentage))}%, #1f2937 ${Math.max(0, Math.min(100, percentage))}%, #1f2937 100%)`
-                    }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-[#6b7280]">
-                  <span>{formatNumber(sliderConfig.min)}</span>
-                  <span>{formatNumber(sliderConfig.max)}</span>
-                </div>
-              </label>
+              <div key={key} className="rounded-xl border p-1" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+                <VariableSlider
+                  label={toLabel(key)}
+                  value={value}
+                  min={sliderConfig.min}
+                  max={sliderConfig.max}
+                  step={sliderConfig.step}
+                  unit={unit}
+                  formatter={formatNumber}
+                  snaps={getSnapValues(unit, key, value)}
+                  onChange={(newValue) => onVariableChange?.(key, Number(newValue))}
+                />
+              </div>
             )
           })}
         </div>

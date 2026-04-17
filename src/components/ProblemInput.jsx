@@ -5,6 +5,7 @@ import Button from './ui/Button'
 import Badge from './ui/Badge'
 import Panel from './ui/Panel'
 import { Select, Textarea } from './ui/Input'
+import { ParsingSteps } from './LoadingStates'
 
 const MAX_INPUT_LENGTH = 500
 
@@ -200,12 +201,9 @@ export default function ProblemInput({
           {loading ? '⏳ Analyzing...' : '🚀 Solve & Simulate'}
         </Button>
 
-        {loading && (
-          <div className="flex items-center gap-2" style={{ color: 'var(--color-accent)' }}>
-            <div className="h-4 w-4 animate-spin rounded-full border-2" style={{ borderColor: 'var(--color-border)', borderTopColor: 'var(--color-accent)' }} />
-            <span className="text-sm">Processing your problem...</span>
-          </div>
-        )}
+        {loading ? (
+          <ParsingSteps isLoading={loading} />
+        ) : null}
         
         {success && (
           <div className="flex items-center gap-2 rounded-lg p-3" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
