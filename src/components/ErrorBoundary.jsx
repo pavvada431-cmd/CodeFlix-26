@@ -22,6 +22,24 @@ class ErrorBoundary extends Component {
   componentDidCatch(error, errorInfo) {
     const isDev = import.meta.env.DEV
     
+    // Suppress internal React Three Fiber errors that will recover on next frame
+    const isInternalR3FError = 
+      error?.message?.includes('__r3f') ||
+      error?.message?.includes('is undefined') ||
+      error?.message?.includes('cannot read property') ||
+      error?.stack?.includes('__r3f')
+    
+    if (isInternalR3FError) {
+      // Reset the error state to allow recovery
+      this.setState({
+        hasError: false,
+        error: null,
+        errorInfo: null,
+        errorCode: null,
+      })
+      return
+    }
+    
     if (isDev) {
       console.error('ErrorBoundary caught:', {
         message: error?.message,

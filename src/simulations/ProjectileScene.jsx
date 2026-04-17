@@ -6,23 +6,29 @@ function MovingProjectile({ points }) {
   const orbRef = useRef(null)
 
   useFrame(({ clock }) => {
-    if (!orbRef.current || points.length === 0) {
+    if (!orbRef.current?.position || points.length === 0) {
       return
     }
 
-    const loopProgress = (clock.getElapsedTime() % 5) / 5
-    const progress = loopProgress * (points.length - 1)
-    const lowerIndex = Math.floor(progress)
-    const upperIndex = Math.min(lowerIndex + 1, points.length - 1)
-    const blend = progress - lowerIndex
-    const lowerPoint = points[lowerIndex]
-    const upperPoint = points[upperIndex]
+    try {
+      const loopProgress = (clock.getElapsedTime() % 5) / 5
+      const progress = loopProgress * (points.length - 1)
+      const lowerIndex = Math.floor(progress)
+      const upperIndex = Math.min(lowerIndex + 1, points.length - 1)
+      const blend = progress - lowerIndex
+      const lowerPoint = points[lowerIndex]
+      const upperPoint = points[upperIndex]
 
-    orbRef.current.position.set(
-      lowerPoint[0] + (upperPoint[0] - lowerPoint[0]) * blend,
-      lowerPoint[1] + (upperPoint[1] - lowerPoint[1]) * blend,
-      lowerPoint[2] + (upperPoint[2] - lowerPoint[2]) * blend,
-    )
+      if (orbRef.current?.position && lowerPoint && upperPoint) {
+        orbRef.current.position.set(
+          lowerPoint[0] + (upperPoint[0] - lowerPoint[0]) * blend,
+          lowerPoint[1] + (upperPoint[1] - lowerPoint[1]) * blend,
+          lowerPoint[2] + (upperPoint[2] - lowerPoint[2]) * blend,
+        )
+      }
+    } catch (error) {
+      // Silently handle initialization errors
+    }
   })
 
   return (
