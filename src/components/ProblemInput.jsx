@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { parseProblem } from '../utils/problemParser'
 import { sanitizeInput } from '../utils/validator'
 import Button from './ui/Button'
@@ -32,12 +33,43 @@ const CHEMISTRY_EXAMPLES = [
   { label: '🧫 Titration', text: '0.1M HCl is titrated with 0.1M NaOH. Find equivalence point.' },
 ]
 
+function ExampleRow({ title, examples, onSelect, disabled, mobile = false }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
+        {title}
+      </p>
+      <div className={mobile ? 'no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1' : 'flex flex-wrap gap-2'}>
+        {examples.map((example) => (
+          <button
+            key={example.label}
+            type="button"
+            className={`rounded-lg border px-3 py-1.5 text-xs transition-all hover:scale-[1.02] ${
+              mobile ? 'shrink-0 whitespace-nowrap' : ''
+            }`}
+            style={{
+              borderColor: 'var(--color-border)',
+              backgroundColor: 'var(--color-bg)',
+              color: 'var(--color-text)',
+            }}
+            onClick={() => onSelect(example.text)}
+            disabled={disabled}
+          >
+            {example.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function ProblemInput({
   onSolved,
   isLoading = false,
   provider = 'openai',
   onProviderChange,
   onApiStatusChange,
+  mobile = false,
 }) {
   const textareaRef = useRef(null)
   const [problemText, setProblemText] = useState('')
@@ -45,10 +77,12 @@ export default function ProblemInput({
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [connected, setConnected] = useState(true)
+  const [showProviderSelector, setShowProviderSelector] = useState(!mobile)
   const isBusy = isLoading || loading
 
   const sanitizedText = useMemo(() => sanitizeInput(problemText), [problemText])
   const charCount = problemText.length
+  const selectedProviderLabel = AI_PROVIDERS.find((item) => item.value === provider)?.label || provider
 
   const handleExampleClick = (text) => {
     setProblemText(text)
@@ -75,9 +109,11 @@ export default function ProblemInput({
 
     try {
       const parsedData = await parseProblem(trimmedProblem, provider)
-      console.log('Parsed:', parsedData)
+      const hasMultiConceptStages =
+        parsedData?.isMultiConcept === true &&
+        Array.isArray(parsedData?.stages) &&
+        parsedData.stages.length > 0
 
-      const hasMultiConceptStages = parsedData?.isMultiConcept === true && Array.isArray(parsedData?.stages) && parsedData.stages.length > 0
       if (!parsedData?.type && !hasMultiConceptStages) {
         throw new Error('Could not understand the problem. Try rephrasing!')
       }
@@ -96,6 +132,167 @@ export default function ProblemInput({
     }
   }
 
+  const content = (
+    <div className={`space-y-4 ${mobile ? 'pb-20' : ''}`}>
+      <div className="space-y-2">
+        {mobile ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowProviderSelector((previous) => !previous)}
+              className="flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-xs"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
+            >
+              <span>🤖 AI Provider: {selectedProviderLabel}</span>
+              {showProviderSelector ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {showProviderSelector ? (
+              <Select
+                id="ai-provider-mobile"
+                value={provider}
+                disabled={isBusy}
+                onChange={(event) => onProviderChange?.(event.target.value)}
+              >
+                {AI_PROVIDERS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </Select>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <label className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
+              🤖 AI Model
+            </label>
+            <Select
+              id="ai-provider"
+              value={provider}
+              disabled={isBusy}
+              onChange={(event) => onProviderChange?.(event.target.value)}
+            >
+              {AI_PROVIDERS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </Select>
+          </>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
+          ✏️ Your Problem
+        </label>
+        <Textarea
+          id={mobile ? 'problem-input-mobile' : 'problem-input'}
+          ref={textareaRef}
+          value={problemText}
+          onChange={(event) => {
+            let value = sanitizeInput(event.target.value)
+            if (value.length > MAX_INPUT_LENGTH) value = value.slice(0, MAX_INPUT_LENGTH)
+            setProblemText(value)
+            if (error) setError('')
+            setSuccess(false)
+          }}
+          placeholder="Example: A ball is thrown at 20 m/s at 45°. What is its range?&#10;&#10;You can also ask: Show methane molecule, balance an equation, etc."
+          disabled={isBusy}
+          maxLength={MAX_INPUT_LENGTH}
+          className={mobile ? 'min-h-[40vh] text-base' : 'min-h-40'}
+        />
+        <div className="flex justify-between text-xs" style={{ color: 'var(--color-text-dim)' }}>
+          <span>{charCount}/{MAX_INPUT_LENGTH} characters</span>
+          <span>{mobile ? 'Use plain language' : 'Include values like "20 m/s" or "45°"'}</span>
+        </div>
+      </div>
+
+      <ExampleRow
+        title="💡 Physics Examples"
+        examples={PHYSICS_EXAMPLES}
+        onSelect={handleExampleClick}
+        disabled={isBusy}
+        mobile={mobile}
+      />
+
+      <ExampleRow
+        title="🧪 Chemistry Examples"
+        examples={CHEMISTRY_EXAMPLES}
+        onSelect={handleExampleClick}
+        disabled={isBusy}
+        mobile={mobile}
+      />
+
+      {mobile ? (
+        <div
+          className="fixed inset-x-0 z-30 border-t bg-[var(--color-surface)]/95 px-4 pt-3 backdrop-blur-md"
+          style={{
+            borderColor: 'var(--color-border)',
+            bottom: 'calc(var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom))',
+            paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))',
+          }}
+        >
+          <Button
+            variant="primary"
+            className="h-12 w-full text-base"
+            onClick={handleSolve}
+            disabled={isBusy || !sanitizedText.trim()}
+          >
+            {loading ? '⏳ Analyzing...' : '🚀 Solve'}
+          </Button>
+        </div>
+      ) : (
+        <Button
+          variant="primary"
+          className="w-full py-3 text-base"
+          onClick={handleSolve}
+          disabled={isBusy || !sanitizedText.trim()}
+        >
+          {loading ? '⏳ Analyzing...' : '🚀 Solve & Simulate'}
+        </Button>
+      )}
+
+      {loading ? <ParsingSteps isLoading={loading} /> : null}
+
+      {success ? (
+        <div className="flex items-center gap-2 rounded-lg p-3" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
+          <span style={{ color: '#22c55e' }}>✅</span>
+          <span className="text-sm" style={{ color: '#22c55e' }}>Success! Check the simulation tab.</span>
+        </div>
+      ) : null}
+
+      {error ? (
+        <div
+          className="rounded-xl border p-4"
+          style={{
+            borderColor: 'rgba(239, 68, 68, 0.3)',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          }}
+        >
+          <p className="text-sm font-medium" style={{ color: '#ef4444' }}>❌ Oops!</p>
+          <p className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>{error}</p>
+          <div className="mt-3 space-y-1 text-xs" style={{ color: 'var(--color-text-dim)' }}>
+            <p>💡 Tips:</p>
+            <p>• Include numbers with units (like "20 m/s")</p>
+            <p>• Be specific about what you want to find</p>
+            <p>• Click an example above to see how it works</p>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+
+  if (mobile) {
+    return (
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Describe Your Problem</h2>
+          <Badge variant={connected ? 'success' : 'error'}>
+            {connected ? 'Online' : 'Offline'}
+          </Badge>
+        </div>
+        {content}
+      </div>
+    )
+  }
+
   return (
     <Panel
       title="✨ Describe Your Problem"
@@ -104,131 +301,7 @@ export default function ProblemInput({
         {connected ? '🟢 Online' : '🔴 Offline'}
       </Badge>}
     >
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
-            🤖 AI Model
-          </label>
-          <Select
-            id="ai-provider"
-            value={provider}
-            disabled={isBusy}
-            onChange={(event) => onProviderChange?.(event.target.value)}
-          >
-            {AI_PROVIDERS.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
-            ✏️ Your Problem
-          </label>
-          <Textarea
-            id="problem-input"
-            ref={textareaRef}
-            value={problemText}
-            onChange={(event) => {
-              let value = sanitizeInput(event.target.value)
-              if (value.length > MAX_INPUT_LENGTH) value = value.slice(0, MAX_INPUT_LENGTH)
-              setProblemText(value)
-              if (error) setError('')
-              setSuccess(false)
-            }}
-            placeholder="Example: A ball is thrown at 20 m/s at 45°. What is its range?&#10;&#10;You can also ask: Show me methane molecule, balance this equation, etc."
-            disabled={isBusy}
-            maxLength={MAX_INPUT_LENGTH}
-            className="min-h-40"
-          />
-          <div className="flex justify-between text-xs" style={{ color: 'var(--color-text-dim)' }}>
-            <span>{charCount}/{MAX_INPUT_LENGTH} characters</span>
-            <span>Include values like "20 m/s" or "45°"</span>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <p className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
-            💡 Physics Examples
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {PHYSICS_EXAMPLES.map((example) => (
-              <button
-                key={example.label}
-                className="rounded-lg border px-3 py-1.5 text-xs transition-all hover:scale-105"
-                style={{ 
-                  borderColor: 'var(--color-border)',
-                  backgroundColor: 'var(--color-bg)',
-                  color: 'var(--color-text)'
-                }}
-                onClick={() => handleExampleClick(example.text)}
-                disabled={isBusy}
-              >
-                {example.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <p className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
-            🧪 Chemistry Examples
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {CHEMISTRY_EXAMPLES.map((example) => (
-              <button
-                key={example.label}
-                className="rounded-lg border px-3 py-1.5 text-xs transition-all hover:scale-105"
-                style={{ 
-                  borderColor: 'var(--color-border)',
-                  backgroundColor: 'var(--color-bg)',
-                  color: 'var(--color-text)'
-                }}
-                onClick={() => handleExampleClick(example.text)}
-                disabled={isBusy}
-              >
-                {example.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <Button 
-          variant="primary" 
-          className="w-full text-base py-3" 
-          onClick={handleSolve} 
-          disabled={isBusy || !sanitizedText.trim()}
-        >
-          {loading ? '⏳ Analyzing...' : '🚀 Solve & Simulate'}
-        </Button>
-
-        {loading ? (
-          <ParsingSteps isLoading={loading} />
-        ) : null}
-        
-        {success && (
-          <div className="flex items-center gap-2 rounded-lg p-3" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
-            <span style={{ color: '#22c55e' }}>✅</span>
-            <span className="text-sm" style={{ color: '#22c55e' }}>Success! Check the simulation →</span>
-          </div>
-        )}
-        
-        {error && (
-          <div className="rounded-xl border p-4" style={{ 
-            borderColor: 'rgba(239, 68, 68, 0.3)', 
-            backgroundColor: 'rgba(239, 68, 68, 0.1)' 
-          }}>
-            <p className="text-sm font-medium" style={{ color: '#ef4444' }}>❌ Oops!</p>
-            <p className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>{error}</p>
-            <div className="mt-3 space-y-1 text-xs" style={{ color: 'var(--color-text-dim)' }}>
-              <p>💡 Tips:</p>
-              <p>• Include numbers with units (like "20 m/s")</p>
-              <p>• Be specific about what you want to find</p>
-              <p>• Click an example above to see how it's done</p>
-            </div>
-          </div>
-        )}
-      </div>
+      {content}
     </Panel>
   )
 }

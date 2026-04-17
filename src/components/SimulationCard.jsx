@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Pause, Play, RotateCcw } from 'lucide-react'
 import ErrorBoundary from './ErrorBoundary'
 import SimulationRouter from './SimulationRouter'
 import Button from './ui/Button'
@@ -12,13 +13,13 @@ import {
 
 function SimulationControls({ isPlaying, onPlayPause, onReset, speed, onSpeedChange }) {
   return (
-    <div 
+    <div
       className="mt-4 flex flex-wrap items-center gap-3 border-t pt-4"
       style={{ borderColor: 'var(--color-border)' }}
     >
       <div className="flex gap-2">
-        <Button 
-          variant="primary" 
+        <Button
+          variant="primary"
           onClick={onPlayPause}
           className="min-w-[100px]"
         >
@@ -28,10 +29,10 @@ function SimulationControls({ isPlaying, onPlayPause, onReset, speed, onSpeedCha
           🔄 Reset
         </Button>
       </div>
-      
+
       <div className="ml-auto flex items-center gap-3">
-        <label 
-          htmlFor="speed-control" 
+        <label
+          htmlFor="speed-control"
           className="flex items-center gap-2 text-sm font-medium"
           style={{ color: 'var(--color-text-muted)' }}
         >
@@ -42,10 +43,10 @@ function SimulationControls({ isPlaying, onPlayPause, onReset, speed, onSpeedCha
           value={speed}
           onChange={(event) => onSpeedChange(Number(event.target.value))}
           className="rounded-xl border px-3 py-2 text-sm outline-none transition-colors"
-          style={{ 
+          style={{
             borderColor: 'var(--color-border)',
             backgroundColor: 'var(--color-surface)',
-            color: 'var(--color-text)'
+            color: 'var(--color-text)',
           }}
         >
           <option value={0.1}>0.1x Super Slow</option>
@@ -92,22 +93,22 @@ function SimulationHelpTooltip({ type }) {
   const helpText = helpTexts[type] || 'Interact with the simulation using the controls below! 🌟'
 
   return (
-    <div className="absolute top-4 right-4 z-20 group">
-      <button 
+    <div className="group absolute right-4 top-4 z-20">
+      <button
         className="rounded-full p-2.5 shadow-lg transition-all hover:scale-110"
-        style={{ 
+        style={{
           backgroundColor: 'var(--color-accent-dim)',
-          color: 'var(--color-accent)'
+          color: 'var(--color-accent)',
         }}
       >
         ❓
       </button>
-      <div 
+      <div
         className="invisible absolute right-0 top-12 w-72 rounded-xl border p-4 text-sm opacity-0 shadow-xl transition-all group-hover:visible group-hover:opacity-100"
-        style={{ 
+        style={{
           borderColor: 'var(--color-border)',
           backgroundColor: 'var(--color-surface)',
-          color: 'var(--color-text)'
+          color: 'var(--color-text)',
         }}
       >
         <p className="mb-2 font-bold" style={{ color: 'var(--color-accent)' }}>
@@ -123,6 +124,7 @@ function ZoomControls({ onZoomIn, onZoomOut, onResetZoom }) {
   return (
     <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-1 rounded-lg border p-1 shadow-lg" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
       <button
+        type="button"
         onClick={onZoomIn}
         className="rounded-md px-3 py-2 text-lg font-bold transition-colors hover:scale-110"
         style={{ color: 'var(--color-text)' }}
@@ -131,6 +133,7 @@ function ZoomControls({ onZoomIn, onZoomOut, onResetZoom }) {
         +
       </button>
       <button
+        type="button"
         onClick={onResetZoom}
         className="rounded-md px-3 py-1 text-sm transition-colors hover:scale-110"
         style={{ color: 'var(--color-text-muted)' }}
@@ -139,6 +142,7 @@ function ZoomControls({ onZoomIn, onZoomOut, onResetZoom }) {
         ⟳
       </button>
       <button
+        type="button"
         onClick={onZoomOut}
         className="rounded-md px-3 py-2 text-lg font-bold transition-colors hover:scale-110"
         style={{ color: 'var(--color-text)' }}
@@ -173,12 +177,13 @@ function FullscreenButton() {
 
   return (
     <button
+      type="button"
       onClick={toggleFullscreen}
       className="absolute bottom-4 left-4 z-20 rounded-lg border p-2 shadow-lg transition-colors hover:scale-110"
-      style={{ 
-        backgroundColor: 'var(--color-surface)', 
+      style={{
+        backgroundColor: 'var(--color-surface)',
         borderColor: 'var(--color-border)',
-        color: 'var(--color-text-muted)'
+        color: 'var(--color-text-muted)',
       }}
       title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
     >
@@ -187,41 +192,204 @@ function FullscreenButton() {
   )
 }
 
-export default function SimulationCard({ simulation, particleMultiplier }) {
+function MobileFloatingControls({ simulation }) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex items-end justify-between px-4"
+      style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+    >
+      <button
+        type="button"
+        onClick={simulation.reset}
+        className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border shadow-xl"
+        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)', color: 'var(--color-text)' }}
+        aria-label="Reset"
+      >
+        <RotateCcw size={18} />
+      </button>
+
+      <button
+        type="button"
+        onClick={() => (simulation.isPlaying ? simulation.pause() : simulation.play())}
+        className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full border shadow-2xl"
+        style={{ borderColor: 'var(--color-accent)', backgroundColor: 'var(--color-accent)', color: '#041118' }}
+        aria-label={simulation.isPlaying ? 'Pause simulation' : 'Play simulation'}
+      >
+        {simulation.isPlaying ? <Pause size={22} /> : <Play size={22} />}
+      </button>
+
+      <label
+        htmlFor="mobile-speed-control"
+        className="pointer-events-auto rounded-full border px-2 py-1 text-xs shadow-xl"
+        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
+      >
+        <span className="sr-only">Speed</span>
+        <select
+          id="mobile-speed-control"
+          value={simulation.playbackSpeed}
+          onChange={(event) => simulation.setSpeed(Number(event.target.value))}
+          className="bg-transparent text-sm outline-none"
+          style={{ color: 'var(--color-text)' }}
+        >
+          <option value={0.25}>0.25x</option>
+          <option value={0.5}>0.5x</option>
+          <option value={1}>1x</option>
+          <option value={2}>2x</option>
+          <option value={5}>5x</option>
+        </select>
+      </label>
+    </div>
+  )
+}
+
+function SimulationViewport({
+  simulation,
+  particleMultiplier,
+  zoom = 1,
+  mobile = false,
+  onZoomIn,
+  onZoomOut,
+  onResetZoom,
+}) {
+  return (
+    <div
+      className="relative w-full overflow-hidden border"
+      style={{
+        height: mobile ? '100%' : '650px',
+        minHeight: mobile ? '100%' : '450px',
+        maxHeight: mobile ? '100%' : '900px',
+        borderColor: 'var(--color-border)',
+        backgroundColor: 'var(--color-bg)',
+        borderRadius: mobile ? '0.75rem' : '0.75rem',
+      }}
+    >
+      <div
+        className="absolute inset-0 transition-transform duration-300"
+        style={{ transform: mobile ? 'none' : `scale(${zoom})`, transformOrigin: 'center center' }}
+      >
+        <SimulationTransition
+          transitionKey={`${simulation.activeSimulation || 'idle'}-${simulation.simulationKey || '0'}`}
+          className="h-full w-full"
+        >
+          {simulation.activeSimulation ? (
+            <ErrorBoundary onReset={simulation.reset}>
+              <SimulationRouter
+                parsedData={simulation.parsedData}
+                simulationType={simulation.activeSimulation}
+                variables={simulation.currentVariables}
+                isPlaying={simulation.isPlaying}
+                simulationKey={simulation.simulationKey}
+                onDataPoint={simulation.onDataPoint}
+                isLoading={simulation.isLoading}
+                particleMultiplier={particleMultiplier}
+                accentColor="var(--color-accent)"
+              />
+            </ErrorBoundary>
+          ) : (
+            <div className="relative h-full">
+              <SkeletonSimulation className="h-full w-full" />
+              <div className="absolute inset-0 flex h-full flex-col items-center justify-center p-8 text-center">
+                <div
+                  className="mb-6 flex h-20 w-20 items-center justify-center rounded-full text-4xl"
+                  style={{ backgroundColor: 'var(--color-accent-dim)' }}
+                >
+                  🔬
+                </div>
+                <h3 className="mb-2 text-xl font-bold" style={{ color: 'var(--color-text)' }}>
+                  Ready to Simulate!
+                </h3>
+                <p className="max-w-md" style={{ color: 'var(--color-text-muted)' }}>
+                  {mobile
+                    ? 'Use the Input tab to solve a problem, then return here to interact with the simulation.'
+                    : 'Enter a physics or chemistry problem in the sidebar, or click an example to get started.'}
+                </p>
+              </div>
+            </div>
+          )}
+        </SimulationTransition>
+      </div>
+
+      <SimulationLoader isLoading={simulation.isLoading} />
+
+      {simulation.activeSimulation && !mobile ? (
+        <>
+          <SimulationHelpTooltip type={simulation.activeSimulation} />
+          <ZoomControls
+            onZoomIn={onZoomIn}
+            onZoomOut={onZoomOut}
+            onResetZoom={onResetZoom}
+          />
+          <FullscreenButton />
+          {zoom !== 1 ? (
+            <div
+              className="absolute bottom-4 right-20 rounded-lg px-2 py-1 font-mono text-xs"
+              style={{
+                backgroundColor: 'var(--color-surface)',
+                color: 'var(--color-text)',
+              }}
+            >
+              {Math.round(zoom * 100)}%
+            </div>
+          ) : null}
+        </>
+      ) : null}
+
+      {simulation.activeSimulation && mobile ? <MobileFloatingControls simulation={simulation} /> : null}
+    </div>
+  )
+}
+
+function getSimulationTitle(type) {
+  const titles = {
+    multi_concept: '🧩 Multi-Concept Pipeline',
+    projectile: '🎯 Projectile Motion',
+    pendulum: '⏱️ Simple Pendulum',
+    collisions: '💥 Collision Simulation',
+    spring_mass: '🔄 Spring Oscillator',
+    inclined_plane: '📐 Inclined Plane',
+    circular_motion: '🔵 Circular Motion',
+    orbital: '🪐 Orbital Mechanics',
+    wave_motion: '🌊 Wave Motion',
+    rotational_mechanics: '⚙️ Rotational Motion',
+    electric_field: '⚡ Electric Field',
+    optics_lens: '🔍 Optics - Lens',
+    optics_mirror: '🪞 Optics - Mirror',
+    radioactive_decay: '☢️ Radioactive Decay',
+    electromagnetic: '🧲 Electromagnetic Force',
+    buoyancy: '🫧 Buoyancy & Fluids',
+    ideal_gas: '🌡️ Ideal Gas Law',
+    organic_chemistry: '🧪 Organic Chemistry',
+    stoichiometry: '⚖️ Stoichiometry',
+    titration: '🧫 Titration',
+    combustion: '🔥 Combustion',
+    atomic_structure: '⚛️ Atomic Structure',
+    gas_laws: '🫙 Gas Laws',
+    chemical_bonding: '🔗 Chemical Bonding',
+  }
+  return titles[type] || '🧪 Simulation'
+}
+
+export default function SimulationCard({ simulation, particleMultiplier, mobile = false }) {
   const [zoom, setZoom] = useState(1)
 
-  const handleZoomIn = useCallback(() => setZoom(prev => Math.min(prev + 0.2, 2.5)), [])
-  const handleZoomOut = useCallback(() => setZoom(prev => Math.max(prev - 0.2, 0.4)), [])
+  const handleZoomIn = useCallback(() => setZoom((prev) => Math.min(prev + 0.2, 2.5)), [])
+  const handleZoomOut = useCallback(() => setZoom((prev) => Math.max(prev - 0.2, 0.4)), [])
   const handleResetZoom = useCallback(() => setZoom(1), [])
 
-  const getSimulationTitle = (type) => {
-    const titles = {
-      multi_concept: '🧩 Multi-Concept Pipeline',
-      projectile: '🎯 Projectile Motion',
-      pendulum: '⏱️ Simple Pendulum',
-      collisions: '💥 Collision Simulation',
-      spring_mass: '🔄 Spring Oscillator',
-      inclined_plane: '📐 Inclined Plane',
-      circular_motion: '🔵 Circular Motion',
-      orbital: '🪐 Orbital Mechanics',
-      wave_motion: '🌊 Wave Motion',
-      rotational_mechanics: '⚙️ Rotational Motion',
-      electric_field: '⚡ Electric Field',
-      optics_lens: '🔍 Optics - Lens',
-      optics_mirror: '🪞 Optics - Mirror',
-      radioactive_decay: '☢️ Radioactive Decay',
-      electromagnetic: '🧲 Electromagnetic Force',
-      buoyancy: '🫧 Buoyancy & Fluids',
-      ideal_gas: '🌡️ Ideal Gas Law',
-      organic_chemistry: '🧪 Organic Chemistry',
-      stoichiometry: '⚖️ Stoichiometry',
-      titration: '🧫 Titration',
-      combustion: '🔥 Combustion',
-      atomic_structure: '⚛️ Atomic Structure',
-      gas_laws: '🫙 Gas Laws',
-      chemical_bonding: '🔗 Chemical Bonding',
-    }
-    return titles[type] || '🧪 Simulation'
+  if (mobile) {
+    return (
+      <div className="h-full p-2">
+        <SimulationViewport
+          simulation={simulation}
+          particleMultiplier={particleMultiplier}
+          zoom={1}
+          mobile
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onResetZoom={handleResetZoom}
+        />
+      </div>
+    )
   }
 
   return (
@@ -238,102 +406,14 @@ export default function SimulationCard({ simulation, particleMultiplier }) {
               : <Badge variant="neutral">⏳ Waiting</Badge>
       }
     >
-      <div 
-        className="relative w-full overflow-hidden rounded-xl border"
-        style={{ 
-          height: '650px', 
-          minHeight: '450px', 
-          maxHeight: '900px',
-          borderColor: 'var(--color-border)',
-          backgroundColor: 'var(--color-bg)'
-        }}
-      >
-        <div
-          className="absolute inset-0 transition-transform duration-300"
-          style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
-        >
-          <SimulationTransition
-            transitionKey={`${simulation.activeSimulation || 'idle'}-${simulation.simulationKey || '0'}`}
-            className="h-full w-full"
-          >
-            {simulation.activeSimulation ? (
-              <ErrorBoundary onReset={simulation.reset}>
-                <SimulationRouter
-                  parsedData={simulation.parsedData}
-                  simulationType={simulation.activeSimulation}
-                  variables={simulation.currentVariables}
-                  isPlaying={simulation.isPlaying}
-                  simulationKey={simulation.simulationKey}
-                  onDataPoint={simulation.onDataPoint}
-                  isLoading={simulation.isLoading}
-                  particleMultiplier={particleMultiplier}
-                  accentColor="var(--color-accent)"
-                />
-              </ErrorBoundary>
-            ) : (
-              <div className="relative h-full">
-                <SkeletonSimulation className="h-full w-full" />
-                <div className="absolute inset-0 flex h-full flex-col items-center justify-center p-8 text-center">
-                  <div
-                    className="mb-6 flex h-20 w-20 items-center justify-center rounded-full text-4xl"
-                    style={{ backgroundColor: 'var(--color-accent-dim)' }}
-                  >
-                    🔬
-                  </div>
-                  <h3 className="mb-2 text-xl font-bold" style={{ color: 'var(--color-text)' }}>
-                    Ready to Simulate!
-                  </h3>
-                  <p className="max-w-md" style={{ color: 'var(--color-text-muted)' }}>
-                    Enter a physics or chemistry problem in the sidebar, or click an example to get started.
-                  </p>
-                  <div className="mt-6 grid grid-cols-2 gap-3">
-                    <div
-                      className="rounded-lg border p-3 text-left"
-                      style={{ borderColor: 'var(--color-border)' }}
-                    >
-                      <p className="text-xs font-bold" style={{ color: 'var(--color-accent)' }}>⚡ Physics</p>
-                      <p className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>Mechanics, waves, electricity</p>
-                    </div>
-                    <div
-                      className="rounded-lg border p-3 text-left"
-                      style={{ borderColor: 'var(--color-border)' }}
-                    >
-                      <p className="text-xs font-bold" style={{ color: 'var(--color-accent)' }}>🧪 Chemistry</p>
-                      <p className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>Molecules, reactions</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </SimulationTransition>
-        </div>
-
-        <SimulationLoader isLoading={simulation.isLoading} />
-
-        {simulation.activeSimulation && (
-          <>
-            <SimulationHelpTooltip type={simulation.activeSimulation} />
-            <ZoomControls 
-              onZoomIn={handleZoomIn} 
-              onZoomOut={handleZoomOut} 
-              onResetZoom={handleResetZoom} 
-            />
-            <FullscreenButton />
-            
-            {zoom !== 1 && (
-              <div 
-                className="absolute bottom-4 right-20 rounded-lg px-2 py-1 font-mono text-xs"
-                style={{ 
-                  backgroundColor: 'var(--color-surface)',
-                  color: 'var(--color-text)'
-                }}
-              >
-                {Math.round(zoom * 100)}%
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      <SimulationViewport
+        simulation={simulation}
+        particleMultiplier={particleMultiplier}
+        zoom={zoom}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onResetZoom={handleResetZoom}
+      />
       <SimulationControls
         isPlaying={simulation.isPlaying}
         onPlayPause={() => (simulation.isPlaying ? simulation.pause() : simulation.play())}

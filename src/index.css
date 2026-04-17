@@ -22,6 +22,8 @@
   --color-warning: #f59e0b;
   --color-gradient-start: #22d3ee;
   --color-gradient-end: #06b6d4;
+  --mobile-bottom-nav-height: 72px;
+  --mobile-touch-target: 44px;
   
   color: var(--color-text);
   background-color: var(--color-bg);
@@ -170,4 +172,55 @@ textarea {
 .glass {
   background: color-mix(in srgb, var(--color-surface) 80%, transparent);
   backdrop-filter: blur(12px);
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --mobile-bottom-nav-height: 74px;
+    --mobile-touch-target: 44px;
+  }
+
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+    cursor: none;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  [role="button"],
+  a,
+  input,
+  select,
+  textarea {
+    min-height: var(--mobile-touch-target);
+  }
+
+  button,
+  [role="button"],
+  .interactive {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  canvas {
+    touch-action: none;
+    cursor: none;
+  }
 }

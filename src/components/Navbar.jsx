@@ -7,17 +7,58 @@ export default function Navbar({
   apiConnected = true,
   onPageChange,
   currentPage = 'physics',
+  isMobile = false,
 }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { theme, toggleTheme } = useTheme()
   const isSimulator = location.pathname === '/app'
 
+  if (isMobile) {
+    return (
+      <header
+        className="fixed inset-x-0 top-0 z-40 border-b backdrop-blur-md"
+        style={{
+          borderColor: 'var(--color-border)',
+          backgroundColor: 'color-mix(in srgb, var(--color-surface) 95%, transparent)',
+        }}
+      >
+        <div className="mx-auto flex h-16 max-w-[1800px] items-center justify-between px-4">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-xl font-bold shadow-lg"
+              style={{
+                background: 'linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end))',
+                color: '#fff',
+              }}
+            >
+              ℂ
+            </div>
+            <span className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>SeeTheScience</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="rounded-xl p-2 transition-all"
+            style={{
+              backgroundColor: 'var(--color-bg)',
+              color: 'var(--color-text-muted)',
+              border: '1px solid var(--color-border)',
+            }}
+            aria-label="Open settings"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
+        </div>
+      </header>
+    )
+  }
+
   return (
     <header 
       className="fixed inset-x-0 top-0 z-40 border-b backdrop-blur-md"
       style={{ 
-        backgroundColor: 'var(--color-surface)', 
         borderColor: 'var(--color-border)',
         backgroundColor: 'color-mix(in srgb, var(--color-surface) 95%, transparent)'
       }}
