@@ -681,14 +681,30 @@ export default function Collisions({
     <div className={`relative h-full w-full ${showScreenShake ? 'animate-pulse' : ''}`}>
       <Canvas
         onCreated={(state) => {
-        try {
-          state.gl.getContext("webgl2") || state.gl.getContext("webgl");
-        } catch (e) {
-          console.warn("WebGL initialization warning:", e);
-        }
-      }}
-      camera={{ position: [0, 1, 8], fov: 50 }}
+          if (!state.gl?.getContext) return;
+          try {
+            const gl = state.gl.getContext('webgl2') || state.gl.getContext('webgl');
+            if (gl && gl.canvas) {
+              gl.canvas.addEventListener('webglcontextlost', (e) => {
+                e.preventDefault();
+                console.warn('WebGL context lost');
+              });
+              gl.canvas.addEventListener('webglcontextrestored', () => {
+                console.warn('WebGL context restored');
+              });
+            }
+          } catch (e) {
+            console.warn('WebGL initialization warning:', e.message);
+          }
+        }}
+        camera={{ position: [0, 0.5, 10], fov: 60 }}
         style={{ width: '100%', height: '100%', background: '#0a0f1e' }}
+        gl={{ 
+          antialias: true, 
+          alpha: false,
+          powerPreference: 'high-performance',
+          failIfMajorPerformanceCaveat: false,
+        }}
       >
         <SimulationScene
           mass1={mass1}

@@ -41,20 +41,22 @@ export default function SimulationCard({ simulation, particleMultiplier }) {
       subtitle={simulation.activeSimulation || 'No simulation selected'}
       action={simulation.error ? <Badge variant="error">Error</Badge> : <Badge variant="neutral">Ready</Badge>}
     >
-      <div className="relative w-full rounded-xl border border-[#1f2937] bg-[#0b0f17]" style={{ height: '900px', minHeight: '600px', maxHeight: '1200px', overflow: 'auto' }}>
-        <ErrorBoundary onReset={simulation.reset}>
-          <SimulationRouter
-            parsedData={simulation.parsedData}
-            simulationType={simulation.activeSimulation}
-            variables={simulation.currentVariables}
-            isPlaying={simulation.isPlaying}
-            simulationKey={simulation.simulationKey}
-            onDataPoint={simulation.onDataPoint}
-            isLoading={simulation.isLoading}
-            particleMultiplier={particleMultiplier}
-            accentColor="#22d3ee"
-          />
-        </ErrorBoundary>
+      <div className="relative w-full rounded-xl border border-[#1f2937] bg-[#0b0f17] overflow-hidden" style={{ height: '700px', minHeight: '500px', maxHeight: '1000px' }}>
+        <div className="absolute inset-0">
+          <ErrorBoundary onReset={simulation.reset}>
+            <SimulationRouter
+              parsedData={simulation.parsedData}
+              simulationType={simulation.activeSimulation}
+              variables={simulation.currentVariables}
+              isPlaying={simulation.isPlaying}
+              simulationKey={simulation.simulationKey}
+              onDataPoint={simulation.onDataPoint}
+              isLoading={simulation.isLoading}
+              particleMultiplier={particleMultiplier}
+              accentColor="#22d3ee"
+            />
+          </ErrorBoundary>
+        </div>
       </div>
       <SimulationControls
         isPlaying={simulation.isPlaying}

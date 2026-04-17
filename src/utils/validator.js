@@ -234,23 +234,18 @@ function validateVariableRange(key, value, unit, errors) {
   if (/speed|velocity/.test(normalizedKey)) {
     if (value > 1000) {
       errors.push(`${key} (${value}) exceeds maximum safe velocity (1000 m/s), will be clamped`)
-    } else if (value === 0) {
-      errors.push(`${key} should not be 0`)
     }
     return
   }
 
   if (/acceleration|force|energy|work|power|current|voltage|charge/.test(normalizedKey)) {
-    if (value === 0) {
-      errors.push(`${key} should not be 0`)
+    if (value > 10000) {
+      errors.push(`${key} (${value}) exceeds maximum safe value, will be clamped`)
     }
     return
   }
 
   if (/^v\d*$/.test(normalizedKey)) {
-    if (value <= 0) {
-      errors.push(`${key} must be greater than 0`)
-    }
     return
   }
 

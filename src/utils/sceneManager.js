@@ -253,6 +253,8 @@ export class SceneManager {
       canvas: this.canvasElement,
       antialias: true,
       alpha: false,
+      powerPreference: 'high-performance',
+      failIfMajorPerformanceCaveat: false,
     })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
     this.renderer.outputColorSpace = THREE.SRGBColorSpace

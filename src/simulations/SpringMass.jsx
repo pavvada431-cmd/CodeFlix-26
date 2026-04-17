@@ -366,7 +366,7 @@ export default function SpringMass({
           console.warn("WebGL initialization warning:", e);
         }
       }}
-      camera={{ position: [0, 0.5, 4], fov: 50 }}
+      camera={{ position: [0, 0, 6], fov: 60 }}
         style={{ background: '#0a0f1e' }}
       >
         <SimulationScene

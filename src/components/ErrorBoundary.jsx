@@ -27,7 +27,10 @@ class ErrorBoundary extends Component {
       error?.message?.includes('__r3f') ||
       error?.message?.includes('is undefined') ||
       error?.message?.includes('cannot read property') ||
-      error?.stack?.includes('__r3f')
+      error?.stack?.includes('__r3f') ||
+      error?.message?.includes('getShaderPrecisionFormat') ||
+      error?.message?.includes('precision') ||
+      error?.message?.includes('WebGL')
     
     if (isInternalR3FError) {
       // Reset the error state to allow recovery

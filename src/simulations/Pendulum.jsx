@@ -387,15 +387,31 @@ export default function Pendulum({
 }) {
   return (
     <Canvas
-      camera={{ position: [0, 3, 12], fov: 50 }}
+      camera={{ position: [2, 3, 8], fov: 60 }}
       shadows
       style={{ width: '100%', height: '100%', background: '#0a0a0f' }}
       onCreated={(state) => {
+        if (!state.gl?.getContext) return;
         try {
-          state.gl.getContext('webgl2') || state.gl.getContext('webgl');
+          const gl = state.gl.getContext('webgl2') || state.gl.getContext('webgl');
+          if (gl && gl.canvas) {
+            gl.canvas.addEventListener('webglcontextlost', (e) => {
+              e.preventDefault();
+              console.warn('WebGL context lost');
+            });
+            gl.canvas.addEventListener('webglcontextrestored', () => {
+              console.warn('WebGL context restored');
+            });
+          }
         } catch (e) {
-          console.warn('WebGL initialization warning:', e);
+          console.warn('WebGL initialization warning:', e.message);
         }
+      }}
+      gl={{ 
+        antialias: true, 
+        alpha: false,
+        powerPreference: 'high-performance',
+        failIfMajorPerformanceCaveat: false,
       }}
     >
       <SimulationSceneWithLabels
