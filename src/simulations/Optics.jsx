@@ -553,7 +553,14 @@ export default function Optics({
   return (
     <div className="relative h-full w-full">
       <Canvas
-        camera={{ position: [0, 0, 10], zoom: 80 }}
+        onCreated={(state) => {
+        try {
+          state.gl.getContext("webgl2") || state.gl.getContext("webgl");
+        } catch (e) {
+          console.warn("WebGL initialization warning:", e);
+        }
+      }}
+      camera={{ position: [0, 0, 10], zoom: 80 }}
         style={{ width: '100%', height: '100%', background: '#0a0f1e' }}
       >
         <ambientLight intensity={0.8} />

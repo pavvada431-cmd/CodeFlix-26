@@ -349,11 +349,13 @@ function TestCharge({ charges, isActive, onPositionUpdate }) {
     positionRef.current.x += velocityRef.current.x * dt
     positionRef.current.y += velocityRef.current.y * dt
 
-    meshRef.current.position.x = positionRef.current.x
-    meshRef.current.position.z = positionRef.current.y
+    if (meshRef.current?.position) {
+      meshRef.current.position.x = positionRef.current.x
+      meshRef.current.position.z = positionRef.current.y
+    }
 
     trailRef.current = [...trailRef.current.slice(-99), { x: positionRef.current.x, y: positionRef.current.y }]
-    if (trailMeshRef.current && trailRef.current.length > 1) {
+    if (trailMeshRef.current?.geometry && trailRef.current.length > 1) {
       const positions = new Float32Array(trailRef.current.flatMap(p => [p.x, 0, p.y]))
       trailMeshRef.current.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
     }
@@ -550,7 +552,14 @@ export default function ElectricFields({
   return (
     <div className="relative h-full w-full">
       <Canvas
-        camera={{ position: [0, 8, 0], fov: 50 }}
+        onCreated={(state) => {
+        try {
+          state.gl.getContext("webgl2") || state.gl.getContext("webgl");
+        } catch (e) {
+          console.warn("WebGL initialization warning:", e);
+        }
+      }}
+      camera={{ position: [0, 8, 0], fov: 50 }}
         style={{ width: '100%', height: '100%', background: '#0a0f1e' }}
         onContextMenu={(e) => e.preventDefault()}
         onClick={handleCanvasClick}

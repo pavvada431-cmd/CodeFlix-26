@@ -299,7 +299,7 @@ function FluidParticles() {
   )
 
   useFrame((state, delta) => {
-    if (!particlesRef.current) return
+    if (!particlesRef.current?.geometry?.attributes?.position?.array) return
 
     const posArray = particlesRef.current.geometry.attributes.position.array
 
@@ -360,7 +360,7 @@ function BernoulliPipe() {
   )
 
   useFrame((state, delta) => {
-    if (!particlesRef.current) return
+    if (!particlesRef.current?.geometry?.attributes?.position?.array) return
 
     const posArray = particlesRef.current.geometry.attributes.position.array
 
@@ -583,7 +583,14 @@ export default function FluidMechanics({
   return (
     <div className="relative h-full w-full">
       <Canvas
-        camera={{ position: [0, 4, 10], fov: 50 }}
+        onCreated={(state) => {
+        try {
+          state.gl.getContext("webgl2") || state.gl.getContext("webgl");
+        } catch (e) {
+          console.warn("WebGL initialization warning:", e);
+        }
+      }}
+      camera={{ position: [0, 4, 10], fov: 50 }}
         style={{ width: '100%', height: '100%', background: '#0a0f1e' }}
       >
         <ambientLight intensity={0.6} />

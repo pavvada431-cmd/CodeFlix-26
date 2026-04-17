@@ -359,7 +359,14 @@ export default function SpringMass({
   return (
     <div className="relative h-full w-full">
       <Canvas
-        camera={{ position: [0, 0.5, 4], fov: 50 }}
+        onCreated={(state) => {
+        try {
+          state.gl.getContext("webgl2") || state.gl.getContext("webgl");
+        } catch (e) {
+          console.warn("WebGL initialization warning:", e);
+        }
+      }}
+      camera={{ position: [0, 0.5, 4], fov: 50 }}
         style={{ background: '#0a0f1e' }}
       >
         <SimulationScene

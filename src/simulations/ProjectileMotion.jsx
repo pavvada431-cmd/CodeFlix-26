@@ -553,6 +553,15 @@ export default function ProjectileMotion({
       camera={{ position: [5, 5, 10], fov: 50 }}
       shadows
       style={{ width: '100%', height: '100%', background: '#0a0a0f' }}
+      onCreated={(state) => {
+        if (!state.gl?.getContext) return;
+        // Ensure WebGL context is properly initialized
+        try {
+          state.gl.getContext('webgl2') || state.gl.getContext('webgl');
+        } catch (e) {
+          console.warn('WebGL initialization warning:', e);
+        }
+      }}
     >
       <SimulationScene
         initialVelocity={initialVelocity}

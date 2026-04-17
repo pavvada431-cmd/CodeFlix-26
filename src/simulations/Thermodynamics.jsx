@@ -630,7 +630,14 @@ export default function Thermodynamics({
   return (
     <div className="relative h-full w-full">
       <Canvas
-        camera={{ position: [boxSize * 0.8, boxSize * 0.8, boxSize * 1.2], fov: 50 }}
+        onCreated={(state) => {
+        try {
+          state.gl.getContext("webgl2") || state.gl.getContext("webgl");
+        } catch (e) {
+          console.warn("WebGL initialization warning:", e);
+        }
+      }}
+      camera={{ position: [boxSize * 0.8, boxSize * 0.8, boxSize * 1.2], fov: 50 }}
         style={{ background: '#0a0f1e' }}
       >
         <SimulationScene

@@ -21,6 +21,8 @@ function PendulumScene({
   const engineRef = useRef();
   const constraintRef = useRef();
   const bobBodyRef = useRef();
+  const forceArrowTangent = useRef();
+  const forceArrowCentripetal = useRef();
 
   const [tracePoints, setTracePoints] = useState([]);
   const [amplitude, setAmplitude] = useState(Math.abs(initialAngle));
@@ -184,9 +186,6 @@ function PendulumScene({
       }
     }
   });
-
-  const forceArrowTangent = useRef();
-  const forceArrowCentripetal = useRef();
 
   const traceGeometry = useMemo(() => {
     if (tracePoints.length < 2) return null;
@@ -391,6 +390,13 @@ export default function Pendulum({
       camera={{ position: [0, 3, 12], fov: 50 }}
       shadows
       style={{ width: '100%', height: '100%', background: '#0a0a0f' }}
+      onCreated={(state) => {
+        try {
+          state.gl.getContext('webgl2') || state.gl.getContext('webgl');
+        } catch (e) {
+          console.warn('WebGL initialization warning:', e);
+        }
+      }}
     >
       <SimulationSceneWithLabels
         length={length}

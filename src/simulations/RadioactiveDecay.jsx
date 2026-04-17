@@ -95,7 +95,7 @@ function DecayParticle({ startPos, velocity, color, lifetime, onComplete }) {
       meshRef.current.material.opacity = 1 - progress
     }
 
-    if (trailRef.current && trailRef_.current.length > 1) {
+    if (trailRef.current?.geometry && trailRef_.current.length > 1) {
       const positions = trailRef_.current.flatMap(p => [p.x, p.y, p.z])
       trailRef.current.geometry.setAttribute(
         'position',
@@ -484,7 +484,14 @@ export default function RadioactiveDecay({
   return (
     <div className="relative h-full w-full">
       <Canvas
-        camera={{ position: [0, 0, 8], fov: 50 }}
+        onCreated={(state) => {
+        try {
+          state.gl.getContext("webgl2") || state.gl.getContext("webgl");
+        } catch (e) {
+          console.warn("WebGL initialization warning:", e);
+        }
+      }}
+      camera={{ position: [0, 0, 8], fov: 50 }}
         style={{ width: '100%', height: '100%', background: '#0a0f1e' }}
       >
         <ambientLight intensity={0.6} />
