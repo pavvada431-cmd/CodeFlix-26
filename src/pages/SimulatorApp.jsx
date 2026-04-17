@@ -222,6 +222,10 @@ export default function SimulatorApp() {
           <RightPanel 
             parsedData={simulation.parsedData} 
             onVariableChange={simulation.updateVariable}
+            currentVariables={simulation.currentVariables}
+            dataStream={simulation.dataStream}
+            isPlaying={simulation.isPlaying}
+            simulationType={simulation.activeSimulation}
             isEmpty={!simulation.activeSimulation}
           />
         </main>

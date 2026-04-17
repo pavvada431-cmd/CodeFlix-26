@@ -6,7 +6,11 @@ export default function ResizableRightPanel({
   width, 
   onWidthChange, 
   parsedData, 
-  onVariableChange 
+  onVariableChange,
+  currentVariables,
+  dataStream,
+  isPlaying,
+  simulationType,
 }) {
   const [isDragging, setIsDragging] = useState(false)
   const panelRef = useRef(null)
@@ -73,9 +77,16 @@ export default function ResizableRightPanel({
           opacity: isDragging ? 0.9 : 1,
         }}
       >
-        <div className="p-4">
+          <div className="p-4">
           {parsedData ? (
-            <SolutionPanel parsedData={parsedData} onVariableChange={onVariableChange} />
+            <SolutionPanel
+              parsedData={parsedData}
+              currentVariables={currentVariables}
+              dataStream={dataStream}
+              isPlaying={isPlaying}
+              simulationType={simulationType}
+              onUpdateVariable={onVariableChange}
+            />
           ) : (
             <div 
               className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center"

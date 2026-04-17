@@ -126,6 +126,10 @@ export default function PhysicsPage({ sidebarWidth, onSidebarWidthChange, rightP
         onWidthChange={onRightPanelWidthChange}
         parsedData={simulation.parsedData}
         onVariableChange={simulation.updateVariable}
+        currentVariables={simulation.currentVariables}
+        dataStream={simulation.dataStream}
+        isPlaying={simulation.isPlaying}
+        simulationType={simulation.activeSimulation}
       />
 
       <PhysicsLibrary

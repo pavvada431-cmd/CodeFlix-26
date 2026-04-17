@@ -126,6 +126,10 @@ export default function ChemistryPage({ sidebarWidth, onSidebarWidthChange, righ
         onWidthChange={onRightPanelWidthChange}
         parsedData={simulation.parsedData}
         onVariableChange={simulation.updateVariable}
+        currentVariables={simulation.currentVariables}
+        dataStream={simulation.dataStream}
+        isPlaying={simulation.isPlaying}
+        simulationType={simulation.activeSimulation}
       />
 
       <ChemistryLibrary

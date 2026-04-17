@@ -1,7 +1,15 @@
 import SolutionPanel from './SolutionPanel'
 import { BookOpen } from 'lucide-react'
 
-export default function RightPanel({ parsedData, onVariableChange, isEmpty = false }) {
+export default function RightPanel({
+  parsedData,
+  onVariableChange,
+  currentVariables,
+  dataStream,
+  isPlaying,
+  simulationType,
+  isEmpty = false,
+}) {
   if (isEmpty) {
     return (
       <aside className="w-[320px] shrink-0 space-y-4 border-l border-[#1f2937] bg-[#111827] p-4">
@@ -22,7 +30,14 @@ export default function RightPanel({ parsedData, onVariableChange, isEmpty = fal
 
   return (
     <aside className="w-[320px] shrink-0 space-y-4 border-l border-[#1f2937] bg-[#111827] p-4">
-      <SolutionPanel parsedData={parsedData} onVariableChange={onVariableChange} />
+      <SolutionPanel
+        parsedData={parsedData}
+        currentVariables={currentVariables}
+        dataStream={dataStream}
+        isPlaying={isPlaying}
+        simulationType={simulationType}
+        onUpdateVariable={onVariableChange}
+      />
     </aside>
   )
 }
