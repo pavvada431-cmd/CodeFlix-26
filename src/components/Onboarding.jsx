@@ -37,7 +37,9 @@ function AnimatedInputToSim() {
   )
 }
 
-function StepCard({ icon: Icon, title, description, delay }) {
+function StepCard({ icon, title, description, delay }) {
+  const IconComponent = icon
+
   return (
     <Motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -46,7 +48,7 @@ function StepCard({ icon: Icon, title, description, delay }) {
       className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4"
     >
       <div className="mb-2 inline-flex rounded-lg border border-cyan-300/25 bg-cyan-300/10 p-2 text-cyan-200">
-        <Icon size={16} />
+        <IconComponent size={16} />
       </div>
       <h4 className="font-semibold">{title}</h4>
       <p className="mt-1 text-sm text-[var(--color-text-muted)]">{description}</p>

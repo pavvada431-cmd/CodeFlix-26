@@ -52,13 +52,6 @@ export default function GuidedTour({
     }
   }, [currentStep?.selector, isOpen])
 
-  useEffect(() => {
-    if (!isOpen) {
-      setStepIndex(0)
-      setHighlightRect(null)
-    }
-  }, [isOpen])
-
   const cardPosition = useMemo(() => {
     if (!highlightRect) {
       return {
@@ -114,7 +107,11 @@ export default function GuidedTour({
         <div className="mt-4 flex justify-between gap-2">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              setStepIndex(0)
+              setHighlightRect(null)
+              onClose?.()
+            }}
             className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-text-muted)]"
           >
             Skip Tour
@@ -124,6 +121,8 @@ export default function GuidedTour({
             type="button"
             onClick={() => {
               if (isLast) {
+                setStepIndex(0)
+                setHighlightRect(null)
                 onClose?.()
               } else {
                 setStepIndex((prev) => prev + 1)

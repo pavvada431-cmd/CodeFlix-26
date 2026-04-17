@@ -31,11 +31,7 @@ export default function Tooltip({
   className = '',
 }) {
   const [isVisible, setIsVisible] = useState(false)
-  const [isTapMode, setIsTapMode] = useState(false)
-
-  useEffect(() => {
-    setIsTapMode(isTouchDevice())
-  }, [])
+  const [isTapMode] = useState(() => isTouchDevice())
 
   useEffect(() => {
     if (!isVisible) return undefined

@@ -46,8 +46,6 @@ export default function PhysicsPage({ sidebarWidth, onSidebarWidthChange, rightP
 
   const [showLibrary, setShowLibrary] = useState(false)
   const [aiProvider, setAiProvider] = useState(getInitialProvider)
-  const [apiConnected, setApiConnected] = useState(true)
-  const [showSession, setShowSession] = useState(false)
 
   useEffect(() => {
     window.localStorage.setItem(AI_PROVIDER_STORAGE_KEY, aiProvider)
@@ -98,10 +96,10 @@ export default function PhysicsPage({ sidebarWidth, onSidebarWidthChange, rightP
         isLoading={simulation.isLoading}
         provider={aiProvider}
         onProviderChange={setAiProvider}
-        onApiStatusChange={setApiConnected}
+        onApiStatusChange={() => {}}
         onOpenLibrary={() => setShowLibrary(true)}
         onDemoMode={handleDemoMode}
-        onShowSession={() => setShowSession(true)}
+        onShowSession={() => {}}
         domain="physics"
       />
 

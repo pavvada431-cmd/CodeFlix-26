@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useMediaQuery } from 'react-responsive'
 import Navbar from './components/Navbar'
 import MobileLayout from './components/MobileLayout'
