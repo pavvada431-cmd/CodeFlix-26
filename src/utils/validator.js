@@ -452,7 +452,7 @@ function attemptProblemRecovery(problem) {
   }
 
   // Ensure answer has valid unit
-  if (!recovered.answer.unit || typeof recovered.answer.unit !== 'string') {
+  if (!recovered.answer.unit || typeof recovered.answer.unit !== 'string' || recovered.answer.unit.trim().length === 0) {
     recovered.answer.unit = 'unknown'
   }
 
