@@ -19,13 +19,37 @@ function toLabel(value) {
 }
 
 function getSliderConfig(value) {
-  const safeValue = Number.isFinite(value) ? value : 0
-  const rawMin = safeValue * 0.1
-  const rawMax = safeValue * 3
+  const safeValue = Number.isFinite(value) ? Math.abs(value) : 1
+  
+  // Smart range calculation
+  let min, max, step
+  
+  if (safeValue === 0) {
+    min = -1
+    max = 1
+    step = 0.1
+  } else if (safeValue < 0.1) {
+    min = safeValue * 0.01
+    max = safeValue * 100
+    step = safeValue * 0.001
+  } else if (safeValue < 1) {
+    min = safeValue * 0.1
+    max = safeValue * 10
+    step = safeValue * 0.01
+  } else if (safeValue < 100) {
+    min = safeValue * 0.1
+    max = safeValue * 3
+    step = Math.max(safeValue * 0.01, 0.1)
+  } else {
+    min = safeValue * 0.5
+    max = safeValue * 2
+    step = Math.max(safeValue * 0.01, 1)
+  }
+  
   return {
-    min: Math.min(rawMin, rawMax),
-    max: Math.max(rawMin, rawMax),
-    step: Math.abs(safeValue * 0.01) || 0.01,
+    min: Math.max(0, min), // Prevent negative for most physics values
+    max: Math.max(min + 0.1, max),
+    step: step || 0.01,
   }
 }
 
@@ -78,23 +102,39 @@ export default function SolutionPanel({ parsedData, onVariableChange }) {
           </div>
           {variableEntries.map(([key, value]) => {
             const sliderConfig = getSliderConfig(value)
+            const percentage = sliderConfig.max > sliderConfig.min 
+              ? ((value - sliderConfig.min) / (sliderConfig.max - sliderConfig.min)) * 100
+              : 50
+            
             return (
-              <label key={key} className="block rounded-xl border border-[#1f2937] bg-[#0b0f17] p-3">
+              <label key={key} className="block rounded-xl border border-[#1f2937] bg-[#0b0f17] p-3 hover:border-[#22d3ee]/50 transition-colors cursor-pointer">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm text-[#e5e7eb]">{toLabel(key)}</span>
-                  <span className="text-xs text-[#9ca3af]">
+                  <span className="text-sm font-medium text-[#e5e7eb]">{toLabel(key)}</span>
+                  <span className="text-xs font-mono text-[#22d3ee] bg-[#0a0d14] px-2 py-1 rounded">
                     {formatNumber(value)} {parsedData.units?.[key] || ''}
                   </span>
                 </div>
-                <input
-                  type="range"
-                  min={sliderConfig.min}
-                  max={sliderConfig.max}
-                  step={sliderConfig.step}
-                  value={value}
-                  onChange={(event) => onVariableChange?.(key, Number(event.target.value))}
-                  className="h-1.5 w-full cursor-pointer appearance-none rounded bg-[#1f2937] accent-[#22d3ee]"
-                />
+                <div className="relative mb-2">
+                  <input
+                    type="range"
+                    min={sliderConfig.min}
+                    max={sliderConfig.max}
+                    step={sliderConfig.step}
+                    value={value}
+                    onChange={(event) => {
+                      const newValue = Number(event.target.value)
+                      onVariableChange?.(key, newValue)
+                    }}
+                    className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[#1f2937] accent-[#22d3ee] hover:accent-[#06b6d4] transition-all"
+                    style={{
+                      background: `linear-gradient(to right, #22d3ee 0%, #22d3ee ${Math.max(0, Math.min(100, percentage))}%, #1f2937 ${Math.max(0, Math.min(100, percentage))}%, #1f2937 100%)`
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-[#6b7280]">
+                  <span>{formatNumber(sliderConfig.min)}</span>
+                  <span>{formatNumber(sliderConfig.max)}</span>
+                </div>
               </label>
             )
           })}

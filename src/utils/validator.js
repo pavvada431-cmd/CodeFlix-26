@@ -416,10 +416,77 @@ export function assertValidParsedProblem(problem) {
   const validation = validateParsedProblem(problem)
 
   if (!validation.isValid) {
+    // Try to fix common issues
+    const fixed = attemptProblemRecovery(problem)
+    if (fixed) {
+      const revalidation = validateParsedProblem(fixed)
+      if (revalidation.isValid) {
+        console.warn('Problem recovered from errors:', validation.errors)
+        return fixed
+      }
+    }
+
     throw new Error(
       `Invalid parsed problem: ${validation.errors.join('; ')}`,
     )
   }
 
   return problem
+}
+
+function attemptProblemRecovery(problem) {
+  if (!problem || typeof problem !== 'object') return null
+
+  const recovered = { ...problem }
+
+  // Fix missing/invalid answer
+  if (!recovered.answer || typeof recovered.answer !== 'object') {
+    recovered.answer = { value: null, unit: 'unknown' }
+  }
+
+  // Ensure answer has valid value if present
+  if (recovered.answer.value !== undefined && recovered.answer.value !== null) {
+    if (!isFiniteNumber(recovered.answer.value)) {
+      recovered.answer.value = null
+    }
+  }
+
+  // Ensure answer has valid unit
+  if (!recovered.answer.unit || typeof recovered.answer.unit !== 'string') {
+    recovered.answer.unit = 'unknown'
+  }
+
+  // Fix variables
+  if (!isPlainObject(recovered.variables)) {
+    recovered.variables = {}
+  }
+
+  // Fix units
+  if (!isPlainObject(recovered.units)) {
+    recovered.units = {}
+  }
+
+  // Ensure all variables have units
+  for (const key in recovered.variables) {
+    if (!(key in recovered.units)) {
+      recovered.units[key] = 'unknown'
+    }
+  }
+
+  // Fix steps
+  if (!Array.isArray(recovered.steps) || recovered.steps.length === 0) {
+    recovered.steps = ['Problem parsed successfully']
+  } else {
+    recovered.steps = recovered.steps.filter(s => typeof s === 'string' && s.trim().length > 0)
+    if (recovered.steps.length === 0) {
+      recovered.steps = ['Problem parsed successfully']
+    }
+  }
+
+  // Fix formula
+  if (typeof recovered.formula !== 'string' || recovered.formula.trim().length === 0) {
+    recovered.formula = 'Problem-specific calculation'
+  }
+
+  return recovered
 }

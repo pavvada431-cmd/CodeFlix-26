@@ -154,7 +154,15 @@ export default function ProblemInput({
 
         {loading ? <Badge variant="accent">Parsing problem...</Badge> : null}
         {success ? <Badge variant="success">Parsed successfully</Badge> : null}
-        {error ? <p className="text-sm text-[#ef4444]">{error}</p> : null}
+        {error ? (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+            <p className="text-sm text-red-400 font-medium">Error parsing problem</p>
+            <p className="mt-1 text-xs text-red-300">{error}</p>
+            <p className="mt-2 text-xs text-red-400">
+              💡 Try: Describe a physics problem with specific values and units
+            </p>
+          </div>
+        ) : null}
       </div>
     </Panel>
   )
