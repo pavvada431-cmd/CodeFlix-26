@@ -554,7 +554,7 @@ export default function Optics({
     <div className="relative h-full w-full">
       <Canvas
         camera={{ position: [0, 0, 10], zoom: 80 }}
-        style={{ background: '#0a0f1e' }}
+        style={{ width: '100%', height: '100%', background: '#0a0f1e' }}
       >
         <ambientLight intensity={0.8} />
         <directionalLight position={[5, 5, 5]} intensity={1} />

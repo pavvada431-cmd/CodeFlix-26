@@ -534,7 +534,7 @@ function ComparatorPanel({ mass, radius, appliedForce }) {
         {shapes.map((shape, i) => (
           <div key={shape} className="flex flex-col items-center">
             <div className="relative h-24 w-24">
-              <Canvas camera={{ position: [0, 0, 3], fov: 50 }}>
+              <Canvas camera={{ position: [0, 0, 3], fov: 50 }} style={{ width: '100%', height: '100%' }}>
                 <ambientLight intensity={0.5} />
                 <group position={positions[i]}>
                   <ComparatorShape
@@ -709,7 +709,7 @@ export default function RotationalMechanics({
     <div className="relative h-full w-full">
       <Canvas
         camera={{ position: [0, 2, 6], fov: 50 }}
-        style={{ background: '#0a0f1e' }}
+        style={{ width: '100%', height: '100%', background: '#0a0f1e' }}
       >
         <SimulationScene
           objectType={objectType}

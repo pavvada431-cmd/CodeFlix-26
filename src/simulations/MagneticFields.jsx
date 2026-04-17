@@ -600,7 +600,7 @@ export default function MagneticFields({
     <div className="relative h-full w-full">
       <Canvas
         camera={{ position: [0, 0, 8], fov: 50 }}
-        style={{ background: '#0a0f1e' }}
+        style={{ width: '100%', height: '100%', background: '#0a0f1e' }}
       >
         <SimulationScene
           charge={charge}

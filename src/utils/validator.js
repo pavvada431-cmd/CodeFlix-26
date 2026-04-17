@@ -1,16 +1,48 @@
 const ALLOWED_DOMAINS = new Set(['physics', 'chemistry'])
 
+// All supported simulation types
 const ALLOWED_TYPES = new Set([
   'inclined_plane',
   'projectile',
-  'circuit',
   'pendulum',
+  'spring_mass',
+  'circular_motion',
+  'collisions',
+  'wave_motion',
+  'rotational_mechanics',
+  'orbital',
+  'buoyancy',
+  'ideal_gas',
+  'electric_field',
+  'optics_lens',
+  'optics_mirror',
+  'radioactive_decay',
+  'electromagnetic',
+  'circuit',
   'titration',
   'combustion',
 ])
 
 const DOMAIN_TYPES = {
-  physics: new Set(['inclined_plane', 'projectile', 'circuit', 'pendulum']),
+  physics: new Set([
+    'inclined_plane',
+    'projectile',
+    'pendulum',
+    'spring_mass',
+    'circular_motion',
+    'collisions',
+    'wave_motion',
+    'rotational_mechanics',
+    'orbital',
+    'buoyancy',
+    'ideal_gas',
+    'electric_field',
+    'optics_lens',
+    'optics_mirror',
+    'radioactive_decay',
+    'electromagnetic',
+    'circuit',
+  ]),
   chemistry: new Set(['titration', 'combustion']),
 }
 
