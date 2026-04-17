@@ -530,7 +530,6 @@ export default function SimulationRouter({
   }
 
   const commonProps = {
-    key: simulationKey,
     onDataPoint,
     particleMultiplier,
     accentColor,

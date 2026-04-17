@@ -34,7 +34,7 @@ const FEATURES = [
   {
     icon: Brain,
     title: 'AI Problem Parsing',
-    description: 'Describe any problem in plain language.\nCodeFlix maps it to simulation variables.',
+    description: 'Describe any problem in plain language.\nSeeTheScience maps it to simulation variables.',
   },
   {
     icon: Layers,
@@ -85,7 +85,7 @@ const STEPS = [
     number: '02',
     icon: Cpu,
     title: 'AI Parses & Validates',
-    description: 'CodeFlix extracts variables, sanity-checks values, and builds the model.',
+    description: 'SeeTheScience extracts variables, sanity-checks values, and builds the model.',
   },
   {
     number: '03',
@@ -811,7 +811,7 @@ export default function Landing() {
         <div className="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm text-[var(--color-text-muted)]">Built for Hackathon 2026</p>
-            <p className="mt-1 text-xs text-[var(--color-text-dim)]">CodeFlix • Science, Simulated</p>
+            <p className="mt-1 text-xs text-[var(--color-text-dim)]">SeeTheScience • Science, Simulated</p>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -823,7 +823,7 @@ export default function Landing() {
           </div>
 
           <a
-            href="https://github.com/your-org/codeflix"
+            href="https://github.com/your-org/seethescience"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-sm text-[var(--color-text-muted)] transition hover:text-[var(--color-accent)]"

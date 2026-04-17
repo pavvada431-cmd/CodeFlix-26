@@ -466,17 +466,14 @@ export function AnimatedCounter({
 
 export function SimulationTransition({ transitionKey, children, className = '' }) {
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <MotionDiv
-        key={transitionKey}
-        initial={{ opacity: 0, scale: 0.965 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.965 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-        className={className}
-      >
-        {children}
-      </MotionDiv>
-    </AnimatePresence>
+    <MotionDiv
+      key={transitionKey}
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
+      className={className}
+    >
+      {children}
+    </MotionDiv>
   )
 }

@@ -84,8 +84,6 @@ export default function useSimulation() {
           [stageKey]: value,
         }))
       }
-
-      simulationKeyRef.current += 1
       return
     }
 
@@ -93,7 +91,6 @@ export default function useSimulation() {
       ...prev,
       [key]: value,
     }))
-    simulationKeyRef.current += 1
   }, [])
 
   const play = useCallback(() => {

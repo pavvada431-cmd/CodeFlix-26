@@ -75,7 +75,7 @@ export default function ErrorFallback({ error, resetError, isDark = true }) {
 
       {/* Help */}
       <a
-        href="https://github.com/pavvada431-cmd/CodeFlix-26/issues"
+        href="https://github.com/pavvada431-cmd/SeeTheScience/issues"
         target="_blank"
         rel="noopener noreferrer"
         className={`text-sm ${subtextClass} hover:text-[#22d3ee] transition-colors`}

@@ -1,10 +1,10 @@
 {
-  "name": "codeflix",
+  "name": "seethescience",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "description": "Physics and Chemistry simulation and problem-solving platform powered by AI",
-  "author": "CodeFlix Team",
+  "author": "SeeTheScience Team",
   "license": "MIT",
   "scripts": {
     "dev": "vite",

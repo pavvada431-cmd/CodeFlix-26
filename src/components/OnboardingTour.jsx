@@ -3,7 +3,7 @@ import { X, ChevronRight } from 'lucide-react'
 
 const STEPS = [
   {
-    title: 'Welcome to CodeFlix! 👋',
+    title: 'Welcome to SeeTheScience! 👋',
     description: 'Transform physics problems into interactive simulations powered by AI.',
     highlight: null,
   },

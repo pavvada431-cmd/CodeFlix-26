@@ -30,7 +30,7 @@ const DEMOS = [
 ]
 
 const AI_PROVIDER_STORAGE_KEY = 'simusolve.aiProvider'
-const ONBOARDING_KEY = 'codeflix.onboarding-done'
+const ONBOARDING_KEY = 'seethescience.onboarding-done'
 const AI_PROVIDERS = ['openai', 'anthropic', 'gemini', 'groq', 'ollama']
 
 function getInitialProvider() {

@@ -49,7 +49,7 @@ const LIGHT_THEME = {
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
     if (typeof window === 'undefined') return DARK_THEME
-    const stored = localStorage.getItem('codeflix-theme')
+    const stored = localStorage.getItem('seethescience-theme')
     if (stored === 'light') return LIGHT_THEME
     if (stored === 'dark') return DARK_THEME
     if (window.matchMedia?.('(prefers-color-scheme: light)').matches) return LIGHT_THEME
@@ -58,20 +58,20 @@ export function ThemeProvider({ children }) {
 
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (typeof window === 'undefined') return 320
-    const stored = localStorage.getItem('codeflix-sidebar-width')
+    const stored = localStorage.getItem('seethescience-sidebar-width')
     return stored ? parseInt(stored, 10) : 320
   })
 
   const [rightPanelWidth, setRightPanelWidth] = useState(() => {
     if (typeof window === 'undefined') return 360
-    const stored = localStorage.getItem('codeflix-rightpanel-width')
+    const stored = localStorage.getItem('seethescience-rightpanel-width')
     return stored ? parseInt(stored, 10) : 360
   })
 
   const toggleTheme = useCallback(() => {
     setTheme(prev => {
       const newTheme = prev.name === 'dark' ? LIGHT_THEME : DARK_THEME
-      localStorage.setItem('codeflix-theme', newTheme.name)
+      localStorage.setItem('seethescience-theme', newTheme.name)
       return newTheme
     })
   }, [])
@@ -79,13 +79,13 @@ export function ThemeProvider({ children }) {
   const updateSidebarWidth = useCallback((width) => {
     const clampedWidth = Math.max(250, Math.min(500, width))
     setSidebarWidth(clampedWidth)
-    localStorage.setItem('codeflix-sidebar-width', clampedWidth.toString())
+    localStorage.setItem('seethescience-sidebar-width', clampedWidth.toString())
   }, [])
 
   const updateRightPanelWidth = useCallback((width) => {
     const clampedWidth = Math.max(280, Math.min(500, width))
     setRightPanelWidth(clampedWidth)
-    localStorage.setItem('codeflix-rightpanel-width', clampedWidth.toString())
+    localStorage.setItem('seethescience-rightpanel-width', clampedWidth.toString())
   }, [])
 
   useEffect(() => {

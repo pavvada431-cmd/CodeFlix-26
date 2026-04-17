@@ -138,7 +138,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                   ℂ
                 </div>
                 <div>
-                  <h4 className="font-bold" style={{ color: 'var(--color-text)' }}>CodeFlix</h4>
+                  <h4 className="font-bold" style={{ color: 'var(--color-text)' }}>SeeTheScience</h4>
                   <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Interactive Science Simulations</p>
                   <p className="text-xs" style={{ color: 'var(--color-text-dim)' }}>Version 1.0.0</p>
                 </div>

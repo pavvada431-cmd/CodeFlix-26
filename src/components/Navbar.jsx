@@ -46,7 +46,7 @@ export default function Navbar({
               ℂ
             </div>
             <div>
-              <span className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>CodeFlix</span>
+              <span className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>SeeTheScience</span>
               <span className="ml-2 hidden text-xs font-medium sm:inline" style={{ color: 'var(--color-text-muted)' }}>
                 Interactive Science
               </span>
