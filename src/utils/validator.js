@@ -64,7 +64,7 @@ const DOMAIN_TYPES = {
 }
 
 const WARNINGS = []
-const MAX_INPUT_LENGTH = 500
+const MAX_INPUT_LENGTH = 1000
 
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -275,11 +275,13 @@ function validateVariableRange(key, value, unit, errors) {
 
 export function validateParsedProblem(problem) {
   const errors = []
+  const warnings = []
 
   if (!isPlainObject(problem)) {
     return {
       isValid: false,
       errors: ['Parsed problem must be a JSON object'],
+      warnings,
     }
   }
 
@@ -320,6 +322,7 @@ export function validateParsedProblem(problem) {
     return {
       isValid: errors.length === 0,
       errors,
+      warnings,
     }
   }
 
@@ -447,6 +450,7 @@ export function validateParsedProblem(problem) {
   return {
     isValid: errors.length === 0,
     errors,
+    warnings,
   }
 }
 
@@ -464,6 +468,13 @@ export function assertValidParsedProblem(problem) {
       }
     }
 
+    console.warn('Validation errors after recovery attempt:', validation.errors)
+    console.warn('Returning best-effort recovered object')
+    const recovered = attemptProblemRecovery(problem)
+    if (recovered) {
+      return recovered
+    }
+    
     throw new Error(
       `Invalid parsed problem: ${validation.errors.join('; ')}`,
     )

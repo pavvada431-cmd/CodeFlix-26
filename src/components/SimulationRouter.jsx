@@ -1,6 +1,8 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { SUPPORTED_SIMULATION_TYPES, SIMULATION_DISPLAY_NAMES } from '../hooks/useSimulation'
 import { MultiConceptProblemHandler, MultiConceptExecutor } from '../engine/multiConceptProblem'
+import { SimulationErrorBoundary } from './SimulationErrorBoundary'
+import { SimulationError } from './SimulationError'
 
 const InclinedPlane = lazy(() => import('../simulations/InclinedPlane'))
 const ProjectileMotion = lazy(() => import('../simulations/ProjectileMotion'))
@@ -122,180 +124,187 @@ function toTelemetry(state, totalTime, stageIndex) {
 
 function getSingleSimulationProps(simulationType, variables, isPlaying) {
   const resolvedVariables = variables || {}
+  
+  const defaultProps = {
+    isPlaying,
+  }
 
   switch (simulationType) {
     case 'inclined_plane':
       return {
+        ...defaultProps,
         mass: resolvedVariables.mass ?? 10,
         angle: resolvedVariables.angle ?? 30,
         friction: resolvedVariables.friction ?? 0,
-        isPlaying,
       }
     case 'projectile':
       return {
+        ...defaultProps,
         initialVelocity: resolvedVariables.velocity ?? resolvedVariables.initialVelocity ?? 30,
         launchAngle: resolvedVariables.angle ?? 45,
         height: resolvedVariables.height ?? 2,
-        isPlaying,
       }
     case 'pendulum':
       return {
+        ...defaultProps,
         length: resolvedVariables.length ?? 2,
         mass: resolvedVariables.mass ?? 1,
         initialAngle: resolvedVariables.angle ?? 30,
         damping: resolvedVariables.damping ?? 0,
-        isPlaying,
       }
     case 'spring_mass':
       return {
+        ...defaultProps,
         springConstant: resolvedVariables.springConstant ?? resolvedVariables.k ?? 50,
         mass: resolvedVariables.mass ?? 2,
         initialDisplacement: resolvedVariables.displacement ?? resolvedVariables.initialDisplacement ?? 0.5,
         damping: resolvedVariables.damping ?? 0,
-        isPlaying,
       }
     case 'circular_motion':
       return {
+        ...defaultProps,
         radius: resolvedVariables.radius ?? 2,
         mass: resolvedVariables.mass ?? 1,
         angularVelocity: resolvedVariables.angularVelocity ?? resolvedVariables.omega ?? 2,
-        isPlaying,
       }
     case 'collisions':
       return {
+        ...defaultProps,
         mass1: resolvedVariables.mass1 ?? 1,
         mass2: resolvedVariables.mass2 ?? 1,
         velocity1: resolvedVariables.velocity1 ?? 5,
         velocity2: resolvedVariables.velocity2 ?? -5,
         collisionType: resolvedVariables.collisionType ?? 'elastic',
-        isPlaying,
       }
     case 'wave_motion':
       return {
+        ...defaultProps,
         amplitude: resolvedVariables.amplitude ?? 0.5,
         frequency: resolvedVariables.frequency ?? 1,
         wavelength: resolvedVariables.wavelength ?? 2,
         waveType: resolvedVariables.waveType ?? 'transverse',
-        isPlaying,
       }
     case 'rotational_mechanics':
       return {
+        ...defaultProps,
         objectType: resolvedVariables.objectType ?? 'disk',
         mass: resolvedVariables.mass ?? 2,
         radius: resolvedVariables.radius ?? 1,
         appliedForce: resolvedVariables.force ?? resolvedVariables.appliedForce ?? 10,
         forcePosition: resolvedVariables.forcePosition ?? 90,
-        isPlaying,
       }
     case 'orbital':
       return {
+        ...defaultProps,
         centralMass: resolvedVariables.centralMass ?? 100,
         orbitingMass: resolvedVariables.orbitingMass ?? 1,
         initialDistance: resolvedVariables.distance ?? resolvedVariables.initialDistance ?? 5,
         initialVelocity: resolvedVariables.velocity ?? resolvedVariables.initialVelocity ?? 1,
-        isPlaying,
       }
     case 'buoyancy':
       return {
+        ...defaultProps,
         fluidDensity: resolvedVariables.fluidDensity ?? 1000,
         objectDensity: resolvedVariables.objectDensity ?? 800,
         objectVolume: resolvedVariables.volume ?? 0.125,
         objectShape: resolvedVariables.objectShape ?? 'sphere',
-        isPlaying,
       }
     case 'ideal_gas':
       return {
+        ...defaultProps,
         numParticles: resolvedVariables.numParticles ?? 50,
         temperature: resolvedVariables.temperature ?? 300,
         volume: resolvedVariables.volume ?? 8,
-        isPlaying,
       }
     case 'electric_field':
       return {
+        ...defaultProps,
         charges: resolvedVariables.charges ?? [{ x: -1, y: 0, q: 1e-6 }, { x: 1, y: 0, q: -1e-6 }],
-        isPlaying,
       }
     case 'optics_lens':
       return {
+        ...defaultProps,
         lensType: resolvedVariables.lensType ?? 'convex',
         focalLength: resolvedVariables.focalLength ?? 2,
         objectDistance: resolvedVariables.objectDistance ?? 4,
         objectHeight: resolvedVariables.objectHeight ?? 1,
-        isPlaying,
       }
     case 'optics_mirror':
       return {
+        ...defaultProps,
         lensType: 'mirror',
         focalLength: resolvedVariables.focalLength ?? 2,
         objectDistance: resolvedVariables.objectDistance ?? 4,
         objectHeight: resolvedVariables.objectHeight ?? 1,
-        isPlaying,
       }
     case 'radioactive_decay':
       return {
+        ...defaultProps,
         initialAtoms: resolvedVariables.initialAtoms ?? 100,
         halfLife: resolvedVariables.halfLife ?? 5,
         decayType: resolvedVariables.decayType ?? 'alpha',
-        isPlaying,
       }
     case 'electromagnetic':
       return {
+        ...defaultProps,
         charge: resolvedVariables.charge ?? 1.6e-19,
         velocity: resolvedVariables.velocity ?? 1e6,
         magneticField: resolvedVariables.magneticField ?? 0.5,
         electricField: resolvedVariables.electricField ?? 0,
-        isPlaying,
       }
     case 'organic_chemistry':
       return {
+        ...defaultProps,
         compound: resolvedVariables.compound ?? 'methane',
         reactionType: resolvedVariables.reactionType ?? 'combustion',
         variables: resolvedVariables,
-        isPlaying,
       }
     case 'stoichiometry':
       return {
+        ...defaultProps,
         reaction: resolvedVariables.reaction ?? 'water_formation',
         reactantAmount: resolvedVariables.reactantAmount ?? 4,
         secondaryAmount: resolvedVariables.secondaryAmount ?? 3,
         variables: resolvedVariables,
-        isPlaying,
       }
     case 'titration':
       return {
+        ...defaultProps,
         acidConcentration: resolvedVariables.acidConcentration ?? 0.1,
         baseConcentration: resolvedVariables.baseConcentration ?? 0.1,
         volume: resolvedVariables.volume ?? 25,
         mode: resolvedVariables.mode ?? 'strong_acid_strong_base',
         variables: resolvedVariables,
-        isPlaying,
       }
     case 'atomic_structure':
       return {
+        ...defaultProps,
         atomicNumber: resolvedVariables.atomicNumber ?? resolvedVariables.protons ?? 8,
         mode: resolvedVariables.mode ?? 'bohr',
         variables: resolvedVariables,
-        isPlaying,
       }
     case 'gas_laws':
       return {
+        ...defaultProps,
         pressure: resolvedVariables.pressure ?? 1,
         volume: resolvedVariables.volume ?? 12,
         temperature: resolvedVariables.temperature ?? 300,
         moles: resolvedVariables.moles ?? resolvedVariables.n ?? 1,
         mode: resolvedVariables.mode ?? 'boyle',
         variables: resolvedVariables,
-        isPlaying,
       }
     case 'chemical_bonding':
       return {
+        ...defaultProps,
         mode: resolvedVariables.mode ?? 'ionic',
         molecule: resolvedVariables.molecule ?? 'H2O',
         variables: resolvedVariables,
-        isPlaying,
       }
     default:
-      return {}
+      return {
+        ...defaultProps,
+        variables: resolvedVariables,
+      }
   }
 }
 
@@ -504,7 +513,9 @@ function MultiConceptView({
 
       <div className="h-full pt-[92px]">
         <Suspense fallback={<LoadingSimulation />}>
-          {renderSingleSimulation(rendererType, simulationProps, commonProps)}
+          <SimulationErrorBoundary>
+            {renderSingleSimulation(rendererType, simulationProps, commonProps)}
+          </SimulationErrorBoundary>
         </Suspense>
       </div>
     </div>
@@ -573,7 +584,9 @@ export default function SimulationRouter({
   return (
     <div className="relative h-full">
       <Suspense fallback={<LoadingSimulation />}>
-        {renderSingleSimulation(resolvedSimulationType, simulationProps, commonProps)}
+        <SimulationErrorBoundary>
+          {renderSingleSimulation(resolvedSimulationType, simulationProps, commonProps)}
+        </SimulationErrorBoundary>
       </Suspense>
     </div>
   )

@@ -8,7 +8,7 @@ import Panel from './ui/Panel'
 import { Select, Textarea } from './ui/Input'
 import { ParsingSteps } from './LoadingStates'
 
-const MAX_INPUT_LENGTH = 500
+const MAX_INPUT_LENGTH = 1000
 
 const AI_PROVIDERS = [
   { value: 'openai', label: 'GPT-4o (Fast & Smart)' },

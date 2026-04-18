@@ -17,6 +17,8 @@ export default function useSimulation() {
   const simulationKeyRef = useRef(0)
   const dataStreamIntervalRef = useRef(null)
   const lastDataTimeRef = useRef(0)
+  const circularBufferRef = useRef(new Array(MAX_DATA_STREAM_LENGTH))
+  const circularBufferIndexRef = useRef(0)
 
   const solve = useCallback(async (problemInput, provider = 'openai') => {
     setIsLoading(true)
@@ -34,6 +36,7 @@ export default function useSimulation() {
       setCurrentVariables(nextVariables)
       setActiveSimulation(isMultiConcept ? 'multi_concept' : result.type)
       setDataStream([])
+      circularBufferIndexRef.current = 0
       simulationKeyRef.current += 1
       setIsPlaying(false)
 
@@ -41,6 +44,8 @@ export default function useSimulation() {
     } catch (err) {
       const errorMessage = err.message || 'Failed to parse problem'
       setError(errorMessage)
+      setParsedData(null)
+      setActiveSimulation(null)
       throw err
     } finally {
       setIsLoading(false)
@@ -84,6 +89,15 @@ export default function useSimulation() {
           [stageKey]: value,
         }))
       }
+      
+      if (isPlaying) {
+        setIsPlaying(false)
+        setDataStream([])
+        circularBufferIndexRef.current = 0
+        setTimeout(() => {
+          setIsPlaying(true)
+        }, 100)
+      }
       return
     }
 
@@ -91,7 +105,16 @@ export default function useSimulation() {
       ...prev,
       [key]: value,
     }))
-  }, [])
+    
+    if (isPlaying) {
+      setIsPlaying(false)
+      setDataStream([])
+      circularBufferIndexRef.current = 0
+      setTimeout(() => {
+        setIsPlaying(true)
+      }, 100)
+    }
+  }, [isPlaying])
 
   const play = useCallback(() => {
     if (!activeSimulation) return
@@ -105,7 +128,12 @@ export default function useSimulation() {
   const reset = useCallback(() => {
     setIsPlaying(false)
     setDataStream([])
+    circularBufferIndexRef.current = 0
     lastDataTimeRef.current = 0
+  }, [])
+
+  const clearError = useCallback(() => {
+    setError(null)
   }, [])
 
   const setSpeed = useCallback((speed) => {
@@ -119,13 +147,15 @@ export default function useSimulation() {
     const minInterval = 0.1 / playbackSpeed
 
     if (currentTime - lastDataTimeRef.current >= minInterval) {
-      setDataStream(prev => {
-        const newStream = [...prev, dataPoint]
-        if (newStream.length > MAX_DATA_STREAM_LENGTH) {
-          return newStream.slice(-MAX_DATA_STREAM_LENGTH)
-        }
-        return newStream
-      })
+      const buffer = circularBufferRef.current
+      const index = circularBufferIndexRef.current
+      buffer[index] = dataPoint
+      circularBufferIndexRef.current = (index + 1) % MAX_DATA_STREAM_LENGTH
+
+      const isFull = circularBufferIndexRef.current === 0 && index !== 0
+      const dataToShow = isFull ? buffer : buffer.slice(0, index + 1)
+      
+      setDataStream(dataToShow.filter(d => d !== undefined))
       lastDataTimeRef.current = currentTime
     }
   }, [isPlaying, playbackSpeed])
@@ -163,6 +193,7 @@ export default function useSimulation() {
     pause,
     reset,
     setSpeed,
+    clearError,
     onDataPoint: handleSimulationDataPoint,
   }
 }

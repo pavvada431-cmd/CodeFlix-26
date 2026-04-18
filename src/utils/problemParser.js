@@ -388,14 +388,22 @@ async function requestProblemParse(problemText, systemPrompt, provider) {
 }
 
 async function parseWithRetry(problemText, systemPrompt, provider, maxRetries = 2) {
+  const normalized = normalizeProblemText(problemText)
+  const extractedVariables = normalized.extractedVariables || {}
+  
   let lastError = null
 
   try {
     const rawResponse = await requestProblemParse(problemText, systemPrompt, provider)
-    const parsedProblem = normalizeMultiConceptShape(parseModelJson(rawResponse))
+    let parsedProblem = normalizeMultiConceptShape(parseModelJson(rawResponse))
+    
+    parsedProblem = mergeExtractedVariables(parsedProblem, extractedVariables)
     console.log('Parser parsed JSON output:', parsedProblem)
     return assertValidParsedProblem(parsedProblem)
   } catch (error) {
+    if (error.message?.includes('Failed to reach API') || error.message?.includes('timeout')) {
+      throw error
+    }
     if (!(error instanceof InvalidJsonResponseError)) {
       throw error
     }
@@ -407,10 +415,15 @@ async function parseWithRetry(problemText, systemPrompt, provider, maxRetries = 
 
     try {
       const rawResponse = await requestProblemParse(problemText, retryPrompt, provider)
-      const parsedProblem = normalizeMultiConceptShape(parseModelJson(rawResponse))
+      let parsedProblem = normalizeMultiConceptShape(parseModelJson(rawResponse))
+      
+      parsedProblem = mergeExtractedVariables(parsedProblem, extractedVariables)
       console.log('Parser parsed JSON output:', parsedProblem)
       return assertValidParsedProblem(parsedProblem)
     } catch (error) {
+      if (error.message?.includes('Failed to reach API') || error.message?.includes('timeout')) {
+        throw error
+      }
       lastError = error
       if (!(error instanceof InvalidJsonResponseError)) {
         throw error
@@ -421,6 +434,42 @@ async function parseWithRetry(problemText, systemPrompt, provider, maxRetries = 
   throw new MaxRetriesExceededError(
     `Failed to parse problem after ${maxRetries + 1} attempts. ${lastError?.message ?? 'Invalid JSON responses'}`
   )
+}
+
+function mergeExtractedVariables(parsedProblem, extractedVariables) {
+  if (!parsedProblem || !extractedVariables || Object.keys(extractedVariables).length === 0) {
+    return parsedProblem
+  }
+  
+  const merged = { ...parsedProblem }
+  
+  if (merged.isMultiConcept && Array.isArray(merged.stages)) {
+    if (merged.stages.length > 0) {
+      merged.stages = merged.stages.map((stage, idx) => {
+        if (idx === 0) {
+          return {
+            ...stage,
+            variables: {
+              ...extractedVariables,
+              ...(stage.variables || {})
+            }
+          }
+        }
+        return stage
+      })
+      merged.variables = {
+        ...extractedVariables,
+        ...(merged.variables || {})
+      }
+    }
+  } else {
+    merged.variables = {
+      ...extractedVariables,
+      ...(merged.variables || {})
+    }
+  }
+  
+  return merged
 }
 
 export async function parseProblem(problemText, provider = 'openai') {
