@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { Environment, Grid, Html, Line, OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
+import useSanitizedProps from './shared/useSanitizedProps'
 
 const BALL_SIZE = 0.3
 const DEFAULT_PARTICLE_MASS = 9.11e-31
@@ -583,16 +584,17 @@ function GraphPanel({ dataHistory, mode, charge, magneticField, velocity }) {
   )
 }
 
-export default function MagneticFields({
-  charge = 1.6e-19,
-  velocity = 1e6,
-  velocityParallel = 0.2e6,
-  particleMass = DEFAULT_PARTICLE_MASS,
-  magneticField = 0.5,
-  electricField = 0,
-  isPlaying = false,
-  onDataPoint,
-}) {
+export default function MagneticFields(rawProps) {
+  const {
+    charge = 1.6e-19,
+    velocity = 1e6,
+    velocityParallel = 0.2e6,
+    particleMass = DEFAULT_PARTICLE_MASS,
+    magneticField = 0.5,
+    electricField = 0,
+    isPlaying = false,
+    onDataPoint,
+  } = useSanitizedProps(rawProps)
   const [dataHistory, setDataHistory] = useState([])
   const [mode, setMode] = useState('default')
   const [graphMode, setGraphMode] = useState('trajectory')

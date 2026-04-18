@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { Environment, Grid, Html, OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
+import useSanitizedProps from './shared/useSanitizedProps'
 
 const SCENE_SCALE = 2
 
@@ -494,14 +495,15 @@ function GraphPanel({ mode, objectDistance, focalLength }) {
   )
 }
 
-export default function Optics({
-  lensType = 'convex',
-  focalLength = 2,
-  objectDistance = 4,
-  objectHeight = 1,
-  isPlaying = false,
-  onDataPoint,
-}) {
+export default function Optics(rawProps) {
+  const {
+    lensType = 'convex',
+    focalLength = 2,
+    objectDistance = 4,
+    objectHeight = 1,
+    isPlaying = false,
+    onDataPoint,
+  } = useSanitizedProps(rawProps)
   const [mode, setMode] = useState('lens')
   const [graphMode, setGraphMode] = useState('imageDistance')
   const [animationProgress, setAnimationProgress] = useState(0)

@@ -4,6 +4,7 @@ import { Environment, Grid, Html, OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import { FrostedLabel, GlowTrail } from './shared/SimulationPrimitives'
+import useSanitizedProps from './shared/useSanitizedProps'
 
 const K_COULOMB = 8.99e9
 const SCALE = 1e-6
@@ -479,11 +480,12 @@ function GraphPanel({ mode, charges, dataHistory }) {
   )
 }
 
-export default function ElectricFields({
-  charges: initialCharges = [{ x: -1, y: 0, q: 1e-6 }, { x: 1, y: 0, q: -1e-6 }],
-  isPlaying = false,
-  onDataPoint,
-}) {
+export default function ElectricFields(rawProps) {
+  const {
+    charges: initialCharges = [{ x: -1, y: 0, q: 1e-6 }, { x: 1, y: 0, q: -1e-6 }],
+    isPlaying = false,
+    onDataPoint,
+  } = useSanitizedProps(rawProps)
   const [charges, setCharges] = useState(initialCharges)
   const [showEquipotentials, setShowEquipotentials] = useState(true)
   const [showFieldLines, setShowFieldLines] = useState(true)

@@ -3,6 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Stars, Text, Html, Line, Environment, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
+import useSanitizedProps from './shared/useSanitizedProps';
 
 const G = 6.674e-3;
 
@@ -422,14 +423,15 @@ function SimulationScene({
   );
 }
 
-export default function GravitationalOrbits({
-  centralMass = 100,
-  orbitingMass = 1,
-  initialDistance = 5,
-  initialVelocity = 1,
-  isPlaying = false,
-  onDataPoint,
-}) {
+export default function GravitationalOrbits(rawProps) {
+  const {
+    centralMass = 100,
+    orbitingMass = 1,
+    initialDistance = 5,
+    initialVelocity = 1,
+    isPlaying = false,
+    onDataPoint,
+  } = useSanitizedProps(rawProps);
   const [orbitType, setOrbitType] = useState('circular');
   const [enableMultiBody, setEnableMultiBody] = useState(false);
   const [currentData, setCurrentData] = useState(null);

@@ -4,13 +4,13 @@ import { MultiConceptProblemHandler, MultiConceptExecutor } from '../engine/mult
 import { SimulationErrorBoundary } from './SimulationErrorBoundary'
 import { SimulationError } from './SimulationError'
 
-const InclinedPlane = lazy(() => import(/* webpackChunkName: "sim-inclined-plane" */ '../simulations/InclinedPlane'))
+const InclinedPlane = lazy(() => import(/* webpackChunkName: "sim-inclined-plane" */ '../simulations/InclinedPlane2D'))
 const ProjectileMotion = lazy(() => import(/* webpackChunkName: "sim-projectile-motion" */ '../simulations/ProjectileMotion2D'))
 const Pendulum = lazy(() => import(/* webpackChunkName: "sim-pendulum" */ '../simulations/Pendulum2D'))
 const SpringMass = lazy(() => import(/* webpackChunkName: "sim-spring-mass" */ '../simulations/SpringMass2D'))
-const CircularMotion = lazy(() => import(/* webpackChunkName: "sim-circular-motion" */ '../simulations/CircularMotion'))
-const Collisions = lazy(() => import(/* webpackChunkName: "sim-collisions" */ '../simulations/Collisions'))
-const WaveMotion = lazy(() => import(/* webpackChunkName: "sim-wave-motion" */ '../simulations/WaveMotion'))
+const CircularMotion = lazy(() => import(/* webpackChunkName: "sim-circular-motion" */ '../simulations/CircularMotion2D'))
+const Collisions = lazy(() => import(/* webpackChunkName: "sim-collisions" */ '../simulations/Collisions2D'))
+const WaveMotion = lazy(() => import(/* webpackChunkName: "sim-wave-motion" */ '../simulations/WaveMotion2D'))
 const RotationalMechanics = lazy(() => import(/* webpackChunkName: "sim-rotational-mechanics" */ '../simulations/RotationalMechanics'))
 const GravitationalOrbits = lazy(() => import(/* webpackChunkName: "sim-gravitational-orbits" */ '../simulations/GravitationalOrbits'))
 const FluidMechanics = lazy(() => import(/* webpackChunkName: "sim-fluid-mechanics" */ '../simulations/FluidMechanics'))

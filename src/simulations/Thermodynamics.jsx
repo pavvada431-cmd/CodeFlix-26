@@ -3,6 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { Environment, Grid, Html, Line, OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
+import useSanitizedProps from './shared/useSanitizedProps'
 
 const K_BOLTZMANN = 1.0
 const PARTICLE_MASS = 1.0
@@ -591,13 +592,14 @@ function SpeedHistogramPanel({ particlesData, temperature }) {
   )
 }
 
-export default function Thermodynamics({
-  numParticles = 50,
-  temperature = 300,
-  volume = 8,
-  isPlaying = false,
-  onDataPoint,
-}) {
+export default function Thermodynamics(rawProps) {
+  const {
+    numParticles = 50,
+    temperature = 300,
+    volume = 8,
+    isPlaying = false,
+    onDataPoint,
+  } = useSanitizedProps(rawProps)
   const [processType, setProcessType] = useState(null)
   const [currentVolume, setCurrentVolume] = useState(volume)
   const [currentTemp, setCurrentTemp] = useState(temperature)

@@ -3,6 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { Environment, Html, Line, OrbitControls, Stars } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
+import useSanitizedProps from './shared/useSanitizedProps'
 
 const SCENE_SCALE = 1
 
@@ -455,13 +456,14 @@ function AtomCluster({
   )
 }
 
-export default function RadioactiveDecay({
-  initialAtoms = 100,
-  halfLife = 5,
-  decayType = 'alpha',
-  isPlaying = false,
-  onDataPoint,
-}) {
+export default function RadioactiveDecay(rawProps) {
+  const {
+    initialAtoms = 100,
+    halfLife = 5,
+    decayType = 'alpha',
+    isPlaying = false,
+    onDataPoint,
+  } = useSanitizedProps(rawProps)
   const [dataHistory, setDataHistory] = useState([])
   const [graphMode, setGraphMode] = useState('population')
   const [chainDecayEnabled, setChainDecayEnabled] = useState(false)

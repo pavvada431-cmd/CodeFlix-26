@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { Environment, Grid, Html, OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
+import useSanitizedProps from './shared/useSanitizedProps'
 
 const G = 9.81
 
@@ -687,15 +688,16 @@ function DisplacementGraph({ dataStream }) {
   )
 }
 
-export default function RotationalMechanics({
-  objectType = 'disk',
-  mass = 2,
-  radius = 1,
-  appliedForce = 10,
-  forcePosition = 90,
-  isPlaying = false,
-  onDataPoint,
-}) {
+export default function RotationalMechanics(rawProps) {
+  const {
+    objectType = 'disk',
+    mass = 2,
+    radius = 1,
+    appliedForce = 10,
+    forcePosition = 90,
+    isPlaying = false,
+    onDataPoint,
+  } = useSanitizedProps(rawProps)
   const [dataStream, setDataStream] = useState([])
 
   const handleDataPoint = (data) => {

@@ -3,6 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { Environment, Grid, Html, OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
+import useSanitizedProps from './shared/useSanitizedProps'
 
 const G = 9.81
 const TANK_WIDTH = 6
@@ -543,14 +544,15 @@ function GraphPanel({ mode, dataHistory }) {
   )
 }
 
-export default function FluidMechanics({
-  fluidDensity = 1000,
-  objectDensity = 800,
-  objectVolume = 0.125,
-  objectShape = 'sphere',
-  isPlaying = false,
-  onDataPoint,
-}) {
+export default function FluidMechanics(rawProps) {
+  const {
+    fluidDensity = 1000,
+    objectDensity = 800,
+    objectVolume = 0.125,
+    objectShape = 'sphere',
+    isPlaying = false,
+    onDataPoint,
+  } = useSanitizedProps(rawProps)
   const [currentData, setCurrentData] = useState(null)
   const [dataHistory, setDataHistory] = useState([])
   const [graphMode, setGraphMode] = useState('forceDepth')
