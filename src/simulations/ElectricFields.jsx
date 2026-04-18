@@ -3,38 +3,14 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Environment, Grid, Html, OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
+import { FrostedLabel, GlowTrail } from './shared/SimulationPrimitives'
 
 const K_COULOMB = 8.99e9
 const SCALE = 1e-6
 const GRID_SIZE = 50
 const FIELD_LINE_COUNT = 12
-const FIELD_LINE_STEPS = 100
+const FIELD_LINE_STEPS = 200
 const FIELD_LINE_DS = 0.1
-
-function FrostedLabel({ position, color = '#00f5ff', children }) {
-  return (
-    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
-      <div
-        style={{
-          background: 'rgba(10, 15, 30, 0.86)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: `1px solid ${color}40`,
-          borderRadius: '8px',
-          padding: '4px 10px',
-          color,
-          fontFamily: 'monospace',
-          fontSize: '11px',
-          fontWeight: 700,
-          boxShadow: `0 4px 18px ${color}25`,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {children}
-      </div>
-    </Html>
-  )
-}
 
 function calculateElectricField(charges, x, y) {
   let Ex = 0, Ey = 0
@@ -63,35 +39,51 @@ function calculatePotential(charges, x, y) {
   return V
 }
 
-function traceFieldLine(startX, startY, charges, direction) {
+function traceFieldLineRK4(startX, startY, charges, direction) {
   const points = [{ x: startX, y: startY }]
   let x = startX, y = startY
+  const dt = FIELD_LINE_DS
 
-  for (let i = 0; i < FIELD_LINE_STEPS; i++) {
-    const { Ex, Ey } = calculateElectricField(charges, x, y)
-    const E = Math.sqrt(Ex * Ex + Ey * Ey)
-    if (E < 1e-5) break
-
-    const dx = Ex / E * FIELD_LINE_DS * direction
-    const dy = Ey / E * FIELD_LINE_DS * direction
-
-    x += dx
-    y += dy
-
+  for (let step = 0; step < FIELD_LINE_STEPS; step++) {
+    const field1 = calculateElectricField(charges, x, y)
+    const E1 = Math.sqrt(field1.Ex * field1.Ex + field1.Ey * field1.Ey)
+    if (E1 < 1e-8) break
+    
+    const k1x = (field1.Ex / E1) * direction
+    const k1y = (field1.Ey / E1) * direction
+    
+    const field2 = calculateElectricField(charges, x + k1x * dt * 0.5, y + k1y * dt * 0.5)
+    const E2 = Math.sqrt(field2.Ex * field2.Ex + field2.Ey * field2.Ey)
+    const k2x = (field2.Ex / (E2 || 1e-8)) * direction
+    const k2y = (field2.Ey / (E2 || 1e-8)) * direction
+    
+    const field3 = calculateElectricField(charges, x + k2x * dt * 0.5, y + k2y * dt * 0.5)
+    const E3 = Math.sqrt(field3.Ex * field3.Ex + field3.Ey * field3.Ey)
+    const k3x = (field3.Ex / (E3 || 1e-8)) * direction
+    const k3y = (field3.Ey / (E3 || 1e-8)) * direction
+    
+    const field4 = calculateElectricField(charges, x + k3x * dt, y + k3y * dt)
+    const E4 = Math.sqrt(field4.Ex * field4.Ex + field4.Ey * field4.Ey)
+    const k4x = (field4.Ex / (E4 || 1e-8)) * direction
+    const k4y = (field4.Ey / (E4 || 1e-8)) * direction
+    
+    x += (dt / 6) * (k1x + 2 * k2x + 2 * k3x + k4x)
+    y += (dt / 6) * (k1y + 2 * k2y + 2 * k3y + k4y)
+    
     let hitCharge = false
     charges.forEach(charge => {
       const dist = Math.sqrt((x - charge.x) ** 2 + (y - charge.y) ** 2)
-      if (dist < 0.3) {
+      if (dist < 0.05) {
         hitCharge = true
       }
     })
-
+    
     if (hitCharge) break
-    if (Math.abs(x) > 5 || Math.abs(y) > 5) break
-
+    if (Math.abs(x) > 10 || Math.abs(y) > 10) break
+    
     points.push({ x, y })
   }
-
+  
   return points
 }
 
@@ -217,7 +209,7 @@ function FieldLines({ charges }) {
         const startX = charge.x + Math.cos(angle) * startR
         const startY = charge.y + Math.sin(angle) * startR
         const direction = charge.q > 0 ? 1 : -1
-        const points = traceFieldLine(startX, startY, charges, direction)
+        const points = traceFieldLineRK4(startX, startY, charges, direction)
         if (points.length > 2) {
           allLines.push(points)
         }
@@ -569,12 +561,16 @@ export default function ElectricFields({
     ]
     onDataPoint({
       t_s: performance.now() / 1000,
+      t: performance.now() / 1000,
       numCharges: charges.length,
       potentialEnergy_J: potentialEnergy,
       testChargePos_m: testChargePosition,
       electricFieldAtTest_NpC: { Ex, Ey, magnitude: fieldMagnitude },
+      field_magnitude_NC: fieldMagnitude,
       testChargeForce_N: force,
+      force_N: force.magnitude_N,
       equipotentialSamples_V: equipotentialSamples,
+      potential_V: calculatePotential(charges, testChargePosition.x, testChargePosition.y),
       fieldLineDirection: 'away from +q toward -q',
       potentialEnergy,
       testChargePos: testChargePosition,

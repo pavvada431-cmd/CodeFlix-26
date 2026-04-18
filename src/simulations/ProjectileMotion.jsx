@@ -3,13 +3,15 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Environment, Stars, Grid, Text, Html, Line, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
+import { FrostedLabel, GlowTrail } from './shared/SimulationPrimitives';
 
 const G_MAGNITUDE = 9.81;
 const GRAVITY = -G_MAGNITUDE;
 const SCALE = 0.1;
 const PROJECTILE_MASS_KG = 1;
-// Canonical drag coefficient for a smooth sphere in air (kept for reference if drag is enabled).
 const DRAG_COEFFICIENT_SPHERE = 0.47;
+const AIR_DENSITY_KG_M3 = 1.225;
+const PROJECTILE_AREA_M2 = 0.01;
 
 function easeOutQuart(t) {
   return 1 - Math.pow(1 - t, 4);
@@ -67,70 +69,15 @@ function buildProjectileGraphData(initialVelocity, launchAngle, initialHeight, s
   });
 }
 
-function FrostedLabel({ children, position, color = '#00f5ff', scale = [1, 0.3, 1] }) {
-  return (
-    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
-      <div
-        style={{
-          background: 'rgba(10, 15, 30, 0.85)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: `1px solid ${color}40`,
-          borderRadius: '8px',
-          padding: '8px 16px',
-          color: color,
-          fontFamily: 'monospace',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          whiteSpace: 'nowrap',
-          boxShadow: `0 4px 20px ${color}20`,
-        }}
-      >
-        {children}
-      </div>
-    </Html>
-  );
-}
-
-function GlowTrail({ points, color = '#00ffff', opacity = 0.8 }) {
-  const lineRef = useRef();
-
-  const geometry = useMemo(() => {
-    if (points.length < 2) return null;
-    const positions = new Float32Array(points.length * 3);
-    points.forEach((p, i) => {
-      positions[i * 3] = p.x;
-      positions[i * 3 + 1] = p.y;
-      positions[i * 3 + 2] = p.z;
-    });
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    return geo;
-  }, [points]);
-
-  if (!geometry || points.length < 2) return null;
-
-  return (
-    <line ref={lineRef} geometry={geometry}>
-      <lineBasicMaterial
-        color={color}
-        transparent
-        opacity={opacity}
-        linewidth={2}
-      />
-    </line>
-  );
-}
-
 function SparkParticles({ position, active, color = '#ffaa00' }) {
   const particlesRef = useRef();
   const [particles, setParticles] = useState([]);
   const [opacity, setOpacity] = useState(0);
-  const [initialized, setInitialized] = useState(false);
+  const initializedRef = useRef(false);
   const velocitiesRef = useRef([]);
 
   useEffect(() => {
-    if (active && !initialized) {
+    if (active && !initializedRef.current) {
       const newParticles = [];
       const newVelocities = [];
       for (let i = 0; i < 30; i++) {
@@ -149,14 +96,14 @@ function SparkParticles({ position, active, color = '#ffaa00' }) {
       setParticles(newParticles);
       velocitiesRef.current = newVelocities;
       setOpacity(1);
-      setInitialized(true);
+      initializedRef.current = true;
     }
     if (!active) {
-      setInitialized(false);
+      initializedRef.current = false;
       setParticles([]);
       setOpacity(0);
     }
-  }, [active, initialized]);
+  }, [active]);
 
   useFrame((state, delta) => {
     if (opacity > 0 && particles.length > 0) {

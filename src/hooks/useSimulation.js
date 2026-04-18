@@ -15,7 +15,6 @@ export default function useSimulation() {
   const [error, setError] = useState(null)
 
   const simulationKeyRef = useRef(0)
-  const dataStreamIntervalRef = useRef(null)
   const lastDataTimeRef = useRef(0)
   const circularBufferRef = useRef(new Array(MAX_DATA_STREAM_LENGTH))
   const circularBufferIndexRef = useRef(0)
@@ -161,19 +160,8 @@ export default function useSimulation() {
   }, [isPlaying, playbackSpeed])
 
   useEffect(() => {
-    return () => {
-      if (dataStreamIntervalRef.current) {
-        clearInterval(dataStreamIntervalRef.current)
-      }
-    }
-  }, [])
-
-  useEffect(() => {
     if (!isPlaying) {
-      if (dataStreamIntervalRef.current) {
-        clearInterval(dataStreamIntervalRef.current)
-        dataStreamIntervalRef.current = null
-      }
+      // Data stream is cleared via circular buffer management
     }
   }, [isPlaying])
 

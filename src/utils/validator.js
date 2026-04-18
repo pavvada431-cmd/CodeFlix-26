@@ -84,7 +84,7 @@ function normalizeUnit(unit) {
     .trim()
 }
 
-export function clampAngle(value, unit) {
+export function clampAngle(value, unit, warnings = []) {
   const normalizedUnit = normalizeUnit(unit)
   const maxDegrees = 89
   const maxRadians = (89 * Math.PI) / 180
@@ -92,34 +92,34 @@ export function clampAngle(value, unit) {
   if (normalizedUnit.includes('rad')) {
     const clamped = Math.min(Math.max(value, -maxRadians), maxRadians)
     if (clamped !== value) {
-      WARNINGS.push(`Angle clamped from ${value.toFixed(3)} to ${clamped.toFixed(3)} radians`)
+      warnings.push(`Angle clamped from ${value.toFixed(3)} to ${clamped.toFixed(3)} radians`)
     }
     return clamped
   } else {
     const clamped = Math.min(Math.max(value, -maxDegrees), maxDegrees)
     if (clamped !== value) {
-      WARNINGS.push(`Angle clamped from ${value.toFixed(1)}° to ${clamped.toFixed(1)}°`)
+      warnings.push(`Angle clamped from ${value.toFixed(1)}° to ${clamped.toFixed(1)}°`)
     }
     return clamped
   }
 }
 
-export function sanitizeMass(value) {
+export function sanitizeMass(value, warnings = []) {
   if (value <= 0) {
-    WARNINGS.push(`Mass must be positive, set to 0.1 kg`)
+    warnings.push(`Mass must be positive, set to 0.1 kg`)
     return 0.1
   }
   return value
 }
 
-export function sanitizeVelocity(value) {
+export function sanitizeVelocity(value, warnings = []) {
   const maxVelocity = 1000
   if (value > maxVelocity) {
-    WARNINGS.push(`Velocity ${value} m/s exceeds safe limit, clamped to ${maxVelocity} m/s`)
+    warnings.push(`Velocity ${value} m/s exceeds safe limit, clamped to ${maxVelocity} m/s`)
     return maxVelocity
   }
   if (value < 0) {
-    WARNINGS.push(`Velocity cannot be negative, using absolute value`)
+    warnings.push(`Velocity cannot be negative, using absolute value`)
     return Math.abs(value)
   }
   return value

@@ -3,104 +3,118 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Environment, Grid, Text, Html, Line, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
+import { FrostedLabel, GlowTrail, ForceArrow } from './shared/SimulationPrimitives';
 
-const GRAVITY = -9.81;
+const GRAVITY = 9.81;
 const SCALE = 0.1;
 
-function FrostedLabel({ children, position, color = '#00f5ff', scale = [1, 0.3, 1] }) {
+function EnergyHUD({ ke_J, pe_J, total_E }) {
+  const kePercent = total_E > 0 ? (ke_J / total_E) * 100 : 0;
+  const pePercent = total_E > 0 ? (pe_J / total_E) * 100 : 0;
+  const barWidth = 150;
+  const barHeight = 16;
+  
   return (
-    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
+    <Html
+      position={[0, 0, 0]}
+      distanceFactor={1}
+      scale={[1, 1, 1]}
+      zIndexRange={[100, 0]}
+    >
       <div
         style={{
-          background: 'rgba(10, 15, 30, 0.85)',
+          position: 'absolute',
+          right: '20px',
+          top: '20px',
+          background: 'rgba(10, 15, 30, 0.9)',
           backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: `1px solid ${color}40`,
+          border: '1px solid #00f5ff40',
           borderRadius: '8px',
-          padding: '8px 16px',
-          color: color,
+          padding: '12px 16px',
           fontFamily: 'monospace',
-          fontSize: '14px',
+          fontSize: '11px',
           fontWeight: 'bold',
-          whiteSpace: 'nowrap',
-          boxShadow: `0 4px 20px ${color}20`,
+          color: '#00f5ff',
+          zIndex: 1000,
         }}
       >
-        {children}
+        <div style={{ marginBottom: '8px', color: '#00f5ff' }}>Energy</div>
+        
+        <div style={{ marginBottom: '4px', fontSize: '10px', color: '#888' }}>
+          KE: {ke_J.toFixed(3)} J
+        </div>
+        <div
+          style={{
+            height: barHeight,
+            width: barWidth,
+            background: 'rgba(0, 50, 100, 0.4)',
+            border: '1px solid #ff9500',
+            borderRadius: '3px',
+            marginBottom: '8px',
+            position: 'relative',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: `${Math.max(0, kePercent)}%`,
+              background: '#ff9500',
+              borderRadius: '2px',
+              transition: 'width 0.1s ease-out',
+            }}
+          />
+        </div>
+        
+        <div style={{ marginBottom: '4px', fontSize: '10px', color: '#888' }}>
+          PE: {pe_J.toFixed(3)} J
+        </div>
+        <div
+          style={{
+            height: barHeight,
+            width: barWidth,
+            background: 'rgba(0, 50, 100, 0.4)',
+            border: '1px solid #00d9ff',
+            borderRadius: '3px',
+            marginBottom: '8px',
+            position: 'relative',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: `${Math.max(0, pePercent)}%`,
+              background: '#00d9ff',
+              borderRadius: '2px',
+              transition: 'width 0.1s ease-out',
+            }}
+          />
+        </div>
+        
+        <div
+          style={{
+            height: barHeight,
+            width: barWidth,
+            background: 'rgba(100, 100, 100, 0.3)',
+            border: '1px solid #ffffff',
+            borderRadius: '3px',
+            position: 'relative',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: '100%',
+              background: 'none',
+              borderRadius: '2px',
+              opacity: 0.3,
+            }}
+          />
+        </div>
+        <div style={{ marginTop: '4px', fontSize: '10px', color: '#aaa' }}>
+          Total: {total_E.toFixed(3)} J
+        </div>
       </div>
     </Html>
-  );
-}
-
-function GlowTrail({ points, color = '#00ffff', opacity = 0.8 }) {
-  const lineRef = useRef();
-
-  const geometry = useMemo(() => {
-    if (points.length < 2) return null;
-    const positions = new Float32Array(points.length * 3);
-    points.forEach((p, i) => {
-      positions[i * 3] = p.x;
-      positions[i * 3 + 1] = p.y;
-      positions[i * 3 + 2] = p.z;
-    });
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    return geo;
-  }, [points]);
-
-  if (!geometry || points.length < 2) return null;
-
-  return (
-    <line ref={lineRef} geometry={geometry}>
-      <lineBasicMaterial
-        color={color}
-        transparent
-        opacity={opacity}
-        linewidth={2}
-      />
-    </line>
-  );
-}
-
-function ForceArrow({ position, direction, length, color, label }) {
-  const geometry = useMemo(() => {
-    const shape = new THREE.Shape();
-    const hw = 0.05;
-    shape.moveTo(0, length);
-    shape.lineTo(-hw, length - 0.15);
-    shape.lineTo(-hw * 0.4, length - 0.15);
-    shape.lineTo(-hw * 0.4, 0);
-    shape.lineTo(hw * 0.4, 0);
-    shape.lineTo(hw * 0.4, length - 0.15);
-    shape.lineTo(hw, length - 0.15);
-    shape.closePath();
-    return new THREE.ExtrudeGeometry(shape, { depth: 0.03, bevelEnabled: false });
-  }, [length]);
-
-  const rotation = useMemo(() => {
-    const angle = Math.atan2(direction[0], -direction[1]);
-    return [0, 0, -angle];
-  }, [direction]);
-
-  if (length < 0.1) return null;
-
-  return (
-    <group position={position}>
-      <mesh geometry={geometry} rotation={rotation} position={[0, 0, 0.1]}>
-        <meshPhysicalMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={0.3}
-          transparent
-          opacity={0.9}
-        />
-      </mesh>
-      {label && (
-        <FrostedLabel position={[direction[0] * 0.8, direction[1] * 0.8, 0.3]} color={color}>
-          {label}
-        </FrostedLabel>
-      )}
-    </group>
   );
 }
 
@@ -122,6 +136,9 @@ function PendulumScene({
 
   const [tracePoints, setTracePoints] = useState([]);
   const [amplitude, setAmplitude] = useState(Math.abs(initialAngle));
+  const [ke_J, setKE_J] = useState(0);
+  const [pe_J, setPE_J] = useState(0);
+  const [totalEnergy, setTotalEnergy] = useState(0);
   const showForces = true;
 
   const timeRef = useRef(0);
@@ -219,6 +236,11 @@ function PendulumScene({
       const totalEnergy = kineticEnergy + potentialEnergy;
       const referenceEnergy = Math.max(1e-9, initialEnergyRef.current || totalEnergy);
       const energyDriftPercent = ((totalEnergy - referenceEnergy) / referenceEnergy) * 100;
+      
+      setKE_J(kineticEnergy);
+      setPE_J(potentialEnergy);
+      setTotalEnergy(totalEnergy);
+      
       onDataPoint({
         t_s: timeRef.current,
         theta_rad: angle,
@@ -284,6 +306,8 @@ function PendulumScene({
 
   return (
     <>
+      <EnergyHUD ke_J={ke_J} pe_J={pe_J} total_E={totalEnergy} />
+      
       <fog attach="fog" args={['#0a0a1a', 15, 40]} />
 
       <ambientLight intensity={0.3} color="#8888aa" />

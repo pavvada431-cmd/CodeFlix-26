@@ -1,37 +1,13 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Environment, Grid, Html, Line, OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
+import { FrostedLabel, GlowTrail } from './shared/SimulationPrimitives'
 
 const PI = Math.PI
 const WAVE_POINTS = 200
 const LONGITUDINAL_POINTS = 100
-
-function FrostedLabel({ position, color = '#00f5ff', children }) {
-  return (
-    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
-      <div
-        style={{
-          background: 'rgba(10, 15, 30, 0.86)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: `1px solid ${color}40`,
-          borderRadius: '8px',
-          padding: '4px 10px',
-          color,
-          fontFamily: 'monospace',
-          fontSize: '11px',
-          fontWeight: 700,
-          boxShadow: `0 4px 18px ${color}25`,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {children}
-      </div>
-    </Html>
-  )
-}
 
 function TransverseWave({ amplitude, frequency, wavelength, time }) {
   const k = (2 * PI) / wavelength
@@ -516,6 +492,111 @@ function GraphPanel({ mode, amplitude, frequency, wavelength, time, waveType }) 
   )
 }
 
+function Wave3DTube({ amplitude, frequency, wavelength, time }) {
+  const k = (2 * PI) / wavelength
+  const omega = 2 * PI * frequency
+  const tubeRef = useRef()
+  const glowTubeRef = useRef()
+  
+  const geometry = useMemo(() => {
+    const curve = new THREE.LineCurve3(
+      new THREE.Vector3(-4, 0, 0),
+      new THREE.Vector3(4, 0, 0)
+    )
+    return new THREE.TubeGeometry(curve, 20, 0.15, 8, false)
+  }, [])
+  
+  useFrame(() => {
+    if (tubeRef.current) {
+      const positions = tubeRef.current.geometry.attributes.position.array
+      for (let i = 0; i < positions.length; i += 3) {
+        const x = positions[i]
+        const y_offset = amplitude * Math.sin(k * x - omega * time)
+        positions[i + 1] = y_offset
+      }
+      tubeRef.current.geometry.attributes.position.needsUpdate = true
+    }
+  })
+  
+  return (
+    <group>
+      <mesh ref={tubeRef} geometry={geometry} position={[0, 0, 0]}>
+        <meshPhysicalMaterial
+          color="#00d9ff"
+          metalness={0.7}
+          roughness={0.2}
+          emissive="#0088ff"
+          emissiveIntensity={0.3}
+        />
+      </mesh>
+      <mesh ref={glowTubeRef} position={[0, 0, -0.2]}>
+        <tubeGeometry args={[
+          new THREE.LineCurve3(new THREE.Vector3(-4, 0, 0), new THREE.Vector3(4, 0, 0)),
+          20, 0.3, 8, false
+        ]} />
+        <meshPhysicalMaterial
+          color="#00d9ff"
+          transparent
+          opacity={0.1}
+          emissive="#0088ff"
+          emissiveIntensity={0.2}
+        />
+      </mesh>
+    </group>
+  )
+}
+
+function WaveRider({ amplitude, frequency, wavelength, time }) {
+  const k = (2 * PI) / wavelength
+  const omega = 2 * PI * frequency
+  const phaseVelocity = omega / k
+  const x = (omega * time / k) % 8 - 4
+  const y = amplitude * Math.sin(0)
+  
+  return (
+    <mesh position={[x, amplitude + 0.2, 0.3]}>
+      <sphereGeometry args={[0.2, 16, 16]} />
+      <meshPhysicalMaterial
+        color="#ffff00"
+        emissive="#ffff00"
+        emissiveIntensity={0.8}
+        metalness={0.4}
+        roughness={0.1}
+      />
+    </mesh>
+  )
+}
+
+function StandingWaveNodes({ amplitude, frequency, wavelength, time }) {
+  const k = (2 * PI) / wavelength
+  const lambda = wavelength
+  const nodes = []
+  
+  for (let n = -5; n <= 5; n++) {
+    const x = n * lambda / 2
+    if (x >= -4 && x <= 4) {
+      nodes.push(x)
+    }
+  }
+  
+  return (
+    <group>
+      {nodes.map((nodeX, i) => (
+        <mesh key={i} position={[nodeX, 0, 0]}>
+          <sphereGeometry args={[0.1, 12, 12]} />
+          <meshPhysicalMaterial
+            color="#ff0000"
+            emissive="#ff0000"
+            emissiveIntensity={0.6}
+            metalness={0.5}
+            roughness={0.2}
+          />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 function WaveScene({
   amplitude,
   frequency,
@@ -585,15 +666,18 @@ function WaveScene({
 
     onDataPoint?.({
       t_s: time,
-      displacement_at_x0_m: dispX0,
-      displacement_at_x_half_lambda_m: dispXHalf,
-      energy_J: energy,
+      t: time,
       amplitude_m: amplitude,
       frequency_Hz: frequency,
+      frequency_hz: frequency,
+      energy_J: energy,
+      displacement_at_x0_m: dispX0,
+      displacement_at_x_half_lambda_m: dispXHalf,
       wavelength_m: wavelength,
       waveNumber_radpm: k,
       angularFrequency_radps: omega,
       waveSpeed_mps: waveSpeed,
+      wave_type: waveType,
       standingWave: waveType === 'standing' ? {
         nodePositions_m: [0, wavelength / 2, wavelength, (3 * wavelength) / 2],
         antinodePositions_m: [wavelength / 4, (3 * wavelength) / 4, (5 * wavelength) / 4],
@@ -606,18 +690,35 @@ function WaveScene({
   }, [time, amplitude, k, omega, wavelength, waveType, onDataPoint, lastDataTime, frequency, waveSpeed])
 
   const renderWave = () => {
-    switch (waveType) {
-      case 'transverse':
-        return <TransverseWave amplitude={amplitude} frequency={frequency} wavelength={wavelength} time={time} />
-      case 'longitudinal':
-        return <LongitudinalWave amplitude={amplitude} frequency={frequency} wavelength={wavelength} time={time} />
-      case 'standing':
-        return <StandingWave amplitude={amplitude} frequency={frequency} wavelength={wavelength} time={time} />
-      case 'interference':
-        return <InterferenceWave amplitude={amplitude} frequency={frequency} wavelength={wavelength} time={time} />
-      default:
-        return <TransverseWave amplitude={amplitude} frequency={frequency} wavelength={wavelength} time={time} />
-    }
+    const baseWave = (() => {
+      switch (waveType) {
+        case 'transverse':
+          return <TransverseWave amplitude={amplitude} frequency={frequency} wavelength={wavelength} time={time} />
+        case 'longitudinal':
+          return <LongitudinalWave amplitude={amplitude} frequency={frequency} wavelength={wavelength} time={time} />
+        case 'standing':
+          return <StandingWave amplitude={amplitude} frequency={frequency} wavelength={wavelength} time={time} />
+        case 'interference':
+          return <InterferenceWave amplitude={amplitude} frequency={frequency} wavelength={wavelength} time={time} />
+        default:
+          return <TransverseWave amplitude={amplitude} frequency={frequency} wavelength={wavelength} time={time} />
+      }
+    })()
+    
+    return (
+      <>
+        {baseWave}
+        {waveType === 'transverse' && (
+          <>
+            <Wave3DTube amplitude={amplitude} frequency={frequency} wavelength={wavelength} time={time} />
+            <WaveRider amplitude={amplitude} frequency={frequency} wavelength={wavelength} time={time} />
+          </>
+        )}
+        {waveType === 'standing' && (
+          <StandingWaveNodes amplitude={amplitude} frequency={frequency} wavelength={wavelength} time={time} />
+        )}
+      </>
+    )
   }
 
   const glowWaveTrail = useMemo(() => {

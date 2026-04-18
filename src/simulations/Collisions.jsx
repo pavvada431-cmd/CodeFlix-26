@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { Environment, Grid, Text, Html, Line, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
-import Matter from 'matter-js';
+import { FrostedLabel, GlowTrail, ForceArrow } from './shared/SimulationPrimitives';
 
 const SCALE = 0.15;
 const TRACK_Y = 0;
@@ -37,86 +37,11 @@ function computeCollisionResponse(v1, v2, m1, m2, normal, restitution) {
     return { v1After: v1, v2After: v2 };
   }
 
-  // Impulse form of restitution equation:
-  // (v2' - v1')·n = e (v1 - v2)·n, with momentum conservation.
   const impulseMagnitude = (-(1 + restitution) * vRelAlongNormal) / (1 / m1 + 1 / m2);
   const impulse = vecScale(n, impulseMagnitude);
   const v1After = vecAdd(v1, vecScale(impulse, 1 / m1));
   const v2After = vecSub(v2, vecScale(impulse, 1 / m2));
   return { v1After, v2After };
-}
-
-function FrostedLabel({ children, position, color = '#00f5ff' }) {
-  return (
-    <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
-      <div
-        style={{
-          background: 'rgba(10, 15, 30, 0.85)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: `1px solid ${color}40`,
-          borderRadius: '8px',
-          padding: '8px 16px',
-          color: color,
-          fontFamily: 'monospace',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          whiteSpace: 'nowrap',
-          boxShadow: `0 4px 20px ${color}20`,
-        }}
-      >
-        {children}
-      </div>
-    </Html>
-  );
-}
-
-function createArrowGeometry(length, headLength = 0.15, headWidth = 0.08) {
-  const shape = new THREE.Shape();
-  const hw = headWidth / 2;
-  shape.moveTo(0, length);
-  shape.lineTo(-hw, length - headLength);
-  shape.lineTo(-hw * 0.4, length - headLength);
-  shape.lineTo(-hw * 0.4, 0);
-  shape.lineTo(hw * 0.4, 0);
-  shape.lineTo(hw * 0.4, length - headLength);
-  shape.lineTo(hw, length - headLength);
-  shape.closePath();
-  const extrudeSettings = { depth: 0.04, bevelEnabled: false };
-  return new THREE.ExtrudeGeometry(shape, extrudeSettings);
-}
-
-function VelocityArrow({ position, direction, length, color, label }) {
-  const geometry = useMemo(() => createArrowGeometry(Math.max(length, 0.05)), [length]);
-
-  const rotation = useMemo(() => {
-    const angle = direction > 0 ? 0 : Math.PI;
-    return [0, 0, -angle];
-  }, [direction]);
-
-  if (length < 0.02) return null;
-
-  return (
-    <group position={position}>
-      <mesh geometry={geometry} rotation={rotation} position={[length / 2 * direction, 0, 0]}>
-        <meshPhysicalMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={0.5}
-          transparent
-          opacity={0.9}
-        />
-      </mesh>
-      {label && (
-        <FrostedLabel
-          position={[direction * (length / 2 + 0.4), 0.4, 0]}
-          color={color}
-        >
-          {label}
-        </FrostedLabel>
-      )}
-    </group>
-  );
 }
 
 function CollisionBurst({ position, isActive }) {

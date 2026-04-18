@@ -121,12 +121,17 @@ export default function GasLaws({
   useEffect(() => {
     if (!emit) return
     const id = setInterval(() => {
+      const pvProduct = state.P * state.V
       emit({
         t: time,
         pressure: state.P,
+        pressure_atm: state.P,
         volume: state.V,
+        volume_L: state.V,
         temperature: state.T,
+        temperature_K: state.T,
         moles: state.n,
+        pv_product: pvProduct,
         relationX: relation.xKey === 'V' ? state.V : state.T,
         relationY: relation.yKey === 'P' ? state.P : state.V,
       })

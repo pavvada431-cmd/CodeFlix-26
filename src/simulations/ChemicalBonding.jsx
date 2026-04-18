@@ -215,8 +215,11 @@ export default function ChemicalBonding({
         t: tRef.current,
         bondMode: selectedMode === 'ionic' ? 1 : selectedMode === 'covalent' ? 2 : 3,
         electronegativityDiff: metrics.enDiff,
+        electronegativity_diff: metrics.enDiff,
         bondLengthA: metrics.bondLength,
+        bond_length_pm: metrics.bondLength * 100,
         bondEnergyKJ: metrics.bondEnergy,
+        bond_energy_kJ: metrics.bondEnergy,
         animationPhase: phase,
       })
     }, 70)

@@ -32,7 +32,8 @@ export default function ResizableSidebar({
     if (!container) return
     
     const containerRect = container.getBoundingClientRect()
-    const newWidth = e.clientX - containerRect.left
+    let newWidth = e.clientX - containerRect.left
+    newWidth = Math.max(280, Math.min(520, newWidth))
     onWidthChange(newWidth)
   }, [isDragging, onWidthChange])
 
