@@ -18,6 +18,7 @@ export default function useSimulation() {
   const lastDataTimeRef = useRef(0)
   const circularBufferRef = useRef(new Array(MAX_DATA_STREAM_LENGTH))
   const circularBufferIndexRef = useRef(0)
+  const isBufferFullRef = useRef(false)
 
   const solve = useCallback(async (problemInput, provider = 'openai') => {
     setIsLoading(true)
@@ -36,6 +37,7 @@ export default function useSimulation() {
       setActiveSimulation(isMultiConcept ? 'multi_concept' : result.type)
       setDataStream([])
       circularBufferIndexRef.current = 0
+      isBufferFullRef.current = false
       simulationKeyRef.current += 1
       setIsPlaying(false)
 
@@ -128,6 +130,7 @@ export default function useSimulation() {
     setIsPlaying(false)
     setDataStream([])
     circularBufferIndexRef.current = 0
+    isBufferFullRef.current = false
     lastDataTimeRef.current = 0
   }, [])
 
@@ -150,10 +153,11 @@ export default function useSimulation() {
       const index = circularBufferIndexRef.current
       buffer[index] = dataPoint
       circularBufferIndexRef.current = (index + 1) % MAX_DATA_STREAM_LENGTH
+      if (circularBufferIndexRef.current === 0) {
+        isBufferFullRef.current = true
+      }
 
-      const isFull = circularBufferIndexRef.current === 0 && index !== 0
-      const dataToShow = isFull ? buffer : buffer.slice(0, index + 1)
-      
+      const dataToShow = isBufferFullRef.current ? buffer : buffer.slice(0, circularBufferIndexRef.current)
       setDataStream(dataToShow.filter(d => d !== undefined))
       lastDataTimeRef.current = currentTime
     }

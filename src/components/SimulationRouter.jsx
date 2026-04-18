@@ -523,11 +523,15 @@ function MultiConceptView({
       }
     }
 
-    runEffect()
+    const innerCleanup = runEffect()
 
     return () => {
       isCancelled = true
-      clearTimeouts()
+      if (innerCleanup) {
+        innerCleanup()
+      } else {
+        clearTimeouts()
+      }
     }
   }, [onDataPoint, parsedData, simulationKey])
 

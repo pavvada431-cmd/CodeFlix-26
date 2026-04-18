@@ -4,6 +4,7 @@
  */
 
 const EPSILON = 1e-6
+const MAX_HISTORY_LENGTH = 2000
 
 function toNumber(value, fallback = 0) {
   return Number.isFinite(value) ? Number(value) : fallback
@@ -149,12 +150,14 @@ export class SimulationPipeline {
     this.totalElapsed += dt
 
     const renderState = stage.getRenderState()
-    this.history.push({
-      t: this.totalElapsed,
-      stageIndex: this.currentStageIndex,
-      stageType: stage.type,
-      state: JSON.parse(JSON.stringify(renderState)),
-    })
+    if (this.history.length < MAX_HISTORY_LENGTH) {
+      this.history.push({
+        t: this.totalElapsed,
+        stageIndex: this.currentStageIndex,
+        stageType: stage.type,
+        state: JSON.parse(JSON.stringify(renderState)),
+      })
+    }
 
     const transition = this._findTransition(this.currentStageIndex)
     const shouldTransition = transition

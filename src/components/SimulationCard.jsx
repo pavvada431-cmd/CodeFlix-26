@@ -262,7 +262,7 @@ function SimulationViewport({
     if (!telemetry || !simulation.activeSimulation) return { label1: '', value1: '', label2: '', value2: '', label3: '', value3: '' }
     
     const simType = simulation.activeSimulation
-    if (simType === 'projectile_motion') {
+    if (simType === 'projectile') {
       return {
         label1: 'x', value1: telemetry.x?.toFixed(2) || '—',
         label2: 'y', value2: telemetry.y?.toFixed(2) || '—',
