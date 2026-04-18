@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Sun, Moon, Settings, Zap, FlaskConical, ArrowLeft, Check, CircleHelp } from 'lucide-react'
+import { Sun, Moon, Settings, Zap, FlaskConical, ArrowLeft, Check, CircleHelp, Wrench } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 
 export default function Navbar({
@@ -150,6 +150,23 @@ export default function Navbar({
                 <FlaskConical className="h-4 w-4" />
                 Chemistry
                 {currentPage === 'chemistry' && (
+                  <Check className="h-3 w-3" />
+                )}
+              </button>
+
+              <button
+                onClick={() => onPageChange?.('builder')}
+                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                  currentPage === 'builder' ? 'shadow-md' : 'hover:opacity-80'
+                }`}
+                style={{
+                  backgroundColor: currentPage === 'builder' ? 'var(--color-accent)' : 'transparent',
+                  color: currentPage === 'builder' ? '#fff' : 'var(--color-text-muted)'
+                }}
+              >
+                <Wrench className="h-4 w-4" />
+                Builder
+                {currentPage === 'builder' && (
                   <Check className="h-3 w-3" />
                 )}
               </button>

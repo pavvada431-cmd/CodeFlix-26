@@ -4,6 +4,7 @@ import Navbar from './components/Navbar'
 import MobileLayout from './components/MobileLayout'
 import PhysicsPage from './pages/PhysicsPage'
 import ChemistryPage from './pages/ChemistryPage'
+import BuilderPage from './pages/BuilderPage'
 import SettingsModal from './components/SettingsModal'
 import SessionSummary from './components/SessionSummary'
 import Onboarding, { ONBOARDING_STORAGE_KEY } from './components/Onboarding'
@@ -40,14 +41,16 @@ function DesktopLayout({
             rightPanelWidth={rightPanelWidth}
             onRightPanelWidthChange={onRightPanelWidthChange}
           />
-        ) : (
+        ) : currentPage === 'chemistry' ? (
           <ChemistryPage
             sidebarWidth={sidebarWidth}
             onSidebarWidthChange={onSidebarWidthChange}
             rightPanelWidth={rightPanelWidth}
             onRightPanelWidthChange={onRightPanelWidthChange}
           />
-        )}
+        ) : currentPage === 'builder' ? (
+          <BuilderPage />
+        ) : null}
       </div>
     </>
   )
