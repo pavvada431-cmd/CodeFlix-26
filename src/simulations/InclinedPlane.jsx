@@ -70,9 +70,16 @@ function InclinedScene({ mass, angle, friction, isPlaying, onComplete, onDataPoi
   const completionThresholdX = RAMP_CENTER_X + Math.cos(rampAngle) * (RAMP_LENGTH / 2 - blockSize * 0.85)
 
   useEffect(() => {
-    const engine = createInclinedPlaneWorld(mass, angle, friction)
-    engine.stopLoop()
-    engineRef.current = engine
+    let engine = null
+    try {
+      engine = createInclinedPlaneWorld(mass, angle, friction)
+      engine.stopLoop()
+      engineRef.current = engine
+    } catch (err) {
+      console.error('Failed to create inclined plane world:', err)
+      return
+    }
+
     const trailResetTimeoutId = setTimeout(() => {
       setTrail([])
     }, 0)
@@ -177,7 +184,9 @@ function InclinedScene({ mass, angle, friction, isPlaying, onComplete, onDataPoi
     return () => {
       clearTimeout(trailResetTimeoutId)
       cleanupRef.current?.()
-      engine.destroy()
+      if (engine) {
+        engine.destroy()
+      }
       engineRef.current = null
     }
   }, [mass, angle, friction, completionThresholdX, rampAngle])
