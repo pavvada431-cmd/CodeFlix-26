@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { X, Eye, Copy, Download } from 'lucide-react'
 import useSimulation from '../hooks/useSimulation'
@@ -353,7 +353,10 @@ function GalleryPanel({ onLoadConfig }) {
   const [gallery, setGallery] = useState([])
 
   useEffect(() => {
-    setGallery(loadGallery())
+    const timeoutId = setTimeout(() => {
+      setGallery(loadGallery())
+    }, 0)
+    return () => clearTimeout(timeoutId)
   }, [])
 
   const handleDelete = (id) => {
@@ -418,7 +421,10 @@ export default function BuilderPage({ simulation: externalSimulation }) {
     if (configParam) {
       const decoded = decodeBuilderConfig(configParam)
       if (decoded && decoded.length > 0) {
-        setBlocks(decoded)
+        const timeoutId = setTimeout(() => {
+          setBlocks(decoded)
+        }, 0)
+        return () => clearTimeout(timeoutId)
       }
     }
   }, [searchParams])

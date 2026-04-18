@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Environment, Html, Line, OrbitControls, Stars } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
@@ -74,11 +74,15 @@ function DecayParticle({ startPos, velocity, color, lifetime, onComplete }) {
   const meshRef = useRef()
   const positionRef = useRef({ ...startPos })
   const trailRef = useRef([])
-  const startTimeRef = useRef(Date.now())
+  const [trailPoints, setTrailPoints] = useState([])
+  const startTimeRef = useRef(0)
   const completedRef = useRef(false)
 
   useFrame(() => {
     if (completedRef.current) return
+    if (startTimeRef.current === 0) {
+      startTimeRef.current = Date.now()
+    }
 
     const elapsed = (Date.now() - startTimeRef.current) / 1000
     const progress = elapsed / lifetime
@@ -94,6 +98,7 @@ function DecayParticle({ startPos, velocity, color, lifetime, onComplete }) {
     positionRef.current.z += velocity.z * 0.016
 
     trailRef.current = [...trailRef.current.slice(-19), { ...positionRef.current }]
+    setTrailPoints(trailRef.current)
 
     if (meshRef.current) {
       meshRef.current.position.set(
@@ -108,9 +113,9 @@ function DecayParticle({ startPos, velocity, color, lifetime, onComplete }) {
 
   return (
     <group>
-      {trailRef.current.length > 1 && (
+      {trailPoints.length > 1 && (
         <Line
-          points={trailRef.current.map(p => [p.x, p.y, p.z])}
+          points={trailPoints.map(p => [p.x, p.y, p.z])}
           color={color}
           transparent
           opacity={0.65}
@@ -125,19 +130,22 @@ function DecayParticle({ startPos, velocity, color, lifetime, onComplete }) {
   )
 }
 
-function GeigerCounter({ flashCount, lastDecay }) {
+function GeigerCounter({ lastDecay }) {
   const ledRefs = useRef([])
   const [ledStates, setLedStates] = useState(Array(12).fill(false))
 
   useEffect(() => {
     if (lastDecay) {
-      setLedStates(prev => {
-        const newStates = [...prev.slice(1), true]
-        setTimeout(() => {
-          setLedStates(prev => [...prev.slice(1), false])
-        }, 100)
-        return newStates
-      })
+      const timeoutId = setTimeout(() => {
+        setLedStates(prev => {
+          const newStates = [...prev.slice(1), true]
+          setTimeout(() => {
+            setLedStates(prevLedStates => [...prevLedStates.slice(1), false])
+          }, 100)
+          return newStates
+        })
+      }, 0)
+      return () => clearTimeout(timeoutId)
     }
   }, [lastDecay])
 
@@ -157,7 +165,7 @@ function GeigerCounter({ flashCount, lastDecay }) {
   )
 }
 
-function GraphPanel({ mode, dataHistory, theoreticalDecay, halfLife }) {
+function GraphPanel({ mode, dataHistory, halfLife }) {
   const canvasRef = useRef(null)
 
   useEffect(() => {
@@ -291,7 +299,6 @@ function AtomCluster({
   halfLife,
   decayType,
   isPlaying,
-  onDecay,
   onDataUpdate,
   chainDecay,
 }) {
@@ -300,12 +307,9 @@ function AtomCluster({
   const [flashingAtoms, setFlashingAtoms] = useState(new Set())
   const [flashProgress, setFlashProgress] = useState({})
   const [particles, setParticles] = useState([])
-  const [decayCount, setDecayCount] = useState(0)
-  const [lastDecay, setLastDecay] = useState(null)
 
   const lambda = Math.log(2) / halfLife
   const startTimeRef = useRef(0)
-  const decayQueueRef = useRef([])
 
   useEffect(() => {
     const newAtoms = []
@@ -328,7 +332,6 @@ function AtomCluster({
     setAtoms(newAtoms)
     setDecayedAtoms(new Set())
     setFlashingAtoms(new Set())
-    setDecayCount(0)
     startTimeRef.current = 0
   }, [initialAtoms])
 
@@ -394,8 +397,6 @@ function AtomCluster({
 
         setTimeout(() => {
           setDecayedAtoms(prev => new Set([...prev, atom.id]))
-          setDecayCount(prev => prev + 1)
-          setLastDecay(Date.now())
         }, 500)
       }
     })
@@ -490,7 +491,10 @@ export default function RadioactiveDecay({
 
   useEffect(() => {
     if (!isPlaying) {
-      setDataHistory([])
+      const timeoutId = setTimeout(() => {
+        setDataHistory([])
+      }, 0)
+      return () => clearTimeout(timeoutId)
     }
   }, [isPlaying])
 
@@ -615,7 +619,6 @@ export default function RadioactiveDecay({
         <GraphPanel
           mode={graphMode}
           dataHistory={dataHistory}
-          theoreticalDecay={initialAtoms}
           halfLife={halfLife}
         />
       </div>

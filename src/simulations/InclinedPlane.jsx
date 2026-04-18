@@ -73,7 +73,9 @@ function InclinedScene({ mass, angle, friction, isPlaying, onComplete, onDataPoi
     const engine = createInclinedPlaneWorld(mass, angle, friction)
     engine.stopLoop()
     engineRef.current = engine
-    setTrail([])
+    const trailResetTimeoutId = setTimeout(() => {
+      setTrail([])
+    }, 0)
     completedRef.current = false
     initialProjectionRef.current = null
     startTimeRef.current = performance.now() / 1000
@@ -170,6 +172,7 @@ function InclinedScene({ mass, angle, friction, isPlaying, onComplete, onDataPoi
     })
 
     return () => {
+      clearTimeout(trailResetTimeoutId)
       cleanupRef.current?.()
       engine.destroy()
       engineRef.current = null

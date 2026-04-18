@@ -62,35 +62,6 @@ export default function PhysicsPage({ sidebarWidth, onSidebarWidthChange, rightP
     }
   }, [measureFrame])
 
-  // Keyboard event handlers
-  useEffect(() => {
-    const handleTogglePlay = () => {
-      if (simulation.isPlaying) {
-        simulation.pause()
-      } else {
-        simulation.play()
-      }
-    }
-
-    const handleReset = () => {
-      simulation.reset()
-    }
-
-    const handleRandomDemo = () => {
-      handleDemoMode()
-    }
-
-    window.addEventListener('codeflix:toggle-play', handleTogglePlay)
-    window.addEventListener('codeflix:reset-simulation', handleReset)
-    window.addEventListener('codeflix:random-demo', handleRandomDemo)
-
-    return () => {
-      window.removeEventListener('codeflix:toggle-play', handleTogglePlay)
-      window.removeEventListener('codeflix:reset-simulation', handleReset)
-      window.removeEventListener('codeflix:random-demo', handleRandomDemo)
-    }
-  }, [simulation, handleDemoMode])
-
   const handleProblemSolved = useCallback((parsedData) => {
     session.logProblem(parsedData?.type || 'physics', parsedData)
     simulation.solve(parsedData, aiProvider)
@@ -113,6 +84,36 @@ export default function PhysicsPage({ sidebarWidth, onSidebarWidthChange, rightP
   const handleQuickExample = useCallback((problemText) => {
     simulation.solve(problemText, aiProvider)
   }, [aiProvider, simulation])
+
+  // Handlers must be defined BEFORE useEffect that references them
+  const handleTogglePlay = useCallback(() => {
+    if (simulation.isPlaying) {
+      simulation.pause()
+    } else {
+      simulation.play()
+    }
+  }, [simulation])
+
+  const handleReset = useCallback(() => {
+    simulation.reset()
+  }, [simulation])
+
+  const handleRandomDemo = useCallback(() => {
+    handleDemoMode()
+  }, [handleDemoMode])
+
+  // Keyboard event handlers
+  useEffect(() => {
+    window.addEventListener('codeflix:toggle-play', handleTogglePlay)
+    window.addEventListener('codeflix:reset-simulation', handleReset)
+    window.addEventListener('codeflix:random-demo', handleRandomDemo)
+
+    return () => {
+      window.removeEventListener('codeflix:toggle-play', handleTogglePlay)
+      window.removeEventListener('codeflix:reset-simulation', handleReset)
+      window.removeEventListener('codeflix:random-demo', handleRandomDemo)
+    }
+  }, [handleTogglePlay, handleReset, handleRandomDemo])
 
   return (
     <div className="flex min-h-[calc(100vh-64px)]">

@@ -1,0 +1,1 @@
+export const SIMULATION_CANVAS_BACKGROUND = '#0a0a1a'

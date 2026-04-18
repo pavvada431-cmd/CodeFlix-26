@@ -2,17 +2,18 @@
  * Shared simulation primitives and components
  * Eliminates duplication across 19+ simulation files
  */
-import React, { useRef, useMemo, useEffect, useState } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Html, OrbitControls, Environment, Stars, Grid, Line } from '@react-three/drei';
+import React, { useRef, useMemo, useEffect } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { Html, OrbitControls, Environment, Stars, Grid } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
+import { SIMULATION_CANVAS_BACKGROUND } from './simulationConstants';
 
 /**
  * FrostedLabel: Glassmorphism HTML overlay for labels
  * Used across 15+ simulations for displaying information
  */
-export function FrostedLabel({ children, position, color = '#00f5ff', scale = [1, 0.3, 1] }) {
+export function FrostedLabel({ children, position, color = '#00f5ff' }) {
   return (
     <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
       <div
@@ -215,7 +216,7 @@ export const SimulationCanvas = React.forwardRef(
         ref={internalCanvasRef}
         camera={camera}
         shadows={shadows}
-        style={{ width: '100%', height: '100%', background: '#0a0a1a' }}
+        style={{ width: '100%', height: '100%', background: SIMULATION_CANVAS_BACKGROUND }}
         onCreated={(state) => {
           if (!state.gl?.getContext) return;
           try {
@@ -256,20 +257,3 @@ export const SimulationCanvas = React.forwardRef(
 );
 
 SimulationCanvas.displayName = 'SimulationCanvas';
-
-/**
- * CanvasResizeHandler: Hook to handle canvas resize events
- * Use this in simulations to trigger re-render when container resizes
- */
-export function useCanvasResize() {
-  const { gl, invalidate } = useThree();
-
-  const handleResize = ({ width, height }) => {
-    if (gl) {
-      gl.setSize(width, height);
-      invalidate();
-    }
-  };
-
-  return handleResize;
-}

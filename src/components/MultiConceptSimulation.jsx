@@ -2,6 +2,14 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { MultiConceptProblemHandler, MultiConceptExecutor } from '../engine/multiConceptProblem'
 import { formatNumber } from '../utils/formatters'
 
+const STAGE_DISPLAY_NAMES = {
+  inclined_plane: 'Inclined Plane',
+  projectile: 'Projectile Motion',
+  free_fall: 'Free Fall',
+  collisions: 'Collision',
+  spring_launch: 'Spring Launch',
+}
+
 /**
  * MultiConceptSimulation - Component for visualizing multi-stage physics problems
  */
@@ -11,6 +19,9 @@ export default function MultiConceptSimulation({ parsedProblem, onClose }) {
   const [currentStage, setCurrentStage] = useState(0)
   const [progress, setProgress] = useState(0)
   const [timeElapsed, setTimeElapsed] = useState(0)
+  const [pipelineInfo, setPipelineInfo] = useState(null)
+  const [isHandlerReady, setIsHandlerReady] = useState(false)
+  const [isMultiConcept, setIsMultiConcept] = useState(false)
 
   const executorRef = useRef(null)
   const canvasRef = useRef(null)
@@ -18,11 +29,20 @@ export default function MultiConceptSimulation({ parsedProblem, onClose }) {
 
   // Initialize pipeline
   useEffect(() => {
+    const resetId = setTimeout(() => {
+      setPipelineInfo(null)
+      setIsHandlerReady(false)
+      setIsMultiConcept(false)
+    }, 0)
+
     const handler = new MultiConceptProblemHandler()
     handler.parseProblems(parsedProblem)
     handler.buildPipeline()
 
     handlerRef.current = handler
+    setPipelineInfo(handlerRef.current.getPipelineInfo())
+    setIsMultiConcept(handlerRef.current.isMultiConcept)
+    setIsHandlerReady(true)
 
     // Setup callbacks
     handler.pipeline.on('stageChange', (data) => {
@@ -45,6 +65,7 @@ export default function MultiConceptSimulation({ parsedProblem, onClose }) {
     })
 
     return () => {
+      clearTimeout(resetId)
       handler.pipeline.stop()
     }
   }, [parsedProblem])
@@ -93,7 +114,7 @@ export default function MultiConceptSimulation({ parsedProblem, onClose }) {
     }
   }, [])
 
-  if (!handlerRef.current) {
+  if (!isHandlerReady || !pipelineInfo) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="animate-spin rounded-full h-12 w-12 border-2 border-[#00f5ff] border-t-transparent" />
@@ -101,19 +122,19 @@ export default function MultiConceptSimulation({ parsedProblem, onClose }) {
     )
   }
 
-  const handler = handlerRef.current
-  const pipelineInfo = handler.getPipelineInfo()
+  const currentStageInfo = pipelineInfo.stages[currentStage]
+  const stageName = STAGE_DISPLAY_NAMES[currentStageInfo?.type] || currentStageInfo?.type || 'Unknown Stage'
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="space-y-2 border-b border-white/10 pb-4">
         <h3 className="text-lg font-semibold text-white">
-          {handler.isMultiConcept ? 'Multi-Concept Simulation' : 'Single-Concept Simulation'}
+          {isMultiConcept ? 'Multi-Concept Simulation' : 'Single-Concept Simulation'}
         </h3>
         <p className="text-sm text-slate-400">
           {pipelineInfo.stageCount} stage{pipelineInfo.stageCount > 1 ? 's' : ''}
-          {handler.isMultiConcept && ` • ${pipelineInfo.transitions.length} transition${pipelineInfo.transitions.length > 1 ? 's' : ''}`}
+          {isMultiConcept && ` • ${pipelineInfo.transitions.length} transition${pipelineInfo.transitions.length > 1 ? 's' : ''}`}
         </p>
       </div>
 
@@ -127,7 +148,7 @@ export default function MultiConceptSimulation({ parsedProblem, onClose }) {
         </div>
 
         <div className="text-base font-semibold text-white">
-          {handler.getStageDisplayName(pipelineInfo.stages[currentStage].type)}
+          {stageName}
         </div>
 
         <div className="flex gap-2 flex-wrap">
@@ -153,7 +174,7 @@ export default function MultiConceptSimulation({ parsedProblem, onClose }) {
       <div className="bg-[#0a1421]/50 rounded-lg p-4">
         <h4 className="text-sm font-semibold text-slate-300 mb-2">Variables</h4>
         <div className="grid grid-cols-2 gap-2 text-xs">
-          {Object.entries(pipelineInfo.stages[currentStage].variables).map(([key, value]) => (
+          {Object.entries(currentStageInfo?.variables || {}).map(([key, value]) => (
             <div key={key} className="flex justify-between">
               <span className="text-slate-400">{key}:</span>
               <span className="text-[#00f5ff] font-mono">
@@ -198,7 +219,7 @@ export default function MultiConceptSimulation({ parsedProblem, onClose }) {
       </div>
 
       {/* Transitions Info */}
-      {handler.isMultiConcept && pipelineInfo.transitions.length > 0 && (
+      {isMultiConcept && pipelineInfo.transitions.length > 0 && (
         <div className="bg-[#0a1421]/50 rounded-lg p-4 space-y-2">
           <h4 className="text-sm font-semibold text-slate-300">Transitions</h4>
           <div className="space-y-1 text-xs text-slate-400">

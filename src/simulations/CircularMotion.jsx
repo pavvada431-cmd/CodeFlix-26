@@ -145,17 +145,22 @@ function BallTrail({ trailPoints }) {
 
 function Particles({ count = 50, color }) {
   const mesh = useRef()
-  const particlesRef = useRef(
-    Array.from({ length: count }, () => ({
+  const seededRandom = (index, seed = 1) => {
+    const value = Math.sin(index * 12.9898 + seed * 78.233) * 43758.5453
+    return value - Math.floor(value)
+  }
+  const particlesRef = useRef(null)
+  if (particlesRef.current === null) {
+    particlesRef.current = Array.from({ length: count }, (_, i) => ({
       position: new THREE.Vector3(
-        (Math.random() - 0.5) * 8,
-        Math.random() * 4,
-        (Math.random() - 0.5) * 8
+        (seededRandom(i, 1) - 0.5) * 8,
+        seededRandom(i, 2) * 4,
+        (seededRandom(i, 3) - 0.5) * 8
       ),
-      speed: 0.002 + Math.random() * 0.003,
-      offset: Math.random() * Math.PI * 2,
+      speed: 0.002 + seededRandom(i, 4) * 0.003,
+      offset: seededRandom(i, 5) * Math.PI * 2,
     }))
-  )
+  }
 
   useFrame(({ clock }) => {
     if (!mesh.current) return
@@ -172,11 +177,11 @@ function Particles({ count = 50, color }) {
 
   const positions = useMemo(() => {
     const pos = new Float32Array(count * 3)
-    particlesRef.current.forEach((p, i) => {
-      pos[i * 3] = p.position.x
-      pos[i * 3 + 1] = p.position.y
-      pos[i * 3 + 2] = p.position.z
-    })
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (seededRandom(i, 1) - 0.5) * 8
+      pos[i * 3 + 1] = seededRandom(i, 2) * 4
+      pos[i * 3 + 2] = (seededRandom(i, 3) - 0.5) * 8
+    }
     return pos
   }, [count])
 
@@ -330,10 +335,9 @@ function GraphPanel({ mode, mass, angularVelocity, radius, dataHistory }) {
 
     draw()
 
+    const id = animationRef.current
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-      }
+      if (id) cancelAnimationFrame(id)
     }
   }, [mode, mass, angularVelocity, radius, dataHistory])
 
@@ -418,7 +422,8 @@ function SimulationScene({
   useEffect(() => {
     if (!isPlayingRef.current) {
       if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
+        const id = animationRef.current
+        cancelAnimationFrame(id)
         animationRef.current = null
       }
       return
@@ -505,9 +510,8 @@ function SimulationScene({
 
     animationRef.current = requestAnimationFrame(update)
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-      }
+      const id = animationRef.current
+      if (id) cancelAnimationFrame(id)
     }
   }, [safeRadius, safeOmega, safeMass, onDataPoint, period, safeFrictionCoefficient, maxStaticFriction, frictionRequired, frictionIsSufficient])
 
@@ -737,9 +741,8 @@ function MiniMap({ radius, ballPosition, isPlaying, angularVelocity, stringCut }
 
     draw()
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-      }
+      const id = animationRef.current
+      if (id) cancelAnimationFrame(id)
     }
   }, [radius, ballPosition, isPlaying, angularVelocity, stringCut])
 

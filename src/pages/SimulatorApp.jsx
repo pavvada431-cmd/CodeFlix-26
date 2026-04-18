@@ -78,8 +78,11 @@ export default function SimulatorApp() {
   useEffect(() => {
     const hasSeenOnboarding = window.localStorage.getItem(ONBOARDING_KEY)
     if (!hasSeenOnboarding) {
-      setShowOnboarding(true)
+      const timeoutId = setTimeout(() => {
+        setShowOnboarding(true)
+      }, 0)
       window.localStorage.setItem(ONBOARDING_KEY, 'true')
+      return () => clearTimeout(timeoutId)
     }
   }, [])
 

@@ -39,7 +39,7 @@ function FrostedLabel({ children, position, color = '#00f5ff' }) {
   );
 }
 
-function GlowTrail({ points, color = '#00ffff', opacity = 0.8 }) {
+function GlowTrail({ points, opacity = 0.8 }) {
   const lineRef = useRef();
 
   useEffect(() => {
@@ -204,14 +204,17 @@ function SimulationScene({
 
     const newPos = { x: safeDistance, y: 0, z: 0 };
     const newVel = { x: vx, y: 0, z: vz };
-    setPosition(newPos);
-    setVelocity(newVel);
+    const timeoutId = setTimeout(() => {
+      setPosition(newPos);
+      setVelocity(newVel);
+      setTrail([]);
+    }, 0);
     posRef.current = newPos;
     velRef.current = newVel;
     trailRef.current = [];
-    setTrail([]);
     startTimeRef.current = 0;
     elapsedRef.current = 0;
+    return () => clearTimeout(timeoutId);
   }, [centralMass, initialDistance, initialVelocity, orbitType, enableMultiBody]);
 
   useEffect(() => {
@@ -429,23 +432,19 @@ export default function GravitationalOrbits({
 }) {
   const [orbitType, setOrbitType] = useState('circular');
   const [enableMultiBody, setEnableMultiBody] = useState(false);
-  const [dataHistory, setDataHistory] = useState([]);
   const [currentData, setCurrentData] = useState(null);
 
   const handleDataUpdate = useCallback((data) => {
     setCurrentData(data);
-    setDataHistory(prev => {
-      const newHistory = [...prev, data];
-      if (newHistory.length > 500) return newHistory.slice(-500);
-      return newHistory;
-    });
     onDataPoint?.(data);
   }, [onDataPoint]);
 
   useEffect(() => {
     if (!isPlaying) {
-      setDataHistory([]);
-      setCurrentData(null);
+      const timeoutId = setTimeout(() => {
+        setCurrentData(null);
+      }, 0);
+      return () => clearTimeout(timeoutId);
     }
   }, [isPlaying, orbitType, enableMultiBody]);
 

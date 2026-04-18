@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useMediaQuery } from 'react-responsive'
 import Navbar from './components/Navbar'
 import MobileLayout from './components/MobileLayout'
@@ -10,8 +10,7 @@ import SessionSummary from './components/SessionSummary'
 import Onboarding, { ONBOARDING_STORAGE_KEY } from './components/Onboarding'
 import GuidedTour from './components/GuidedTour'
 import useSession from './hooks/useSession'
-import { useTheme } from './contexts/ThemeContext'
-import { getPhysicsDemos, getChemistryDemos } from './data/demos'
+import { useTheme } from './contexts/useTheme'
 
 function DesktopLayout({
   currentPage,

@@ -13,10 +13,6 @@ const DRAG_COEFFICIENT_SPHERE = 0.47;
 const AIR_DENSITY_KG_M3 = 1.225;
 const PROJECTILE_AREA_M2 = 0.01;
 
-function easeOutQuart(t) {
-  return 1 - Math.pow(1 - t, 4);
-}
-
 function solveProjectileKinematics(initialVelocity, launchAngle, initialHeight) {
   const safeSpeed = Math.max(0, Number(initialVelocity) || 0);
   const safeHeight = Math.max(0, Number(initialHeight) || 0);
@@ -70,21 +66,22 @@ function buildProjectileGraphData(initialVelocity, launchAngle, initialHeight, s
 }
 
 function SparkParticles({ position, active, color = '#ffaa00' }) {
-  const particlesRef = useRef();
   const [particles, setParticles] = useState([]);
   const [opacity, setOpacity] = useState(0);
   const initializedRef = useRef(false);
   const velocitiesRef = useRef([]);
 
   useEffect(() => {
+    let timeoutId;
+    let resetId;
     if (active && !initializedRef.current) {
       const newParticles = [];
       const newVelocities = [];
-      for (let i = 0; i < 30; i++) {
+      for (let _i = 0; _i < 30; _i++) {
         const angle = Math.random() * Math.PI * 2;
         const speed = 0.3 + Math.random() * 1.2;
         newParticles.push({
-          id: i,
+          id: _i,
           position: [0, 0, 0],
         });
         newVelocities.push({
@@ -93,16 +90,24 @@ function SparkParticles({ position, active, color = '#ffaa00' }) {
           z: Math.sin(angle) * speed * SCALE,
         });
       }
-      setParticles(newParticles);
+      timeoutId = setTimeout(() => {
+        setParticles(newParticles);
+        setOpacity(1);
+      }, 0);
       velocitiesRef.current = newVelocities;
-      setOpacity(1);
       initializedRef.current = true;
     }
     if (!active) {
       initializedRef.current = false;
-      setParticles([]);
-      setOpacity(0);
+      resetId = setTimeout(() => {
+        setParticles([]);
+        setOpacity(0);
+      }, 0);
     }
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (resetId) clearTimeout(resetId);
+    };
   }, [active]);
 
   useFrame((state, delta) => {
@@ -115,7 +120,7 @@ function SparkParticles({ position, active, color = '#ffaa00' }) {
 
   return (
     <group position={[position.x, position.y, position.z]}>
-      {particles.map((p, i) => (
+      {particles.map((p) => (
         <mesh key={p.id} position={[0, 0, 0]}>
           <sphereGeometry args={[0.04 * opacity, 8, 8]} />
           <meshBasicMaterial

@@ -56,10 +56,6 @@ function getInertiaLabel(objectType) {
   }
 }
 
-function getInertiaValue(objectType, mass, radius) {
-  return calculateMomentOfInertia(objectType, mass, radius).toFixed(3)
-}
-
 function createCurvedArrowGeometry(radius, arcAngle) {
   const points = []
   const segments = 32
@@ -147,7 +143,6 @@ function AngularMomentumArrow({ magnitude, color }) {
 }
 
 function AngularVelocityDial({ omega, maxOmega }) {
-  const dialRef = useRef()
   const canvasRef = useRef(null)
 
   useEffect(() => {
@@ -218,7 +213,7 @@ function AngularVelocityDial({ omega, maxOmega }) {
   )
 }
 
-function RigidBody({ objectType, mass, radius, rotation, color }) {
+function RigidBody({ objectType, radius, rotation, color }) {
   const meshRef = useRef()
 
   useEffect(() => {
@@ -266,7 +261,7 @@ function RigidBody({ objectType, mass, radius, rotation, color }) {
   }
 }
 
-function ComparatorShape({ objectType, mass, radius, angularAccel, time, color }) {
+function ComparatorShape({ objectType, radius, angularAccel, time, color }) {
   const rotation = useRef(0)
 
   useEffect(() => {
@@ -330,8 +325,8 @@ function SimulationScene({
 }) {
   const [theta, setTheta] = useState(0)
   const [omega, setOmega] = useState(0)
-  const [alpha, setAlpha] = useState(0)
-  const [torque, setTorque] = useState(0)
+  const [, setAlpha] = useState(0)
+  const [, setTorque] = useState(0)
   const [angularMomentum, setAngularMomentum] = useState(0)
 
   const animationRef = useRef(null)
@@ -363,10 +358,13 @@ function SimulationScene({
 
   useEffect(() => {
     stateRef.current = { theta: 0, omega: 0, alpha: 0, torque: 0, t: 0 }
-    setTheta(0)
-    setOmega(0)
-    setAlpha(angularAccel)
-    setTorque(torqueCalc)
+    const timeoutId = setTimeout(() => {
+      setTheta(0)
+      setOmega(0)
+      setAlpha(angularAccel)
+      setTorque(torqueCalc)
+    }, 0)
+    return () => clearTimeout(timeoutId)
   }, [angularAccel, torqueCalc])
 
   useEffect(() => {
@@ -378,7 +376,6 @@ function SimulationScene({
       return
     }
 
-    const dt = 0.016
     let lastTime = performance.now()
 
     const animate = () => {
@@ -469,7 +466,6 @@ function SimulationScene({
 
       <RigidBody
         objectType={objectType}
-        mass={mass}
         radius={radius}
         rotation={theta}
         color={bodyColor}
@@ -510,7 +506,7 @@ function SimulationScene({
 }
 
 function ComparatorPanel({ mass, radius, appliedForce }) {
-  const [time, setTime] = useState(0)
+  const [_time, setTime] = useState(0)
   const animationRef = useRef(null)
 
   useEffect(() => {
@@ -525,9 +521,7 @@ function ComparatorPanel({ mass, radius, appliedForce }) {
     return () => cancelAnimationFrame(animationRef.current)
   }, [])
 
-  const shapes = ['disk', 'rod', 'ring', 'sphere']
-  const colors = ['#00f5ff', '#ff8800', '#ff4444', '#88ff88']
-  const positions = [[-4.5, 0], [-1.5, 0], [1.5, 0], [4.5, 0]]
+  const shapes = useMemo(() => ['disk', 'rod', 'ring', 'sphere'], [])
 
   const angularAccels = useMemo(() =>
     shapes.map(type => {
@@ -535,12 +529,12 @@ function ComparatorPanel({ mass, radius, appliedForce }) {
       const tau = radius * appliedForce
       return tau / I
     }),
-    [mass, radius, appliedForce]
+    [shapes, mass, radius, appliedForce]
   )
 
   const momentOfInertias = useMemo(() =>
     shapes.map(type => calculateMomentOfInertia(type, mass, radius)),
-    [mass, radius]
+    [shapes, mass, radius]
   )
 
   const sortedOrder = useMemo(() => {
@@ -714,7 +708,10 @@ export default function RotationalMechanics({
 
   useEffect(() => {
     if (!isPlaying) {
-      setDataStream([])
+      const timeoutId = setTimeout(() => {
+        setDataStream([])
+      }, 0)
+      return () => clearTimeout(timeoutId)
     }
   }, [isPlaying])
 

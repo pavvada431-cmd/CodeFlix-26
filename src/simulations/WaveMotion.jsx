@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
+import { useRef, useMemo, useEffect, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Environment, Grid, Html, Line, OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
@@ -77,15 +77,6 @@ function LongitudinalWave({ amplitude, frequency, wavelength, time }) {
       }
     })
   }, [time, amplitude, k, omega, baseSpacing])
-
-  const getXPosition = useCallback((idx) => {
-    let x = 0
-    for (let i = 0; i < idx; i++) {
-      const displacement = amplitude * Math.sin(k * i * baseSpacing - omega * time)
-      x += baseSpacing * (1 + displacement / amplitude * 0.3)
-    }
-    return (x / LONGITUDINAL_POINTS) * 8 - 4
-  }, [amplitude, k, omega, time, baseSpacing])
 
   return (
     <group>
@@ -226,7 +217,7 @@ function InterferenceWave({ amplitude, frequency, wavelength, time }) {
         ref.material.emissiveIntensity = Math.abs(normalizedDisplacement)
       }
     })
-  }, [time, amplitude, k, omega, positions])
+  }, [time, amplitude, k, omega, positions, source1X, source2X])
 
   return (
     <group>
@@ -549,9 +540,7 @@ function Wave3DTube({ amplitude, frequency, wavelength, time }) {
 function WaveRider({ amplitude, frequency, wavelength, time }) {
   const k = (2 * PI) / wavelength
   const omega = 2 * PI * frequency
-  const phaseVelocity = omega / k
   const x = (omega * time / k) % 8 - 4
-  const y = amplitude * Math.sin(0)
   
   return (
     <mesh position={[x, amplitude + 0.2, 0.3]}>
@@ -567,8 +556,7 @@ function WaveRider({ amplitude, frequency, wavelength, time }) {
   )
 }
 
-function StandingWaveNodes({ amplitude, frequency, wavelength, time }) {
-  const k = (2 * PI) / wavelength
+function StandingWaveNodes({ wavelength }) {
   const lambda = wavelength
   const nodes = []
   

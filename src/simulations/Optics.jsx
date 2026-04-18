@@ -1,5 +1,5 @@
-import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { useRef, useMemo, useEffect, useState } from 'react'
+import { Canvas } from '@react-three/fiber'
 import { Environment, Grid, Html, OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
@@ -141,7 +141,7 @@ function FocalPoints({ focalLength }) {
   )
 }
 
-function Lens({ type, focalLength }) {
+function Lens({ type }) {
   const height = 4
   const width = 0.15
 
@@ -180,15 +180,7 @@ function Mirror({ type }) {
   )
 }
 
-function Arrow({ from, to, color, dashed = false, dashSize = 0.1 }) {
-  const points = useMemo(() => {
-    return [new THREE.Vector3(...from), new THREE.Vector3(...to)]
-  }, [from, to])
-
-  const direction = useMemo(() => {
-    return new THREE.Vector3(to[0] - from[0], to[1] - from[1], to[2] - from[2]).normalize()
-  }, [from, to])
-
+function Arrow({ from, to, color }) {
   const length = useMemo(() => {
     return Math.sqrt(
       (to[0] - from[0]) ** 2 + (to[1] - from[1]) ** 2 + (to[2] - from[2]) ** 2
@@ -237,7 +229,6 @@ function PrincipalRays({
   const imageReal = !isMirror && v > 0
 
   const objectTip = [objectPos.x, objectHeight / 2, 0]
-  const objectBase = [objectPos.x, -objectHeight / 2, 0]
 
   const rays = []
   const maxDrawLength = isPlaying ? animationProgress : 1
@@ -259,7 +250,6 @@ function PrincipalRays({
         color: '#00ff88',
       })
 
-      const ray3End = Math.min(maxDrawLength * 10, f)
       rays.push({
         from: objectTip,
         to: [f, objectHeight / 2 * maxDrawLength, 0],
@@ -274,7 +264,6 @@ function PrincipalRays({
       color: '#ff8800',
     })
 
-    const ray2End = Math.min(maxDrawLength * 10, f)
     rays.push({
       from: objectTip,
       to: [f, objectHeight / 2 * maxDrawLength, 0],
@@ -374,9 +363,6 @@ function DispersionRays({ objectPos, objectHeight, focalLength, animationProgres
 }
 
 function TotalInternalReflection() {
-  const [angle, setAngle] = useState(45)
-  const criticalAngle = Math.asin(1 / 1.5) * (180 / Math.PI)
-
   return (
     <group>
       <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
@@ -531,8 +517,10 @@ export default function Optics({
 
   useEffect(() => {
     if (!isPlaying) {
-      setAnimationProgress(0)
-      return
+      const timeoutId = setTimeout(() => {
+        setAnimationProgress(0)
+      }, 0)
+      return () => clearTimeout(timeoutId)
     }
 
     const startTime = performance.now()
@@ -627,7 +615,7 @@ export default function Optics({
 
         <OpticalAxis width={15} />
 
-        {mode === 'lens' && <Lens type={lensType} focalLength={focalLength} />}
+        {mode === 'lens' && <Lens type={lensType} />}
         {mode === 'mirror' && <Mirror type="parabolic" />}
 
         <FocalPoints focalLength={focalLength} />

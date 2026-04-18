@@ -148,6 +148,7 @@ app.use((err, req, res, next) => {
     message: NODE_ENV === 'development' ? err?.message : 'An error occurred',
     timestamp: new Date().toISOString(),
   })
+  void next
 })
 
 // Start server with proper shutdown handling

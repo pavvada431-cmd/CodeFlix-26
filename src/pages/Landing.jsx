@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion as Motion } from 'framer-motion'
 import {
@@ -93,15 +92,6 @@ function FadeUp({ children, delay = 0, className = '' }) {
 
 export default function Landing() {
   const navigate = useNavigate()
-  const stats = useMemo(
-    () => [
-      { label: 'Simulation Types', value: '20+' },
-      { label: 'AI Providers', value: '5' },
-      { label: 'Problem Flow', value: 'Parse → Simulate → Explain' },
-      { label: 'Focus', value: 'Deep Concept Clarity' },
-    ],
-    []
-  )
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">

@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Environment, Grid, Html, OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
@@ -151,7 +151,6 @@ function marchingSquares(charges, gridSize, bounds) {
 function Charge({ position, q, onDrag }) {
   const meshRef = useRef()
   const [isDragging, setIsDragging] = useState(false)
-  const { camera, gl } = useThree()
 
   const size = Math.abs(q) * 0.5 + 0.2
   const color = q > 0 ? '#ff4444' : '#4488ff'
@@ -164,6 +163,13 @@ function Charge({ position, q, onDrag }) {
     }
   })
 
+  useEffect(() => {
+    document.body.style.cursor = isDragging ? 'grabbing' : 'crosshair'
+    return () => {
+      document.body.style.cursor = ''
+    }
+  }, [isDragging])
+
   return (
     <mesh
       ref={meshRef}
@@ -171,11 +177,9 @@ function Charge({ position, q, onDrag }) {
       onPointerDown={(e) => {
         e.stopPropagation()
         setIsDragging(true)
-        gl.domElement.style.cursor = 'grabbing'
       }}
       onPointerUp={() => {
         setIsDragging(false)
-        gl.domElement.style.cursor = 'crosshair'
       }}
       onPointerMove={(e) => {
         if (isDragging) {
@@ -330,7 +334,7 @@ function TestCharge({ charges, isActive, onPositionUpdate }) {
     }
   }, [isActive])
 
-  useFrame((state, delta) => {
+  useFrame(() => {
     if (!isActive || !meshRef.current) return
 
     const dt = 0.016
@@ -486,8 +490,6 @@ export default function ElectricFields({
   const [testChargeActive, setTestChargeActive] = useState(false)
   const [testChargePosition, setTestChargePosition] = useState({ x: 0, y: 0 })
   const [graphMode, setGraphMode] = useState('potential')
-  const [selectedCharge, setSelectedCharge] = useState(0)
-  const { camera, gl, raycaster, pointer } = useThree()
 
   const potentialEnergy = useMemo(() => {
     let U = 0
@@ -505,27 +507,17 @@ export default function ElectricFields({
 
   const handleCanvasClick = useCallback((event) => {
     if (charges.length >= 6) return
+    const pointX = event?.point?.x ?? 0
+    const pointY = event?.point?.z ?? 0
+    const worldX = (pointX / 5) * 2
+    const worldY = (pointY / 5) * 2
 
-    const rect = gl.domElement.getBoundingClientRect()
-    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-
-    raycaster.setFromCamera({ x, y }, camera)
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
-    const intersection = new THREE.Vector3()
-    raycaster.ray.intersectPlane(plane, intersection)
-
-    if (intersection) {
-      const worldX = (intersection.x / 5) * 2
-      const worldY = (intersection.z / 5) * 2
-
-      if (event.button === 2) {
-        setCharges(prev => [...prev, { x: worldX, y: worldY, q: -1e-6 }])
-      } else {
-        setCharges(prev => [...prev, { x: worldX, y: worldY, q: 1e-6 }])
-      }
+    if (event.button === 2) {
+      setCharges(prev => [...prev, { x: worldX, y: worldY, q: -1e-6 }])
+    } else {
+      setCharges(prev => [...prev, { x: worldX, y: worldY, q: 1e-6 }])
     }
-  }, [charges, camera, gl, raycaster])
+  }, [charges])
 
   const handleChargeDrag = useCallback((index, newPos) => {
     setCharges(prev => {
@@ -661,9 +653,8 @@ export default function ElectricFields({
         {charges.map((charge, idx) => (
           <div key={idx} className="mb-1 flex items-center gap-2 font-mono-display text-[10px]">
             <div
-              className="h-3 w-3 cursor-pointer rounded-full"
+              className="h-3 w-3 rounded-full"
               style={{ backgroundColor: charge.q > 0 ? '#ff4444' : '#4488ff' }}
-              onClick={() => setSelectedCharge(idx)}
             />
             <span className="text-white">
               q{idx + 1} = {(charge.q * 1e6).toFixed(1)} μC

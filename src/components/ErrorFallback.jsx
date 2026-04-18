@@ -45,7 +45,7 @@ export default function ErrorFallback({ error, resetError, isDark = true }) {
       </div>
 
       {/* Technical Details (if in development) */}
-      {process.env.NODE_ENV === 'development' && (
+      {import.meta.env.DEV && (
         <details className={`w-full max-w-md rounded-lg border ${borderClass} ${bgClass} p-4`}>
           <summary className={`cursor-pointer font-semibold ${textClass}`}>
             Technical Details

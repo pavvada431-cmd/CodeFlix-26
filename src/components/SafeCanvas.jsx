@@ -51,7 +51,7 @@ export function SafeCanvas({
       {...props}
       onCreated={handleCreated}
     >
-      <Suspense fallback={null}>
+      <Suspense fallback={fallback}>
         {children}
       </Suspense>
     </Canvas>

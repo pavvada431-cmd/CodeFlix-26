@@ -56,8 +56,6 @@ function GlassTank() {
 }
 
 function WaterVolume() {
-  const waterRef = useRef()
-
   return (
     <mesh position={[0, WATER_LEVEL / 2, 0]}>
       <boxGeometry args={[TANK_WIDTH - 0.1, WATER_LEVEL, TANK_DEPTH - 0.1]} />
@@ -79,7 +77,6 @@ function PressureBands() {
     <group>
       {Array.from({ length: bandCount }, (_, i) => {
         const depth = (i + 0.5) * bandHeight
-        const pressure = 1000 * G * depth
         const intensity = (i + 1) / bandCount
         const opacity = 0.05 + intensity * 0.15
 
@@ -132,7 +129,7 @@ function ForceArrow({ position, direction, length, color, label }) {
   )
 }
 
-function Waterline({ objectPosition, objectRadius, objectShape }) {
+function Waterline({ objectPosition, objectRadius }) {
   const waterY = WATER_LEVEL
   const objectTop = objectPosition.y + objectRadius
   const objectBottom = objectPosition.y - objectRadius
@@ -165,14 +162,6 @@ function FloatingObject({
   const mass = objectDensity * objectVolume
   const weight = mass * G
   const maxBuoyancy = fluidDensity * objectVolume * G
-  const submergedAtFull = fluidDensity * objectVolume * G
-
-  const equilibriumDepth = useMemo(() => {
-    if (objectDensity >= fluidDensity) return -1
-    const frac = objectDensity / fluidDensity
-    const objectHeight = objectVolume ** (1/3) * 2
-    return WATER_LEVEL - objectHeight * (1 - frac) - TANK_HEIGHT * 0.4
-  }, [objectDensity, fluidDensity, objectVolume])
 
   useEffect(() => {
     if (!isPlaying) {
@@ -245,7 +234,7 @@ function FloatingObject({
 
     animationId = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(animationId)
-  }, [isPlaying, objectDensity, fluidDensity, mass, maxBuoyancy, objectVolume, onPositionUpdate])
+  }, [isPlaying, objectDensity, fluidDensity, mass, maxBuoyancy, objectVolume, onPositionUpdate, weight])
 
   const getGeometry = () => {
     const size = objectVolume ** (1/3) * 2
@@ -288,25 +277,30 @@ function FloatingObject({
 function FluidParticles() {
   const particlesRef = useRef()
   const particleCount = 100
-  const positions = useMemo(() => {
+  const seededRandom = (index, seed = 1) => {
+    const value = Math.sin(index * 12.9898 + seed * 78.233) * 43758.5453
+    return value - Math.floor(value)
+  }
+  const particlePositions = useMemo(() => {
     const pos = new Float32Array(particleCount * 3)
     for (let i = 0; i < particleCount; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * TANK_WIDTH * 0.8
-      pos[i * 3 + 1] = Math.random() * WATER_LEVEL
-      pos[i * 3 + 2] = (Math.random() - 0.5) * TANK_DEPTH * 0.8
+      pos[i * 3] = (seededRandom(i, 1) - 0.5) * TANK_WIDTH * 0.8
+      pos[i * 3 + 1] = seededRandom(i, 2) * WATER_LEVEL
+      pos[i * 3 + 2] = (seededRandom(i, 3) - 0.5) * TANK_DEPTH * 0.8
     }
     return pos
-  }, [])
+  }, [particleCount])
 
-  const velocities = useRef(
-    Array.from({ length: particleCount }, () => ({
-      vx: (Math.random() - 0.5) * 0.02,
-      vy: -Math.random() * 0.05 - 0.02,
-      vz: (Math.random() - 0.5) * 0.02,
+  const velocities = useRef(null)
+  if (velocities.current === null) {
+    velocities.current = Array.from({ length: particleCount }, (_, i) => ({
+      vx: (seededRandom(i, 4) - 0.5) * 0.02,
+      vy: -seededRandom(i, 5) * 0.05 - 0.02,
+      vz: (seededRandom(i, 6) - 0.5) * 0.02,
     }))
-  )
+  }
 
-  useFrame((state, delta) => {
+  useFrame(() => {
     if (!particlesRef.current?.geometry?.attributes?.position?.array) return
 
     const posArray = particlesRef.current?.geometry?.attributes?.position?.array
@@ -337,7 +331,7 @@ function FluidParticles() {
         <bufferAttribute
           attach="attributes-position"
           count={particleCount}
-          array={positions}
+          array={particlePositions}
           itemSize={3}
         />
       </bufferGeometry>
@@ -349,6 +343,10 @@ function FluidParticles() {
 function BernoulliPipe() {
   const particlesRef = useRef()
   const particleCount = 80
+  const seededRandom = (index, seed = 1) => {
+    const value = Math.sin(index * 12.9898 + seed * 78.233) * 43758.5453
+    return value - Math.floor(value)
+  }
 
   const pipePositions = useMemo(() => {
     const positions = []
@@ -356,19 +354,20 @@ function BernoulliPipe() {
       const t = i / particleCount
       const x = (t - 0.5) * 12
       const narrowFactor = 1 - 0.6 * Math.exp(-(((t - 0.5) * 12) ** 2) / 2)
-      const y = (Math.random() - 0.5) * narrowFactor * 1.5
-      const z = (Math.random() - 0.5) * 0.5
+      const y = (seededRandom(i, 7) - 0.5) * narrowFactor * 1.5
+      const z = (seededRandom(i, 8) - 0.5) * 0.5
       positions.push({ x, y, z, baseX: x, narrowFactor })
     }
     return positions
-  }, [])
+  }, [particleCount])
 
-  const velocities = useRef(
-    pipePositions.map(p => {
+  const velocities = useRef(null)
+  if (velocities.current === null) {
+    velocities.current = pipePositions.map(p => {
       const speed = 2 / (p.narrowFactor ** 0.5 || 0.5)
       return { vx: speed, vy: 0, vz: 0, speed }
     })
-  )
+  }
 
   useFrame((state, delta) => {
     if (!particlesRef.current?.geometry?.attributes?.position?.array) return
@@ -587,23 +586,20 @@ export default function FluidMechanics({
 
   useEffect(() => {
     if (!isPlaying) {
-      setDataHistory([])
-      setCurrentData(null)
+      const timeoutId = setTimeout(() => {
+        setDataHistory([])
+        setCurrentData(null)
+      }, 0)
+      return () => clearTimeout(timeoutId)
     }
   }, [isPlaying])
 
   const mass = objectDensity * objectVolume
   const weight = mass * G
-  const maxBuoyancy = fluidDensity * objectVolume * G
   const willFloat = objectDensity <= fluidDensity
 
-  const submergedVol = currentData?.submergedFraction
-    ? currentData.submergedFraction * objectVolume
-    : 0
   const buoyancyForce = currentData?.buoyancyForce || 0
   const netForce = currentData?.netForce || 0
-  const acceleration = currentData?.acceleration || 0
-  const velocity = currentData?.velocity || 0
   const posY = currentData?.y || WATER_LEVEL + 1
 
   return (
@@ -657,7 +653,6 @@ export default function FluidMechanics({
             <Waterline
               objectPosition={{ x: 0, y: posY, z: 0 }}
               objectRadius={objectVolume ** (1/3)}
-              objectShape={objectShape}
             />
           </>
         )}

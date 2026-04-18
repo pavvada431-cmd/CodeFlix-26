@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import { useTheme } from '../contexts/ThemeContext'
+import { useTheme } from '../contexts/useTheme'
 
 export default function SettingsModal({ isOpen, onClose, onShowOnboarding }) {
   const { theme, toggleTheme, sidebarWidth, updateSidebarWidth, rightPanelWidth, updateRightPanelWidth } = useTheme()

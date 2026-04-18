@@ -81,7 +81,7 @@ function MagneticPole({ position, type }) {
   )
 }
 
-function ChargedParticle({ position, charge, velocity, color }) {
+function ChargedParticle({ position, charge, color }) {
   const emissiveIntensity = charge > 0 ? 0.5 : 0.2
   const actualColor = color || (charge > 0 ? '#00ffff' : '#ff4444')
   
@@ -153,11 +153,11 @@ function SimulationScene({
 }) {
   const [displayPosition, setDisplayPosition] = useState({ x: -3, y: 0, z: 0 })
   const [displayTrail, setDisplayTrail] = useState([])
-  const [displayTime, setDisplayTime] = useState(0)
-  const [dataHistory, setDataHistory] = useState([])
+  const [displayVelocity, setDisplayVelocity] = useState({ x: velocity, y: 0 })
 
   const posRef = useRef({ x: -3, y: 0, z: 0 })
   const velRef = useRef({ x: velocity, y: 0, z: velocityParallel })
+  const displayVelocityRef = useRef({ x: velocity, y: 0 })
   const startTimeRef = useRef(0)
   const animationRef = useRef(null)
   const isPlayingRef = useRef(isPlaying)
@@ -171,7 +171,6 @@ function SimulationScene({
   const period = (Math.abs(charge) > 1e-30 && Math.abs(magneticField) > 1e-30)
     ? (2 * Math.PI * particleMass) / (Math.abs(charge) * Math.abs(magneticField))
     : Infinity
-  const speed = Math.sqrt(velocity * velocity + velocityParallel * velocityParallel)
 
   const fieldLines = useMemo(() => {
     const lines = []
@@ -196,9 +195,15 @@ function SimulationScene({
   useEffect(() => {
     posRef.current = { x: -3, y: 0, z: 0 }
     velRef.current = { x: velocity, y: 0, z: velocityParallel }
+    const nextDisplayVelocity = { x: velocity, y: 0 }
+    displayVelocityRef.current = nextDisplayVelocity
+    const resetId = setTimeout(() => {
+      setDisplayVelocity(nextDisplayVelocity)
+    }, 0)
     trailRef.current = []
     startTimeRef.current = 0
-  }, [velocity, magneticField, charge])
+    return () => clearTimeout(resetId)
+  }, [velocity, velocityParallel, magneticField, charge])
 
   useEffect(() => {
     if (!isPlayingRef.current) {
@@ -219,12 +224,10 @@ function SimulationScene({
     const E = electricField || 0
     const m = Math.max(1e-35, Math.abs(particleMass))
     const callback = onDataPoint
-    const vSign = velocity >= 0 ? 1 : -1
 
     const update = () => {
       const currentTime = performance.now() / 1000
       const elapsed = startTimeRef.current > 0 ? currentTime - startTimeRef.current : 0
-      setDisplayTime(elapsed)
 
       // Lorentz force: F = q(E + v × B). Here B is along +z and E is along +y.
       const fx = q * velRef.current.y * B
@@ -243,6 +246,14 @@ function SimulationScene({
       trailRef.current = [...trailRef.current.slice(-199), newPos]
       setDisplayPosition(newPos)
       setDisplayTrail([...trailRef.current])
+      if (
+        Math.abs(velRef.current.x - displayVelocityRef.current.x) > 0.01 ||
+        Math.abs(velRef.current.y - displayVelocityRef.current.y) > 0.01
+      ) {
+        const nextDisplayVelocity = { x: velRef.current.x, y: velRef.current.y }
+        displayVelocityRef.current = nextDisplayVelocity
+        setDisplayVelocity(nextDisplayVelocity)
+      }
 
       const currentSpeed = Math.sqrt(velRef.current.x ** 2 + velRef.current.y ** 2 + velRef.current.z ** 2)
       const kineticEnergy = 0.5 * m * currentSpeed ** 2
@@ -267,7 +278,6 @@ function SimulationScene({
         lorentzForce: Math.abs(q) * Math.sqrt(velRef.current.x ** 2 + velRef.current.y ** 2) * Math.abs(B),
         radius,
       }
-      setDataHistory(prev => [...prev.slice(-199), dataPoint])
 
       if (elapsed > 0.05) {
         callback?.(dataPoint)
@@ -277,6 +287,9 @@ function SimulationScene({
           posRef.current.y > 5 || posRef.current.y < -5 || posRef.current.z > 5 || posRef.current.z < -5) {
         posRef.current = { x: -3, y: 0, z: 0 }
         velRef.current = { x: velocity, y: 0, z: velocityParallel }
+        const resetDisplayVelocity = { x: velocity, y: 0 }
+        displayVelocityRef.current = resetDisplayVelocity
+        setDisplayVelocity(resetDisplayVelocity)
         trailRef.current = []
       }
 
@@ -420,8 +433,8 @@ function SimulationScene({
       {velocity !== 0 && (
         <VelocityArrow
           position={[displayPosition.x, displayPosition.y, 0]}
-          direction={{ x: velRef.current.x, y: velRef.current.y }}
-          length={Math.min(Math.sqrt(velRef.current.x ** 2 + velRef.current.y ** 2) * 0.3, 0.8)}
+          direction={{ x: displayVelocity.x, y: displayVelocity.y }}
+          length={Math.min(Math.sqrt(displayVelocity.x ** 2 + displayVelocity.y ** 2) * 0.3, 0.8)}
           color="#00ffff"
         />
       )}

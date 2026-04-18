@@ -75,7 +75,7 @@ export function applyGravity(body, gravityVector = { x: 0, y: 9.81, z: 0 }) {
 /**
  * Friction force
  */
-export function applyFriction(body, contactNormal = { x: 0, y: 1, z: 0 }) {
+export function applyFriction(body) {
   if (body.isStatic || body.friction === 0) return
 
   const speed = Math.hypot(body.velocity.x, body.velocity.y, body.velocity.z)

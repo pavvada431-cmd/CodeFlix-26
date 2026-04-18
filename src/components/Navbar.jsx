@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Sun, Moon, Settings, Zap, FlaskConical, ArrowLeft, Check, CircleHelp, Wrench } from 'lucide-react'
-import { useTheme } from '../contexts/ThemeContext'
+import { useTheme } from '../contexts/useTheme'
 
 export default function Navbar({
   onOpenSettings,

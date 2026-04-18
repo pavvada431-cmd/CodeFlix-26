@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useMemo } from 'react'
+import { useRef, useState, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -8,7 +8,7 @@ const OXYGEN_COLOR = '#ff0000'
 const NITROGEN_COLOR = '#3b82f6'
 const BOND_COLOR = '#888888'
 
-function Atom({ position, element, label }) {
+function Atom({ position, element }) {
   const colors = {
     C: CARBON_COLOR,
     H: HYDROGEN_COLOR,
@@ -393,7 +393,6 @@ function ReactionInfo({ reactionType }) {
 export default function OrganicChemistry({
   compound = 'methane',
   reactionType = 'combustion',
-  isPlaying = true,
 }) {
   const [selectedMolecule, setSelectedMolecule] = useState(compound)
 

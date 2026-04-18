@@ -26,7 +26,7 @@ function MovingProjectile({ points }) {
           lowerPoint[2] + (upperPoint[2] - lowerPoint[2]) * blend,
         )
       }
-    } catch (error) {
+    } catch {
       // Silently handle initialization errors
     }
   })
