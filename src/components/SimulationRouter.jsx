@@ -167,65 +167,70 @@ function toTelemetry(state, totalTime, stageIndex) {
 function getSingleSimulationProps(simulationType, variables, isPlaying) {
   const resolvedVariables = variables || {}
   
+  const safeNum = (value, fallback) => {
+    const n = Number(value)
+    return Number.isFinite(n) ? n : fallback
+  }
+  
   const defaultProps = {
     isPlaying,
   }
 
   switch (simulationType) {
-    case 'inclined_plane':
-      return {
-        ...defaultProps,
-        mass: resolvedVariables.mass ?? 10,
-        angle: resolvedVariables.angle ?? 30,
-        friction: resolvedVariables.friction ?? 0,
-      }
-    case 'projectile':
-      return {
-        ...defaultProps,
-        initialVelocity: resolvedVariables.velocity ?? resolvedVariables.initialVelocity ?? 30,
-        launchAngle: resolvedVariables.angle ?? 45,
-        height: resolvedVariables.height ?? 2,
-      }
-    case 'pendulum':
-      return {
-        ...defaultProps,
-        length: resolvedVariables.length ?? 2,
-        mass: resolvedVariables.mass ?? 1,
-        initialAngle: resolvedVariables.angle ?? 30,
-        damping: resolvedVariables.damping ?? 0,
-      }
-    case 'spring_mass':
-      return {
-        ...defaultProps,
-        springConstant: resolvedVariables.springConstant ?? resolvedVariables.k ?? 50,
-        mass: resolvedVariables.mass ?? 2,
-        initialDisplacement: resolvedVariables.displacement ?? resolvedVariables.initialDisplacement ?? 0.5,
-        damping: resolvedVariables.damping ?? 0,
-      }
-    case 'circular_motion':
-      return {
-        ...defaultProps,
-        radius: resolvedVariables.radius ?? 2,
-        mass: resolvedVariables.mass ?? 1,
-        angularVelocity: resolvedVariables.angularVelocity ?? resolvedVariables.omega ?? 2,
-      }
-    case 'collisions':
-      return {
-        ...defaultProps,
-        mass1: resolvedVariables.mass1 ?? 1,
-        mass2: resolvedVariables.mass2 ?? 1,
-        velocity1: resolvedVariables.velocity1 ?? 5,
-        velocity2: resolvedVariables.velocity2 ?? -5,
-        collisionType: resolvedVariables.collisionType ?? 'elastic',
-      }
-    case 'wave_motion':
-      return {
-        ...defaultProps,
-        amplitude: resolvedVariables.amplitude ?? 0.5,
-        frequency: resolvedVariables.frequency ?? 1,
-        wavelength: resolvedVariables.wavelength ?? 2,
-        waveType: resolvedVariables.waveType ?? 'transverse',
-      }
+case 'inclined_plane':
+        return {
+          ...defaultProps,
+          mass: safeNum(resolvedVariables.mass, 10),
+          angle: safeNum(resolvedVariables.angle, 30),
+          friction: safeNum(resolvedVariables.friction, 0),
+        }
+case 'projectile':
+        return {
+          ...defaultProps,
+          initialVelocity: safeNum(resolvedVariables.velocity ?? resolvedVariables.initialVelocity, 30),
+          launchAngle: safeNum(resolvedVariables.angle, 45),
+          height: safeNum(resolvedVariables.height, 2),
+        }
+case 'pendulum':
+        return {
+          ...defaultProps,
+          length: safeNum(resolvedVariables.length, 2),
+          mass: safeNum(resolvedVariables.mass, 1),
+          initialAngle: safeNum(resolvedVariables.angle, 30),
+          damping: safeNum(resolvedVariables.damping, 0),
+        }
+case 'spring_mass':
+        return {
+          ...defaultProps,
+          springConstant: safeNum(resolvedVariables.springConstant ?? resolvedVariables.k, 50),
+          mass: safeNum(resolvedVariables.mass, 2),
+          initialDisplacement: safeNum(resolvedVariables.displacement ?? resolvedVariables.initialDisplacement, 0.5),
+          damping: safeNum(resolvedVariables.damping, 0),
+        }
+case 'circular_motion':
+        return {
+          ...defaultProps,
+          radius: safeNum(resolvedVariables.radius, 2),
+          mass: safeNum(resolvedVariables.mass, 1),
+          angularVelocity: safeNum(resolvedVariables.angularVelocity ?? resolvedVariables.omega, 2),
+        }
+case 'collisions':
+        return {
+          ...defaultProps,
+          mass1: safeNum(resolvedVariables.mass1, 1),
+          mass2: safeNum(resolvedVariables.mass2, 1),
+          velocity1: safeNum(resolvedVariables.velocity1, 5),
+          velocity2: safeNum(resolvedVariables.velocity2, -5),
+          collisionType: resolvedVariables.collisionType ?? 'elastic',
+        }
+case 'wave_motion':
+        return {
+          ...defaultProps,
+          amplitude: safeNum(resolvedVariables.amplitude, 0.5),
+          frequency: safeNum(resolvedVariables.frequency, 1),
+          wavelength: safeNum(resolvedVariables.wavelength, 2),
+          waveType: resolvedVariables.waveType ?? 'transverse',
+        }
     case 'rotational_mechanics':
       return {
         ...defaultProps,
@@ -235,72 +240,72 @@ function getSingleSimulationProps(simulationType, variables, isPlaying) {
         appliedForce: resolvedVariables.force ?? resolvedVariables.appliedForce ?? 10,
         forcePosition: resolvedVariables.forcePosition ?? 90,
       }
-    case 'orbital':
-      return {
-        ...defaultProps,
-        centralMass: resolvedVariables.centralMass ?? 100,
-        orbitingMass: resolvedVariables.orbitingMass ?? 1,
-        initialDistance: resolvedVariables.distance ?? resolvedVariables.initialDistance ?? 5,
-        initialVelocity: resolvedVariables.velocity ?? resolvedVariables.initialVelocity ?? 1,
+case 'orbital':
+        return {
+          ...defaultProps,
+          centralMass: safeNum(resolvedVariables.centralMass, 100),
+          orbitingMass: safeNum(resolvedVariables.orbitingMass, 1),
+          initialDistance: safeNum(resolvedVariables.distance ?? resolvedVariables.initialDistance, 5),
+          initialVelocity: safeNum(resolvedVariables.velocity ?? resolvedVariables.initialVelocity, 1),
+        }
+case 'buoyancy':
+        return {
+          ...defaultProps,
+          fluidDensity: safeNum(resolvedVariables.fluidDensity, 1000),
+          objectDensity: safeNum(resolvedVariables.objectDensity, 800),
+          objectVolume: safeNum(resolvedVariables.volume, 0.125),
+          objectShape: resolvedVariables.objectShape ?? 'sphere',
+        }
+case 'ideal_gas':
+        return {
+          ...defaultProps,
+          numParticles: safeNum(resolvedVariables.numParticles, 50),
+          temperature: safeNum(resolvedVariables.temperature, 300),
+          volume: safeNum(resolvedVariables.volume, 8),
+        }
+case 'electric_field': {
+        const charge1 = safeNum(resolvedVariables.charge1, 1e-6)
+        const charge2 = safeNum(resolvedVariables.charge2, -1e-6)
+        const distance = safeNum(resolvedVariables.distance, 2)
+        return {
+          ...defaultProps,
+          charges: [
+            { x: -(distance / 2), y: 0, q: charge1 },
+            { x: distance / 2, y: 0, q: charge2 }
+          ],
+        }
       }
-    case 'buoyancy':
-      return {
-        ...defaultProps,
-        fluidDensity: resolvedVariables.fluidDensity ?? 1000,
-        objectDensity: resolvedVariables.objectDensity ?? 800,
-        objectVolume: resolvedVariables.volume ?? 0.125,
-        objectShape: resolvedVariables.objectShape ?? 'sphere',
-      }
-    case 'ideal_gas':
-      return {
-        ...defaultProps,
-        numParticles: resolvedVariables.numParticles ?? 50,
-        temperature: resolvedVariables.temperature ?? 300,
-        volume: resolvedVariables.volume ?? 8,
-      }
-    case 'electric_field': {
-      const charge1 = resolvedVariables.charge1 ?? 1e-6
-      const charge2 = resolvedVariables.charge2 ?? -1e-6
-      const distance = resolvedVariables.distance ?? 2
-      return {
-        ...defaultProps,
-        charges: [
-          { x: -(distance / 2), y: 0, q: charge1 },
-          { x: distance / 2, y: 0, q: charge2 }
-        ],
-      }
-    }
-    case 'optics_lens':
-      return {
-        ...defaultProps,
-        lensType: resolvedVariables.lensType ?? 'convex',
-        focalLength: resolvedVariables.focalLength ?? 2,
-        objectDistance: resolvedVariables.objectDistance ?? 4,
-        objectHeight: resolvedVariables.objectHeight ?? 1,
-      }
-    case 'optics_mirror':
-      return {
-        ...defaultProps,
-        lensType: 'mirror',
-        focalLength: resolvedVariables.focalLength ?? 2,
-        objectDistance: resolvedVariables.objectDistance ?? 4,
-        objectHeight: resolvedVariables.objectHeight ?? 1,
-      }
-    case 'radioactive_decay':
-      return {
-        ...defaultProps,
-        initialAtoms: resolvedVariables.initialAtoms ?? 100,
-        halfLife: resolvedVariables.halfLife ?? 5,
-        decayType: resolvedVariables.decayType ?? 'alpha',
-      }
-    case 'electromagnetic':
-      return {
-        ...defaultProps,
-        charge: resolvedVariables.charge ?? 1.6e-19,
-        velocity: resolvedVariables.velocity ?? 1e6,
-        magneticField: resolvedVariables.magneticField ?? 0.5,
-        electricField: resolvedVariables.electricField ?? 0,
-      }
+case 'optics_lens':
+        return {
+          ...defaultProps,
+          lensType: resolvedVariables.lensType ?? 'convex',
+          focalLength: safeNum(resolvedVariables.focalLength, 2),
+          objectDistance: safeNum(resolvedVariables.objectDistance, 4),
+          objectHeight: safeNum(resolvedVariables.objectHeight, 1),
+        }
+case 'optics_mirror':
+        return {
+          ...defaultProps,
+          lensType: 'mirror',
+          focalLength: safeNum(resolvedVariables.focalLength, 2),
+          objectDistance: safeNum(resolvedVariables.objectDistance, 4),
+          objectHeight: safeNum(resolvedVariables.objectHeight, 1),
+        }
+case 'radioactive_decay':
+        return {
+          ...defaultProps,
+          initialAtoms: safeNum(resolvedVariables.initialAtoms, 100),
+          halfLife: safeNum(resolvedVariables.halfLife, 5),
+          decayType: resolvedVariables.decayType ?? 'alpha',
+        }
+case 'electromagnetic':
+        return {
+          ...defaultProps,
+          charge: safeNum(resolvedVariables.charge, 1.6e-19),
+          velocity: safeNum(resolvedVariables.velocity, 1e6),
+          magneticField: safeNum(resolvedVariables.magneticField, 0.5),
+          electricField: safeNum(resolvedVariables.electricField, 0),
+        }
     case 'organic_chemistry':
       return {
         ...defaultProps,
@@ -308,40 +313,40 @@ function getSingleSimulationProps(simulationType, variables, isPlaying) {
         reactionType: resolvedVariables.reactionType ?? 'combustion',
         variables: resolvedVariables,
       }
-    case 'stoichiometry':
-      return {
-        ...defaultProps,
-        reaction: resolvedVariables.reaction ?? 'water_formation',
-        reactantAmount: resolvedVariables.reactantAmount ?? 4,
-        secondaryAmount: resolvedVariables.secondaryAmount ?? 3,
-        variables: resolvedVariables,
-      }
-    case 'titration':
-      return {
-        ...defaultProps,
-        acidConcentration: resolvedVariables.acidConcentration ?? 0.1,
-        baseConcentration: resolvedVariables.baseConcentration ?? 0.1,
-        volume: resolvedVariables.volume ?? 25,
-        mode: resolvedVariables.mode ?? 'strong_acid_strong_base',
-        variables: resolvedVariables,
-      }
-    case 'atomic_structure':
-      return {
-        ...defaultProps,
-        atomicNumber: resolvedVariables.atomicNumber ?? resolvedVariables.protons ?? 8,
-        mode: resolvedVariables.mode ?? 'bohr',
-        variables: resolvedVariables,
-      }
-    case 'gas_laws':
-      return {
-        ...defaultProps,
-        pressure: resolvedVariables.pressure ?? 1,
-        volume: resolvedVariables.volume ?? 12,
-        temperature: resolvedVariables.temperature ?? 300,
-        moles: resolvedVariables.moles ?? resolvedVariables.n ?? 1,
-        mode: resolvedVariables.mode ?? 'boyle',
-        variables: resolvedVariables,
-      }
+case 'stoichiometry':
+        return {
+          ...defaultProps,
+          reaction: resolvedVariables.reaction ?? 'water_formation',
+          reactantAmount: safeNum(resolvedVariables.reactantAmount, 4),
+          secondaryAmount: safeNum(resolvedVariables.secondaryAmount, 3),
+          variables: resolvedVariables,
+        }
+case 'titration':
+        return {
+          ...defaultProps,
+          acidConcentration: safeNum(resolvedVariables.acidConcentration, 0.1),
+          baseConcentration: safeNum(resolvedVariables.baseConcentration, 0.1),
+          volume: safeNum(resolvedVariables.volume, 25),
+          mode: resolvedVariables.mode ?? 'strong_acid_strong_base',
+          variables: resolvedVariables,
+        }
+case 'atomic_structure':
+        return {
+          ...defaultProps,
+          atomicNumber: safeNum(resolvedVariables.atomicNumber ?? resolvedVariables.protons, 8),
+          mode: resolvedVariables.mode ?? 'bohr',
+          variables: resolvedVariables,
+        }
+case 'gas_laws':
+        return {
+          ...defaultProps,
+          pressure: safeNum(resolvedVariables.pressure, 1),
+          volume: safeNum(resolvedVariables.volume, 12),
+          temperature: safeNum(resolvedVariables.temperature, 300),
+          moles: safeNum(resolvedVariables.moles ?? resolvedVariables.n, 1),
+          mode: resolvedVariables.mode ?? 'boyle',
+          variables: resolvedVariables,
+        }
     case 'chemical_bonding':
       return {
         ...defaultProps,
@@ -428,52 +433,101 @@ function MultiConceptView({
   const [progress, setProgress] = useState(0)
   const [pipelineInfo, setPipelineInfo] = useState(null)
   const [currentStageState, setCurrentStageState] = useState(null)
+  const [pipelineError, setPipelineError] = useState(null)
 
   useEffect(() => {
-    const handler = new MultiConceptProblemHandler()
-    handler.parseProblems(parsedData)
-    const pipeline = handler.buildPipeline()
-    handlerRef.current = handler
-    const syncId = requestAnimationFrame(() => {
-      setPipelineInfo(handler.getPipelineInfo())
-    })
+    let isCancelled = false
+    let resetTimeoutId = 0
+    let pipelineErrorTimeoutId = 0
+    let syncId = 0
 
-    pipeline.on('stageChange', ({ currentIndex }) => {
-      setCurrentStageIndex(currentIndex)
-      setProgress(pipeline.getProgress())
-    })
+    const clearTimeouts = () => {
+      if (resetTimeoutId) clearTimeout(resetTimeoutId)
+      if (pipelineErrorTimeoutId) clearTimeout(pipelineErrorTimeoutId)
+      if (syncId) cancelAnimationFrame(syncId)
+    }
 
-    pipeline.on('update', ({ stageIndex, totalElapsed, currentStage }) => {
-      const state = currentStage?.getRenderState?.() || null
-      setCurrentStageIndex(stageIndex)
-      setProgress(pipeline.getProgress())
-      setCurrentStageState(state)
-      setPipelineInfo(handler.getPipelineInfo())
+    const runEffect = () => {
+      try {
+        const handler = new MultiConceptProblemHandler()
+        handler.parseProblems(parsedData)
+        const pipeline = handler.buildPipeline()
+        handlerRef.current = handler
+        
+        // Reset state with timeout to avoid synchronous setState in effect
+        resetTimeoutId = setTimeout(() => {
+          if (!isCancelled) {
+            setPipelineError(null)
+            setPipelineInfo(handler.getPipelineInfo())
+            setCurrentStageIndex(0)
+            setProgress(0)
+            setCurrentStageState(null)
+          }
+        }, 0)
+        
+        syncId = requestAnimationFrame(() => {
+          // Additional sync if needed
+        })
 
-      if (onDataPoint && totalElapsed - lastEmitRef.current >= 0.03) {
-        onDataPoint(toTelemetry(state, totalElapsed, stageIndex))
-        lastEmitRef.current = totalElapsed
+        pipeline.on('stageChange', ({ currentIndex }) => {
+          if (!isCancelled) {
+            setCurrentStageIndex(currentIndex)
+            setProgress(pipeline.getProgress())
+          }
+        })
+
+        pipeline.on('update', ({ stageIndex, totalElapsed, currentStage }) => {
+          const state = currentStage?.getRenderState?.() || null
+          if (!isCancelled) {
+            setCurrentStageIndex(stageIndex)
+            setProgress(pipeline.getProgress())
+            setCurrentStageState(state)
+            setPipelineInfo(handler.getPipelineInfo())
+          }
+
+          if (onDataPoint && totalElapsed - lastEmitRef.current >= 0.03) {
+            onDataPoint(toTelemetry(state, totalElapsed, stageIndex))
+            lastEmitRef.current = totalElapsed
+          }
+        })
+
+        pipeline.on('complete', () => {
+          if (!isCancelled) {
+            pipelineErrorTimeoutId = setTimeout(() => {
+              setProgress(1)
+              setPipelineInfo(handler.getPipelineInfo())
+            }, 0)
+          }
+        })
+
+        const executor = new MultiConceptExecutor(pipeline)
+        executorRef.current = executor
+
+        // Initialize stage 1 even when paused.
+        pipeline.start()
+        pipeline.pause()
+        requestAnimationFrame(() => {
+          if (!isCancelled) setCurrentStageState(pipeline.getCurrentState().stageState)
+        })
+
+        return () => {
+          clearTimeouts()
+          cancelAnimationFrame(syncId)
+          executor.stop()
+        }
+      } catch (err) {
+        console.error('Failed to build multi-concept pipeline:', err)
+        pipelineErrorTimeoutId = setTimeout(() => {
+          if (!isCancelled) setPipelineError(err.message || 'Unknown error')
+        }, 0)
       }
-    })
+    }
 
-    pipeline.on('complete', () => {
-      setProgress(1)
-      setPipelineInfo(handler.getPipelineInfo())
-    })
-
-    const executor = new MultiConceptExecutor(pipeline)
-    executorRef.current = executor
-
-    // Initialize stage 1 even when paused.
-    pipeline.start()
-    pipeline.pause()
-    requestAnimationFrame(() => {
-      setCurrentStageState(pipeline.getCurrentState().stageState)
-    })
+    runEffect()
 
     return () => {
-      cancelAnimationFrame(syncId)
-      executor.stop()
+      isCancelled = true
+      clearTimeouts()
     }
   }, [onDataPoint, parsedData, simulationKey])
 
@@ -492,6 +546,16 @@ function MultiConceptView({
       executor.pause()
     }
   }, [isPlaying])
+
+  if (pipelineError) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-red-400/20 bg-[#07111f]/80 p-8 text-center">
+        <h3 className="mb-2 font-heading text-xl font-semibold text-white">Pipeline Error</h3>
+        <p className="mb-4 max-w-md text-sm text-slate-400">{pipelineError}</p>
+        <p className="text-xs text-slate-500">Try a simpler single-concept problem, or refresh the page.</p>
+      </div>
+    )
+  }
 
   if (!pipelineInfo || !Array.isArray(parsedData?.stages) || !parsedData.stages.length) {
     return <LoadingSimulation />

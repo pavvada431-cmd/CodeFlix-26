@@ -518,6 +518,87 @@ export class SpringLaunchStage extends BaseSimulationStage {
   }
 }
 
+export class GenericStage extends BaseSimulationStage {
+  constructor(type, variables = {}) {
+    super(type, variables)
+  }
+
+  setupPhysics(inheritedOutput) {
+    // Set position from variables.position or inheritedOutput?.position or {x:0, y:0, z:0}
+    const inheritedPos = inheritedOutput?.position || {}
+    this.position = {
+      x: toNumber(this.variables.position?.x, toNumber(inheritedPos.x, 0)),
+      y: toNumber(this.variables.position?.y, toNumber(inheritedPos.y, 0)),
+      z: toNumber(this.variables.position?.z, toNumber(inheritedPos.z, 0))
+    }
+
+    // Set velocity from variables.velocity (if number, treat as x-component) or inheritedOutput?.velocity or {x:0, y:0, z:0}
+    const inheritedVel = inheritedOutput?.velocity || {}
+    const velInput = this.variables.velocity
+    let velocityX, velocityY, velocityZ
+    
+    if (typeof velInput === 'number' && Number.isFinite(velInput)) {
+      velocityX = velInput
+      velocityY = toNumber(inheritedVel.y, 0)
+      velocityZ = toNumber(inheritedVel.z, 0)
+    } else if (velInput && typeof velInput === 'object') {
+      velocityX = toNumber(velInput.x, toNumber(inheritedVel.x, 0))
+      velocityY = toNumber(velInput.y, toNumber(inheritedVel.y, 0))
+      velocityZ = toNumber(velInput.z, toNumber(inheritedVel.z, 0))
+    } else {
+      velocityX = toNumber(inheritedVel.x, 0)
+      velocityY = toNumber(inheritedVel.y, 0)
+      velocityZ = toNumber(inheritedVel.z, 0)
+    }
+    
+    this.velocity = { x: velocityX, y: velocityY, z: velocityZ }
+
+    // Set acceleration to {x:0, y:-9.81, z:0} as a default (gravity)
+    this.acceleration = { 
+      x: toNumber(this.variables.acceleration?.x, 0), 
+      y: toNumber(this.variables.acceleration?.y, -GRAVITY), 
+      z: toNumber(this.variables.acceleration?.z, 0) 
+    }
+
+    // Set a maxDuration from variables.duration ?? 5 (seconds)
+    this.maxDuration = toNumber(this.variables.duration, 5)
+    
+    // Set groundY
+    this.groundY = toNumber(this.variables.groundY, 0)
+
+    // Initialize state
+    this.state.position = { ...this.position }
+    this.state.velocity = { ...this.velocity }
+    this.state.acceleration = { ...this.acceleration }
+  }
+
+  updatePhysics(dt) {
+    // Apply velocity += acceleration * dt
+    this.state.velocity.x += this.state.acceleration.x * dt
+    this.state.velocity.y += this.state.acceleration.y * dt
+    this.state.velocity.z += this.state.acceleration.z * dt
+
+    // Apply position += velocity * dt
+    this.state.position.x += this.state.velocity.x * dt
+    this.state.position.y += this.state.velocity.y * dt
+    this.state.position.z += this.state.velocity.z * dt
+
+    // Clamp position.y to >= groundY
+    if (this.state.position.y < this.groundY) {
+      this.state.position.y = this.groundY
+      // Optionally stop vertical movement when hitting ground
+      this.state.velocity.y = Math.max(0, this.state.velocity.y)
+    }
+
+    // Mark this.isComplete = true when elapsedTime >= maxDuration OR position.y <= groundY && elapsedTime > 0.1
+    if (this.elapsedTime >= this.maxDuration) {
+      this.isComplete = true
+    } else if (this.state.position.y <= this.groundY && this.elapsedTime > 0.1) {
+      this.isComplete = true
+    }
+  }
+}
+
 export function createStage(type, variables = {}) {
   switch (type) {
     case 'inclined_plane':
@@ -532,7 +613,7 @@ export function createStage(type, variables = {}) {
     case 'spring_mass':
       return new SpringLaunchStage(variables)
     default:
-      throw new Error(`Unknown multi-concept stage type: ${type}`)
+      return new GenericStage(type, variables)
   }
 }
 

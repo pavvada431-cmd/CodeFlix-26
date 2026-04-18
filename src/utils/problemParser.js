@@ -158,6 +158,10 @@ const MULTI_CONCEPT_PROMPT = `IMPORTANT: If a problem involves multiple physics 
   ]
 }
 
+For multi-concept stage types, STRONGLY PREFER these natively-animated types:
+"inclined_plane", "projectile", "free_fall", "collisions", "spring_launch"
+Other types like "circular_motion", "pendulum", etc. are allowed in stages but will use a generic physics renderer.
+
 For multi-concept responses, also include:
 - "domain": "physics"
 - "formula": string
