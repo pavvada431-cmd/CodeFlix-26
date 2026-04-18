@@ -1,5 +1,6 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
+import useSanitizedProps from './shared/useSanitizedProps';
 import { Environment, Grid, Text, Html, Line, OrbitControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
@@ -428,14 +429,15 @@ function SimulationScene({
   );
 }
 
-export default function SpringMass({
-  springConstant = 50,
-  mass = 2,
-  initialDisplacement = 0.5,
-  damping = 0,
-  isPlaying = false,
-  onDataPoint,
-}) {
+export default function SpringMass(rawProps) {
+  const {
+    springConstant = 50,
+    mass = 2,
+    initialDisplacement = 0.5,
+    damping = 0,
+    isPlaying = false,
+    onDataPoint,
+  } = useSanitizedProps(rawProps);
   const [resonanceMode, setResonanceMode] = useState(false);
   const [showResonanceBtn, setShowResonanceBtn] = useState(true);
 

@@ -4,6 +4,7 @@ import { Environment, Grid, Text, Html, Line, OrbitControls } from '@react-three
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { FrostedLabel, GlowTrail, ForceArrow } from './shared/SimulationPrimitives';
+import useSanitizedProps from './shared/useSanitizedProps';
 
 const GRAVITY = 9.81;
 const SCALE = 0.1;
@@ -484,14 +485,15 @@ function dampingTexture(damping) {
   );
 }
 
-export default function Pendulum({
-  length = 2,
-  mass = 1,
-  initialAngle = 30,
-  damping = 0,
-  isPlaying = false,
-  onDataPoint,
-}) {
+export default function Pendulum(rawProps) {
+  const {
+    length = 2,
+    mass = 1,
+    initialAngle = 30,
+    damping = 0,
+    isPlaying = false,
+    onDataPoint,
+  } = useSanitizedProps(rawProps);
   const calculatedPeriod = useMemo(() => {
     return 2 * Math.PI * Math.sqrt(Math.abs(length) / Math.abs(GRAVITY));
   }, [length]);

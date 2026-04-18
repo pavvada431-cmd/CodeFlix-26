@@ -4,6 +4,7 @@ import { Html, Environment, Grid, Line } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
+import useSanitizedProps from './shared/useSanitizedProps'
 
 const G = 9.81
 const BALL_SIZE = 0.3
@@ -755,14 +756,15 @@ function MiniMap({ radius, ballPosition, isPlaying, angularVelocity, stringCut }
   )
 }
 
-export default function CircularMotion({
-  radius = 2,
-  mass = 1,
-  angularVelocity = 2,
-  frictionCoefficient = 0.6,
-  isPlaying = false,
-  onDataPoint,
-}) {
+export default function CircularMotion(rawProps) {
+  const {
+    radius = 2,
+    mass = 1,
+    angularVelocity = 2,
+    frictionCoefficient = 0.6,
+    isPlaying = false,
+    onDataPoint,
+  } = useSanitizedProps(rawProps)
   const [isConicalMode, setIsConicalMode] = useState(false)
   const [isBankedCurve, setIsBankedCurve] = useState(false)
   const [stringCut, setStringCut] = useState(false)

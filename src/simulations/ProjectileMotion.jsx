@@ -4,6 +4,7 @@ import { Environment, Stars, Grid, Text, Html, Line, OrbitControls } from '@reac
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { FrostedLabel, GlowTrail } from './shared/SimulationPrimitives';
+import useSanitizedProps from './shared/useSanitizedProps';
 
 const G_MAGNITUDE = 9.81;
 const GRAVITY = -G_MAGNITUDE;
@@ -504,13 +505,14 @@ function SimulationScene({ initialVelocity, launchAngle, initialHeight, isPlayin
   );
 }
 
-export default function ProjectileMotion({
-  initialVelocity = 30,
-  launchAngle = 45,
-  height = 2,
-  isPlaying = false,
-  onDataPoint,
-}) {
+export default function ProjectileMotion(rawProps) {
+  const {
+    initialVelocity = 30,
+    launchAngle = 45,
+    height = 2,
+    isPlaying = false,
+    onDataPoint,
+  } = useSanitizedProps(rawProps);
   return (
     <Canvas
       camera={{ position: [5, 4, 12], fov: 50 }}
