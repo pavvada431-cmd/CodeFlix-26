@@ -92,7 +92,10 @@ function InclinedScene({ mass, angle, friction, isPlaying, onComplete, onDataPoi
         angle: blockStateRaw.angle,
         velocity,
       })
-      setTrail((prev) => [...prev.slice(-119), [blockStateRaw.x * SCENE_SCALE, -blockStateRaw.y * SCENE_SCALE + 0.2, 0.15]])
+      setTrail(prev => {
+        const newPoint = [blockStateRaw.x * SCENE_SCALE, -blockStateRaw.y * SCENE_SCALE + 0.2, 0.15]
+        return [...prev.slice(-119), newPoint]
+      })
 
       if (!completedRef.current && blockStateRaw.x >= completionThresholdX) {
         completedRef.current = true
