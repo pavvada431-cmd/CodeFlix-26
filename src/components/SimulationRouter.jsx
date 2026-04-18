@@ -217,9 +217,15 @@ function getSingleSimulationProps(simulationType, variables, isPlaying) {
         volume: resolvedVariables.volume ?? 8,
       }
     case 'electric_field':
+      const charge1 = resolvedVariables.charge1 ?? 1e-6
+      const charge2 = resolvedVariables.charge2 ?? -1e-6
+      const distance = resolvedVariables.distance ?? 2
       return {
         ...defaultProps,
-        charges: resolvedVariables.charges ?? [{ x: -1, y: 0, q: 1e-6 }, { x: 1, y: 0, q: -1e-6 }],
+        charges: [
+          { x: -(distance / 2), y: 0, q: charge1 },
+          { x: distance / 2, y: 0, q: charge2 }
+        ],
       }
     case 'optics_lens':
       return {

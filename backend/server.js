@@ -135,7 +135,7 @@ app.use((req, res) => {
 })
 
 // Global error handler
-app.use((err, req, res) => {
+app.use((err, req, res, next) => {
   logger.error('Unhandled error', {
     message: err?.message,
     stack: NODE_ENV === 'development' ? err?.stack : undefined,

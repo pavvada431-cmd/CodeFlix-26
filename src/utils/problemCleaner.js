@@ -166,6 +166,11 @@ export function extractVariables(text) {
   const variables = {}
   
   for (const [varName, patterns] of Object.entries(VALUE_EXTRACTORS)) {
+    // Skip generic 'mass' if mass1 or mass2 are already extracted
+    if (varName === 'mass' && (variables.mass1 !== undefined || variables.mass2 !== undefined)) {
+      continue
+    }
+    
     for (const pattern of patterns) {
       const match = text.match(pattern)
       if (match && match[1]) {

@@ -79,6 +79,7 @@ select {
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -104,21 +105,21 @@ textarea {
 
 /* Professional scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--color-surface);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-accent-dim);
-  border-radius: 4px;
+  background: var(--color-accent);
+  border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-accent);
+  background: var(--color-accent-hover);
 }
 
 /* Focus styles */
@@ -143,12 +144,56 @@ textarea {
   50% { opacity: 0.5; }
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(34, 211, 238, 0.4), 0 0 12px rgba(34, 211, 238, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(34, 211, 238, 0.6), 0 0 20px rgba(34, 211, 238, 0.3);
+  }
+}
+
+@keyframes slideHorizontal {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
 }
 
 .animate-slide-in {
   animation: slideIn 0.3s ease-out;
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    #1a1a2e 0%,
+    #2a2a4e 25%,
+    #1a1a2e 50%,
+    #2a2a4e 75%,
+    #1a1a2e 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.glow-button {
+  animation: glow 2s ease-in-out infinite;
 }
 
 /* Accessibility improvements */

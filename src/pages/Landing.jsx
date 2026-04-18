@@ -108,24 +108,39 @@ export default function Landing() {
       <Navbar onOpenSettings={() => {}} apiConnected currentPage="physics" />
 
       <main className="pt-16">
+        {/* Enhanced Hero Section */}
         <section className="relative overflow-hidden border-b border-[var(--color-border)]">
+          {/* Animated Grid Background */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `
+                linear-gradient(rgba(34, 211, 238, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(34, 211, 238, 0.05) 1px, transparent 1px)
+              `,
+              backgroundSize: '40px 40px',
+              backgroundPosition: '0 0, 0 0',
+            }}
+          />
+          
           <div className="absolute inset-0 opacity-30">
             <div className="absolute -left-20 top-0 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl" />
             <div className="absolute -right-20 bottom-0 h-72 w-72 rounded-full bg-violet-500/20 blur-3xl" />
           </div>
 
-          <div className="relative mx-auto grid max-w-7xl gap-10 px-6 py-16 md:grid-cols-[1.1fr_0.9fr] md:py-24">
-            <FadeUp className="space-y-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">
+          <div className="relative mx-auto grid max-w-7xl gap-10 px-6 py-16 md:grid-cols-2 md:py-24">
+            {/* LEFT: Headline + CTA */}
+            <FadeUp className="flex flex-col justify-center space-y-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300 w-fit">
                 <Sparkles size={14} />
                 AI-powered interactive science learning
               </div>
 
-              <h1 className="text-4xl font-bold leading-tight md:text-6xl">
-                Where science stops being abstract and starts being explorable.
+              <h1 className="text-5xl font-bold leading-tight md:text-7xl text-white">
+                See Physics Come Alive
               </h1>
 
-              <p className="max-w-2xl text-base text-[var(--color-text-muted)] md:text-lg">
+              <p className="max-w-xl text-base text-[var(--color-text-muted)] md:text-lg">
                 SeeTheScience turns plain-English physics and chemistry problems into live, visual, interactive simulations with guided steps and real-time graphs.
               </p>
 
@@ -133,32 +148,50 @@ export default function Landing() {
                 <button
                   type="button"
                   onClick={() => navigate('/app')}
-                  className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/40 bg-cyan-400/90 px-5 py-3 font-semibold text-slate-950 transition hover:scale-[1.02]"
+                  className="glow-button inline-flex items-center gap-2 rounded-xl border border-cyan-300/40 bg-cyan-400/90 px-6 py-3 font-semibold text-slate-950 transition hover:scale-[1.02]"
                 >
-                  Launch Simulator
+                  Start Simulating →
                   <ArrowRight size={16} />
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate('/formulas')}
-                  className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3 font-semibold transition hover:scale-[1.02]"
+                  className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-3 font-semibold transition hover:scale-[1.02]"
                 >
                   Explore Formula Sheet
                 </button>
               </div>
             </FadeUp>
 
-            <FadeUp delay={0.08} className="grid gap-3 sm:grid-cols-2">
-              {stats.map((stat) => (
-                <div
-                  key={stat.label}
-                  className="rounded-2xl border border-[var(--color-border)] bg-[color:color-mix(in_oklab,var(--color-surface)_86%,transparent)] p-5 backdrop-blur"
-                >
-                  <p className="text-sm text-[var(--color-text-muted)]">{stat.label}</p>
-                  <p className="mt-2 text-2xl font-semibold">{stat.value}</p>
+            {/* RIGHT: Mini Simulation */}
+            <FadeUp delay={0.08} className="flex items-center justify-center">
+              <div className="w-full max-w-md h-96 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-2xl">
+                {/* Placeholder for mini simulation */}
+                <div className="w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center relative">
+                  <div className="text-center opacity-60">
+                    <FlaskConical size={48} className="mx-auto mb-2 text-cyan-400" />
+                    <p className="text-sm text-[var(--color-text-muted)]">Mini Simulation</p>
+                    <p className="text-xs text-[var(--color-text-dim)] mt-1">Projectile Motion Demo</p>
+                  </div>
                 </div>
-              ))}
+              </div>
             </FadeUp>
+          </div>
+
+          {/* Animated Ticker */}
+          <div className="relative overflow-hidden border-t border-[var(--color-border)] bg-[color:color-mix(in_oklab,var(--color-surface)_92%,transparent)] py-3">
+            <div className="animate-slide-horizontal whitespace-nowrap">
+              <div className="inline-block pr-8">
+                <span className="font-mono text-xs text-[var(--color-text-muted)]">
+                  16 Simulations · Physics + Chemistry · AI-Powered · 3D Visualizations · Real-Time Graphs · Guided Learning
+                </span>
+              </div>
+              <div className="inline-block pr-8">
+                <span className="font-mono text-xs text-[var(--color-text-muted)]">
+                  16 Simulations · Physics + Chemistry · AI-Powered · 3D Visualizations · Real-Time Graphs · Guided Learning
+                </span>
+              </div>
+            </div>
           </div>
         </section>
 
