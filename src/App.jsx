@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useMediaQuery } from 'react-responsive'
 import Navbar from './components/Navbar'
 import MobileLayout from './components/MobileLayout'
@@ -11,6 +11,7 @@ import Onboarding, { ONBOARDING_STORAGE_KEY } from './components/Onboarding'
 import GuidedTour from './components/GuidedTour'
 import useSession from './hooks/useSession'
 import { useTheme } from './contexts/ThemeContext'
+import { getPhysicsDemos, getChemistryDemos } from './data/demos'
 
 function DesktopLayout({
   currentPage,
@@ -115,6 +116,50 @@ export default function App() {
       detail: { text, domain: 'physics' },
     }))
   }
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignore shortcuts when typing in inputs
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+        if (e.key === 'Escape') {
+          document.activeElement.blur()
+        }
+        return
+      }
+
+      switch (e.key.toLowerCase()) {
+        case ' ':
+          // Space: toggle play/pause
+          e.preventDefault()
+          window.dispatchEvent(new CustomEvent('codeflix:toggle-play'))
+          break
+        case 'r':
+          // R: reset simulation
+          e.preventDefault()
+          window.dispatchEvent(new CustomEvent('codeflix:reset-simulation'))
+          break
+        case 'd':
+          // D: load random demo
+          e.preventDefault()
+          window.dispatchEvent(new CustomEvent('codeflix:random-demo'))
+          break
+        case 'escape':
+          // Escape: blur focus and close modals
+          e.preventDefault()
+          setShowSettings(false)
+          setShowSession(false)
+          setShowGuidedTour(false)
+          document.activeElement?.blur()
+          break
+        default:
+          break
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>

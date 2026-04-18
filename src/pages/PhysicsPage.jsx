@@ -11,12 +11,12 @@ import useSession from '../hooks/useSession'
 import { getPhysicsDemos } from '../data/demos'
 
 const AI_PROVIDER_STORAGE_KEY = 'simusolve.aiProvider-physics'
-const AI_PROVIDERS = ['openai', 'anthropic', 'gemini', 'groq', 'ollama']
+const AI_PROVIDERS = ['anthropic', 'openai', 'gemini', 'groq', 'ollama']
 
 function getInitialProvider() {
-  if (typeof window === 'undefined') return 'openai'
+  if (typeof window === 'undefined') return 'anthropic'
   const storedValue = window.localStorage.getItem(AI_PROVIDER_STORAGE_KEY)
-  return AI_PROVIDERS.includes(storedValue) ? storedValue : 'openai'
+  return AI_PROVIDERS.includes(storedValue) ? storedValue : 'anthropic'
 }
 
 function LoadingOverlay({ isVisible }) {
@@ -61,6 +61,35 @@ export default function PhysicsPage({ sidebarWidth, onSidebarWidthChange, rightP
       if (frameLoopRef.current) cancelAnimationFrame(frameLoopRef.current)
     }
   }, [measureFrame])
+
+  // Keyboard event handlers
+  useEffect(() => {
+    const handleTogglePlay = () => {
+      if (simulation.isPlaying) {
+        simulation.pause()
+      } else {
+        simulation.play()
+      }
+    }
+
+    const handleReset = () => {
+      simulation.reset()
+    }
+
+    const handleRandomDemo = () => {
+      handleDemoMode()
+    }
+
+    window.addEventListener('codeflix:toggle-play', handleTogglePlay)
+    window.addEventListener('codeflix:reset-simulation', handleReset)
+    window.addEventListener('codeflix:random-demo', handleRandomDemo)
+
+    return () => {
+      window.removeEventListener('codeflix:toggle-play', handleTogglePlay)
+      window.removeEventListener('codeflix:reset-simulation', handleReset)
+      window.removeEventListener('codeflix:random-demo', handleRandomDemo)
+    }
+  }, [simulation, handleDemoMode])
 
   const handleProblemSolved = useCallback((parsedData) => {
     session.logProblem(parsedData?.type || 'physics', parsedData)

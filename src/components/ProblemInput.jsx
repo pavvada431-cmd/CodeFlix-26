@@ -11,8 +11,8 @@ import { ParsingSteps } from './LoadingStates'
 const MAX_INPUT_LENGTH = 1000
 
 const AI_PROVIDERS = [
+  { value: 'anthropic', label: 'Claude (Detailed - Recommended)' },
   { value: 'openai', label: 'GPT-4o (Fast & Smart)' },
-  { value: 'anthropic', label: 'Claude (Detailed)' },
   { value: 'gemini', label: 'Gemini (Free)' },
   { value: 'groq', label: 'Groq (Very Fast)' },
   { value: 'ollama', label: 'Ollama (Local AI)' },

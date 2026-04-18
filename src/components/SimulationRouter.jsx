@@ -4,27 +4,27 @@ import { MultiConceptProblemHandler, MultiConceptExecutor } from '../engine/mult
 import { SimulationErrorBoundary } from './SimulationErrorBoundary'
 import { SimulationError } from './SimulationError'
 
-const InclinedPlane = lazy(() => import('../simulations/InclinedPlane'))
-const ProjectileMotion = lazy(() => import('../simulations/ProjectileMotion'))
-const Pendulum = lazy(() => import('../simulations/Pendulum'))
-const SpringMass = lazy(() => import('../simulations/SpringMass'))
-const CircularMotion = lazy(() => import('../simulations/CircularMotion'))
-const Collisions = lazy(() => import('../simulations/Collisions'))
-const WaveMotion = lazy(() => import('../simulations/WaveMotion'))
-const RotationalMechanics = lazy(() => import('../simulations/RotationalMechanics'))
-const GravitationalOrbits = lazy(() => import('../simulations/GravitationalOrbits'))
-const FluidMechanics = lazy(() => import('../simulations/FluidMechanics'))
-const Thermodynamics = lazy(() => import('../simulations/Thermodynamics'))
-const ElectricFields = lazy(() => import('../simulations/ElectricFields'))
-const Optics = lazy(() => import('../simulations/Optics'))
-const RadioactiveDecay = lazy(() => import('../simulations/RadioactiveDecay'))
-const MagneticFields = lazy(() => import('../simulations/MagneticFields'))
-const OrganicChemistry = lazy(() => import('../simulations/OrganicChemistry'))
-const Stoichiometry = lazy(() => import('../simulations/Stoichiometry'))
-const Titration = lazy(() => import('../simulations/Titration'))
-const AtomicStructure = lazy(() => import('../simulations/AtomicStructure'))
-const GasLaws = lazy(() => import('../simulations/GasLaws'))
-const ChemicalBonding = lazy(() => import('../simulations/ChemicalBonding'))
+const InclinedPlane = lazy(() => import(/* webpackChunkName: "sim-inclined-plane" */ '../simulations/InclinedPlane'))
+const ProjectileMotion = lazy(() => import(/* webpackChunkName: "sim-projectile-motion" */ '../simulations/ProjectileMotion'))
+const Pendulum = lazy(() => import(/* webpackChunkName: "sim-pendulum" */ '../simulations/Pendulum'))
+const SpringMass = lazy(() => import(/* webpackChunkName: "sim-spring-mass" */ '../simulations/SpringMass'))
+const CircularMotion = lazy(() => import(/* webpackChunkName: "sim-circular-motion" */ '../simulations/CircularMotion'))
+const Collisions = lazy(() => import(/* webpackChunkName: "sim-collisions" */ '../simulations/Collisions'))
+const WaveMotion = lazy(() => import(/* webpackChunkName: "sim-wave-motion" */ '../simulations/WaveMotion'))
+const RotationalMechanics = lazy(() => import(/* webpackChunkName: "sim-rotational-mechanics" */ '../simulations/RotationalMechanics'))
+const GravitationalOrbits = lazy(() => import(/* webpackChunkName: "sim-gravitational-orbits" */ '../simulations/GravitationalOrbits'))
+const FluidMechanics = lazy(() => import(/* webpackChunkName: "sim-fluid-mechanics" */ '../simulations/FluidMechanics'))
+const Thermodynamics = lazy(() => import(/* webpackChunkName: "sim-thermodynamics" */ '../simulations/Thermodynamics'))
+const ElectricFields = lazy(() => import(/* webpackChunkName: "sim-electric-fields" */ '../simulations/ElectricFields'))
+const Optics = lazy(() => import(/* webpackChunkName: "sim-optics" */ '../simulations/Optics'))
+const RadioactiveDecay = lazy(() => import(/* webpackChunkName: "sim-radioactive-decay" */ '../simulations/RadioactiveDecay'))
+const MagneticFields = lazy(() => import(/* webpackChunkName: "sim-magnetic-fields" */ '../simulations/MagneticFields'))
+const OrganicChemistry = lazy(() => import(/* webpackChunkName: "sim-organic-chemistry" */ '../simulations/OrganicChemistry'))
+const Stoichiometry = lazy(() => import(/* webpackChunkName: "sim-stoichiometry" */ '../simulations/Stoichiometry'))
+const Titration = lazy(() => import(/* webpackChunkName: "sim-titration" */ '../simulations/Titration'))
+const AtomicStructure = lazy(() => import(/* webpackChunkName: "sim-atomic-structure" */ '../simulations/AtomicStructure'))
+const GasLaws = lazy(() => import(/* webpackChunkName: "sim-gas-laws" */ '../simulations/GasLaws'))
+const ChemicalBonding = lazy(() => import(/* webpackChunkName: "sim-chemical-bonding" */ '../simulations/ChemicalBonding'))
 
 function LoadingSimulation() {
   return (
@@ -88,12 +88,54 @@ function detectWebGLAvailability() {
   }
 }
 
-function WebGLUnavailable() {
+function WebGLUnavailable({ parsedData }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-amber-400/20 bg-[#07111f]/80 p-8 text-center">
+    <div className="flex h-full flex-col overflow-y-auto rounded-[24px] border border-amber-400/20 bg-[#07111f]/80 p-8">
       <h3 className="mb-2 font-heading text-xl font-semibold text-white">WebGL Context Unavailable</h3>
-      <p className="max-w-md text-sm text-slate-400">
-        Your browser could not create a stable 3D context right now. Try closing other heavy tabs/apps and reload.
+      <p className="mb-6 max-w-md text-sm text-slate-400">
+        Your browser could not create a stable 3D context right now. Here's the solution instead:
+      </p>
+
+      {/* Solution steps */}
+      {parsedData?.steps && parsedData.steps.length > 0 && (
+        <div className="mb-6">
+          <h4 className="mb-3 text-sm font-semibold text-cyan-400">Steps:</h4>
+          <ol className="space-y-2">
+            {parsedData.steps.map((step, idx) => (
+              <li key={idx} className="flex gap-3 text-sm text-slate-300">
+                <span className="flex-shrink-0 font-semibold text-cyan-400">{idx + 1}.</span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      {/* Formula */}
+      {parsedData?.formula && (
+        <div className="mb-6">
+          <h4 className="mb-2 text-sm font-semibold text-cyan-400">Formula:</h4>
+          <code className="block overflow-x-auto rounded border border-cyan-400/30 bg-slate-900 p-3 text-xs text-cyan-300">
+            {parsedData.formula}
+          </code>
+        </div>
+      )}
+
+      {/* Answer */}
+      {parsedData?.answer && (
+        <div className="rounded border border-green-400/30 bg-green-900/20 p-4">
+          <h4 className="mb-2 text-sm font-semibold text-green-400">Answer:</h4>
+          <div className="text-lg font-bold text-white">
+            {parsedData.answer.value} {parsedData.answer.unit}
+          </div>
+          {parsedData.answer.explanation && (
+            <p className="mt-2 text-xs text-green-300">{parsedData.answer.explanation}</p>
+          )}
+        </div>
+      )}
+
+      <p className="mt-6 text-xs text-slate-500">
+        Try closing other heavy tabs/apps and reloading.
       </p>
     </div>
   )
@@ -557,7 +599,7 @@ export default function SimulationRouter({
   }
 
   if (!webglAvailable) {
-    return <WebGLUnavailable />
+    return <WebGLUnavailable parsedData={parsedData} />
   }
 
   if (parsedData.isMultiConcept === true && Array.isArray(parsedData.stages) && parsedData.stages.length > 0) {

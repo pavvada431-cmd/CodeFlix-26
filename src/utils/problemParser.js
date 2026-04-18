@@ -1,5 +1,6 @@
 import { assertValidParsedProblem } from './validator'
 import { normalizeProblemText } from './problemCleaner'
+import { getOfflineParsedData, isOfflineModeEnabled } from './offlineFallback'
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
 const AI_PROXY_URL = `${API_BASE_URL}/ai`
@@ -484,7 +485,20 @@ export async function parseProblem(problemText, provider = 'openai') {
   console.log('Variables extracted:', normalized.extractedVariables)
   console.log('Cleaned problem text:', cleanedText)
 
-  return parseWithRetry(cleanedText, BASE_SYSTEM_PROMPT, provider, 2)
+  try {
+    return await parseWithRetry(cleanedText, BASE_SYSTEM_PROMPT, provider, 2)
+  } catch (error) {
+    // If offline mode is enabled and API call failed, use offline parsing
+    if (isOfflineModeEnabled()) {
+      console.warn('API failed, using offline fallback:', error?.message)
+      const offlineData = getOfflineParsedData(cleanedText)
+      if (offlineData) {
+        console.log('Offline fallback successful:', offlineData)
+        return offlineData
+      }
+    }
+    throw error
+  }
 }
 
 export { VARIABLE_SCHEMAS }

@@ -112,9 +112,9 @@ export default function Navbar({
         </div>
 
         {isSimulator && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto">
             <div 
-              className="flex rounded-xl border p-1"
+              className="flex rounded-xl border p-1 whitespace-nowrap"
               style={{ 
                 borderColor: 'var(--color-border)',
                 backgroundColor: 'var(--color-bg)'
@@ -131,7 +131,7 @@ export default function Navbar({
                 }}
               >
                 <Zap className="h-4 w-4" />
-                Physics
+                <span className="hidden sm:inline">Physics</span>
                 {currentPage === 'physics' && (
                   <Check className="h-3 w-3" />
                 )}
@@ -148,7 +148,7 @@ export default function Navbar({
                 }}
               >
                 <FlaskConical className="h-4 w-4" />
-                Chemistry
+                <span className="hidden sm:inline">Chemistry</span>
                 {currentPage === 'chemistry' && (
                   <Check className="h-3 w-3" />
                 )}
@@ -165,7 +165,7 @@ export default function Navbar({
                 }}
               >
                 <Wrench className="h-4 w-4" />
-                Builder
+                <span className="hidden sm:inline">Builder</span>
                 {currentPage === 'builder' && (
                   <Check className="h-3 w-3" />
                 )}

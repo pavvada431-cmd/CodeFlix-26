@@ -11,12 +11,12 @@ import useSession from '../hooks/useSession'
 import { getChemistryDemos } from '../data/demos'
 
 const AI_PROVIDER_STORAGE_KEY = 'simusolve.aiProvider-chemistry'
-const AI_PROVIDERS = ['openai', 'anthropic', 'gemini', 'groq', 'ollama']
+const AI_PROVIDERS = ['anthropic', 'openai', 'gemini', 'groq', 'ollama']
 
 function getInitialProvider() {
-  if (typeof window === 'undefined') return 'openai'
+  if (typeof window === 'undefined') return 'anthropic'
   const storedValue = window.localStorage.getItem(AI_PROVIDER_STORAGE_KEY)
-  return AI_PROVIDERS.includes(storedValue) ? storedValue : 'openai'
+  return AI_PROVIDERS.includes(storedValue) ? storedValue : 'anthropic'
 }
 
 function LoadingOverlay({ isVisible }) {
