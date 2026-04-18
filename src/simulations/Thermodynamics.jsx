@@ -11,6 +11,11 @@ const EFFECTIVE_MOLES_PER_PARTICLE = 0.01
 const HISTOGRAM_BINS = 20
 const HISTOGRAM_UPDATE_INTERVAL = 500
 
+function seededRandom(index, seed = 1) {
+  const value = Math.sin(index * 12.9898 + seed * 78.233) * 43758.5453
+  return value - Math.floor(value)
+}
+
 function FrostedLabel({ position, color = '#00f5ff', children }) {
   return (
     <Html position={position} center distanceFactor={10} zIndexRange={[100, 0]}>
@@ -37,7 +42,6 @@ function FrostedLabel({ position, color = '#00f5ff', children }) {
 }
 
 function MaxwellBoltzmann(v, T) {
-  const vth = Math.sqrt(2 * K_BOLTZMANN * T / PARTICLE_MASS)
   return 4 * Math.PI * Math.pow(PARTICLE_MASS / (2 * Math.PI * K_BOLTZMANN * T), 1.5) * v * v * Math.exp(-PARTICLE_MASS * v * v / (2 * K_BOLTZMANN * T))
 }
 
@@ -73,6 +77,7 @@ function ParticleSystem({ numParticles, temperature, volume, isPlaying, onDataUp
   const velocitiesRef = useRef([])
   const meshRefs = useRef([])
   const maxSpeedRef = useRef(5)
+  const [particleCount, setParticleCount] = useState(numParticles)
 
   const boxSize = volume ** (1/3)
   const initialSpeed = Math.sqrt(3 * K_BOLTZMANN * temperature / PARTICLE_MASS)
@@ -82,7 +87,6 @@ function ParticleSystem({ numParticles, temperature, volume, isPlaying, onDataUp
     velocitiesRef.current = []
 
     for (let i = 0; i < numParticles; i++) {
-      const r = boxSize / 2 - 0.2
       particlesRef.current.push({
         x: (Math.random() - 0.5) * boxSize * 0.8,
         y: (Math.random() - 0.5) * boxSize * 0.8,
@@ -98,6 +102,7 @@ function ParticleSystem({ numParticles, temperature, volume, isPlaying, onDataUp
         vz: speed * Math.cos(phi),
       })
     }
+    setParticleCount(particlesRef.current.length)
   }, [numParticles, temperature, boxSize, initialSpeed])
 
   useFrame((state, delta) => {
@@ -138,7 +143,6 @@ function ParticleSystem({ numParticles, temperature, volume, isPlaying, onDataUp
     maxSpeedRef.current = maxSpeed
 
     const avgKE = totalKE / numParticles
-    const measuredTemp = (2 * avgKE) / (3 * K_BOLTZMANN * numParticles)
     const area = boxSize * boxSize * 6
     const pressure = (totalMomentumTransfer * 60) / (area * numParticles)
 
@@ -155,23 +159,24 @@ function ParticleSystem({ numParticles, temperature, volume, isPlaying, onDataUp
 
   return (
     <group>
-      {particlesRef.current.map((p, i) => (
+      {Array.from({ length: particleCount }, (_, i) => {
+        return (
         <mesh
           key={i}
           ref={el => meshRefs.current[i] = el}
-          position={[p.x, p.y, p.z]}
+          position={[0, 0, 0]}
         >
           <sphereGeometry args={[0.08, 8, 8]} />
           <meshPhysicalMaterial color="#00f5ff" />
         </mesh>
-      ))}
+        )
+      })}
     </group>
   )
 }
 
 function Box({ volume }) {
   const boxSize = volume ** (1/3)
-  const halfSize = boxSize / 2
 
   return (
     <group>
@@ -208,10 +213,7 @@ function SpeedHistogram({ particles, temperature }) {
     ctx.fillStyle = 'rgba(10, 15, 30, 0.95)'
     ctx.fillRect(0, 0, width, height)
 
-    const speeds = particles.map(p => {
-      const v = velocitiesRef?.current?.find((_, i) => i < particles.length)
-      return Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz)
-    })
+    const speeds = particles.map(p => Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz))
 
     const maxSpeed = Math.max(...speeds, 1)
     const binSize = maxSpeed / HISTOGRAM_BINS
@@ -347,31 +349,29 @@ function PVDiagram({ dataHistory }) {
   )
 }
 
-let velocitiesRef = null
 function numParticlesToScale(maxSpeed) {
   return 0.5 / maxSpeed
 }
 
-function SimulationScene({ numParticles, temperature, volume, isPlaying, onDataUpdate, processType }) {
+function SimulationScene({ numParticles, temperature, volume, isPlaying, onDataUpdate }) {
   const boxSize = volume ** (1/3)
   const initialSpeed = Math.sqrt(3 * K_BOLTZMANN * temperature / PARTICLE_MASS)
 
   const particlesData = useMemo(() => {
     const particles = []
     const velocities = []
-    velocitiesRef = velocities
 
     for (let i = 0; i < numParticles; i++) {
       particles.push({
-        x: (Math.random() - 0.5) * boxSize * 0.8,
-        y: (Math.random() - 0.5) * boxSize * 0.8,
-        z: (Math.random() - 0.5) * boxSize * 0.8,
+        x: (seededRandom(i, 1) - 0.5) * boxSize * 0.8,
+        y: (seededRandom(i, 2) - 0.5) * boxSize * 0.8,
+        z: (seededRandom(i, 3) - 0.5) * boxSize * 0.8,
         vx: 0, vy: 0, vz: 0,
       })
 
-      const theta = Math.random() * Math.PI * 2
-      const phi = Math.acos(2 * Math.random() - 1)
-      const speed = initialSpeed * (0.5 + Math.random() * 0.5)
+      const theta = seededRandom(i, 4) * Math.PI * 2
+      const phi = Math.acos(2 * seededRandom(i, 5) - 1)
+      const speed = initialSpeed * (0.5 + seededRandom(i, 6) * 0.5)
       velocities.push({
         vx: speed * Math.sin(phi) * Math.cos(theta),
         vy: speed * Math.sin(phi) * Math.sin(theta),
@@ -380,7 +380,7 @@ function SimulationScene({ numParticles, temperature, volume, isPlaying, onDataU
     }
 
     return { particles, velocities }
-  }, [numParticles, temperature, boxSize, initialSpeed])
+  }, [numParticles, boxSize, initialSpeed])
 
   const particleRefs = useRef([])
   const lastDataTimeRef = useRef(0)
@@ -603,7 +603,6 @@ export default function Thermodynamics({
   const [currentTemp, setCurrentTemp] = useState(temperature)
   const [dataHistory, setDataHistory] = useState([])
   const [currentData, setCurrentData] = useState(null)
-  const [particlesSnapshot, setParticlesSnapshot] = useState([])
 
   const processAnimationRef = useRef(null)
   const cumulativeWorkRef = useRef(0)
@@ -691,7 +690,10 @@ export default function Thermodynamics({
 
   useEffect(() => {
     if (!isPlaying) {
-      setDataHistory([])
+      const timeoutId = setTimeout(() => {
+        setDataHistory([])
+      }, 0)
+      return () => clearTimeout(timeoutId)
     }
   }, [isPlaying])
 
@@ -763,7 +765,6 @@ export default function Thermodynamics({
 
       <div className="absolute right-4 bottom-32">
         <div className="mb-2 font-mono-display text-xs text-slate-400">SPEED DISTRIBUTION</div>
-        <SpeedHistogramPanel particlesData={particlesSnapshot} temperature={currentTemp} />
       </div>
 
       <div className="absolute bottom-4 left-4 flex flex-col gap-2">

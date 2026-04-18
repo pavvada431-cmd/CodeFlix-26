@@ -1,9 +1,10 @@
-import { useRef, useMemo, useEffect, useState, useCallback } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { Environment, Grid, Text, Html, Line, OrbitControls } from '@react-three/drei';
-import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
-import * as THREE from 'three';
-import { FrostedLabel, GlowTrail, ForceArrow } from './shared/SimulationPrimitives';
+import { useRef, useEffect, useState, useCallback } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { Environment, Grid, Text, Html, Line, OrbitControls } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
+import * as THREE from 'three'
+import Matter from 'matter-js'
+import { FrostedLabel, GlowTrail, ForceArrow } from './shared/SimulationPrimitives'
 
 const SCALE = 0.15;
 const TRACK_Y = 0;
@@ -352,12 +353,15 @@ function SimulationScene({
       kineticEnergy: 0.5 * m1 * safeV1 * safeV1 + 0.5 * m2 * safeV2 * safeV2,
     };
     postCollisionStateRef.current = null;
-    setCollisionHappened(false);
-    setV1After(safeV1);
-    setV2After(safeV2);
-    setMergedScale(1);
+    const resetId = setTimeout(() => {
+      setCollisionHappened(false);
+      setV1After(safeV1);
+      setV2After(safeV2);
+      setMergedScale(1);
+    }, 0);
 
     return () => {
+      clearTimeout(resetId);
       Matter.Engine.clear(engine);
       engineRef.current = null;
       initializedRef.current = false;
