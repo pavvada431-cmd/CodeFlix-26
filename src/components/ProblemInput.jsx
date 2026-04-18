@@ -117,7 +117,16 @@ export default function ProblemInput({
       onSolved?.(parsedData)
     } catch (solveError) {
       setConnected(false)
-      setError(solveError?.message || 'Something went wrong. Please try again!')
+      
+      let errorMsg = solveError?.message || 'Something went wrong. Please try again!'
+      
+      if (errorMsg.includes('Failed to reach API') || 
+          errorMsg.includes('network error') ||
+          errorMsg.includes('ECONNREFUSED')) {
+        errorMsg = "⚠️ Backend not running. Start it with `npm run dev:api` or check your API keys in .env"
+      }
+      
+      setError(errorMsg)
       setSuccess(false)
       onApiStatusChange?.(false)
     } finally {

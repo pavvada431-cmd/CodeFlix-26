@@ -28,6 +28,85 @@ const PROVIDERS = {
   },
 }
 
+function hasAnyApiKey() {
+  return Object.values(PROVIDERS).some(config => {
+    if (config.keyEnv) return !!ENV[config.keyEnv]
+    return false
+  })
+}
+
+function createMockResponse(problemText) {
+  const text = String(problemText).toLowerCase()
+  
+  let detectedType = 'projectile'
+  let variables = {}
+  
+  if (text.includes('pendulum') || text.includes('swing')) {
+    detectedType = 'pendulum'
+    variables.length = 1.0
+  } else if (text.includes('ramp') || text.includes('incline') || text.includes('slope')) {
+    detectedType = 'inclined_plane'
+    variables.mass = 10
+    variables.angle = 30
+  } else if (text.includes('spring') || text.includes('oscillat')) {
+    detectedType = 'spring_mass'
+    variables.mass = 2
+    variables.k = 100
+  } else if (text.includes('collision') || text.includes('collide') || text.includes('bounce')) {
+    detectedType = 'collisions'
+    variables.mass1 = 1
+    variables.mass2 = 1
+    variables.velocity1 = 5
+    variables.velocity2 = 0
+  } else if (text.includes('orbit') || text.includes('satellite') || text.includes('planet')) {
+    detectedType = 'orbital'
+    variables.centralMass = 1e24
+    variables.orbitingMass = 1e20
+    variables.distance = 1e8
+  } else if (text.includes('wave') || text.includes('frequency') || text.includes('wavelength')) {
+    detectedType = 'wave_motion'
+    variables.amplitude = 1
+    variables.frequency = 10
+  } else if (text.includes('charge') || text.includes('electric')) {
+    detectedType = 'electric_field'
+    variables.charge1 = 1e-6
+  } else if (text.includes('lens') || text.includes('mirror') || text.includes('focal')) {
+    detectedType = text.includes('mirror') ? 'optics_mirror' : 'optics_lens'
+    variables.focalLength = 0.1
+    variables.objectDistance = 0.3
+  } else if (text.includes('gas') || text.includes('temperature') || text.includes('pressure') || text.includes('pv=nrt')) {
+    detectedType = 'ideal_gas'
+    variables.temperature = 300
+    variables.volume = 1
+  } else if (text.includes('radioactive') || text.includes('decay') || text.includes('half-life')) {
+    detectedType = 'radioactive_decay'
+    variables.initialAtoms = 1000
+    variables.halfLife = 1000
+  } else if (text.includes('chemistry') || text.includes('molecule') || text.includes('bond')) {
+    detectedType = 'chemical_bonding'
+    variables.mode = 'covalent'
+  } else {
+    // default projectile
+    variables.velocity = 20
+    variables.angle = 45
+  }
+  
+  return {
+    domain: text.includes('chemi') ? 'chemistry' : 'physics',
+    isMultiConcept: false,
+    type: detectedType,
+    variables,
+    units: {},
+    formula: 'Demo mode: Using local detection without live API',
+    steps: ['Local detection mode active', 'Showing simpler analysis', 'Configure API keys for advanced parsing'],
+    answer: {
+      value: 0,
+      unit: '',
+      explanation: 'Mock response generated (API keys not configured). Run with real API for detailed analysis.'
+    }
+  }
+}
+
 function createProviderError(message, { status = 500, code = 'AI_PROVIDER_ERROR', provider, details } = {}) {
   const error = new Error(message)
   error.status = status
@@ -442,39 +521,60 @@ export async function callAI({ provider = 'openai', messages, options = {} }) {
     })
   }
 
-  switch (selectedProvider) {
-    case 'openai':
-    case 'groq':
-      return callOpenAICompatible({
-        provider: selectedProvider,
-        messages: normalizedMessages,
-        options,
-        timeoutMs,
-      })
-    case 'anthropic':
-      return callAnthropic({
-        messages: normalizedMessages,
-        options,
-        timeoutMs,
-      })
-    case 'gemini':
-      return callGemini({
-        messages: normalizedMessages,
-        options,
-        timeoutMs,
-      })
-    case 'ollama':
-      return callOllama({
-        messages: normalizedMessages,
-        options,
-        timeoutMs,
-      })
-    default:
-      throw createProviderError(`Unsupported provider: ${provider}`, {
-        status: 400,
-        code: 'INVALID_PROVIDER',
-        provider: selectedProvider,
-      })
+  try {
+    switch (selectedProvider) {
+      case 'openai':
+      case 'groq':
+        return await callOpenAICompatible({
+          provider: selectedProvider,
+          messages: normalizedMessages,
+          options,
+          timeoutMs,
+        })
+      case 'anthropic':
+        return await callAnthropic({
+          messages: normalizedMessages,
+          options,
+          timeoutMs,
+        })
+      case 'gemini':
+        return await callGemini({
+          messages: normalizedMessages,
+          options,
+          timeoutMs,
+        })
+      case 'ollama':
+        return await callOllama({
+          messages: normalizedMessages,
+          options,
+          timeoutMs,
+        })
+      default:
+        throw createProviderError(`Unsupported provider: ${provider}`, {
+          status: 400,
+          code: 'INVALID_PROVIDER',
+          provider: selectedProvider,
+        })
+    }
+  } catch (error) {
+    if (error?.code === 'MISSING_API_KEY' && !hasAnyApiKey()) {
+      const problemText = normalizedMessages
+        .map(m => m.content)
+        .join('\n')
+      
+      const mockData = createMockResponse(problemText)
+      
+      console.warn(`[AI:fallback] No API keys configured. Returning local detection mock response for: ${problemText.substring(0, 50)}...`)
+      
+      return {
+        content: JSON.stringify(mockData),
+        provider: 'fallback-local-detection',
+        model: 'local-pattern-matcher',
+        tokensUsed: undefined,
+      }
+    }
+    
+    throw error
   }
 }
 

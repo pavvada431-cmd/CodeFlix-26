@@ -4,12 +4,19 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig(({ command, mode }) => {
   loadEnv(mode, globalThis?.process?.cwd?.() ?? '.', '')
-  const apiUrl = command === 'serve' ? 'http://localhost:4000/api' : '/api'
 
   return {
     plugins: [react(), tailwindcss()],
     define: {
-      'import.meta.env.VITE_API_URL': JSON.stringify(apiUrl),
+      'import.meta.env.VITE_API_URL': JSON.stringify('/api'),
+    },
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:4000',
+          changeOrigin: true,
+        }
+      }
     },
     build: {
       rollupOptions: {
