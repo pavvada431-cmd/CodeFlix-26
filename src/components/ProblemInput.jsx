@@ -212,26 +212,89 @@ export default function ProblemInput({
       </div>
 
       <div className="space-y-2">
-        <label className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
-          ✏️ Your Problem
-        </label>
-        <Textarea
-          id={mobile ? 'problem-input-mobile' : 'problem-input'}
-          data-tour="problem-input"
-          ref={textareaRef}
-          value={problemText}
-          onChange={(event) => {
-            let value = sanitizeInput(event.target.value)
-            if (value.length > MAX_INPUT_LENGTH) value = value.slice(0, MAX_INPUT_LENGTH)
-            setProblemText(value)
-            if (error) setError('')
-            setSuccess(false)
-          }}
-          placeholder="Example: A ball is thrown at 20 m/s at 45°. What is its range?&#10;&#10;You can also ask: Show methane molecule, balance an equation, etc."
-          disabled={isBusy}
-          maxLength={MAX_INPUT_LENGTH}
-          className={mobile ? 'min-h-[40vh] text-base' : 'min-h-40'}
-        />
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
+            ✏️ Your Problem
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              const allExamples = [...PHYSICS_EXAMPLES, ...CHEMISTRY_EXAMPLES]
+              const random = allExamples[Math.floor(Math.random() * allExamples.length)]
+              handleExampleClick(random.text)
+              setTimeout(() => handleSolve(), 300)
+            }}
+            disabled={isBusy}
+            className="text-xs px-2 py-1 rounded-lg border transition opacity-75 hover:opacity-100"
+            style={{
+              borderColor: 'var(--color-border)',
+              backgroundColor: 'var(--color-bg)',
+              color: 'var(--color-text)',
+            }}
+          >
+            🎲 Random
+          </button>
+        </div>
+        <div className="relative">
+          <Textarea
+            id={mobile ? 'problem-input-mobile' : 'problem-input'}
+            data-tour="problem-input"
+            ref={textareaRef}
+            value={problemText}
+            onChange={(event) => {
+              let value = sanitizeInput(event.target.value)
+              if (value.length > MAX_INPUT_LENGTH) value = value.slice(0, MAX_INPUT_LENGTH)
+              setProblemText(value)
+              if (error) setError('')
+              setSuccess(false)
+            }}
+            placeholder="Example: A ball is thrown at 20 m/s at 45°. What is its range?&#10;&#10;You can also ask: Show methane molecule, balance an equation, etc."
+            disabled={isBusy}
+            maxLength={MAX_INPUT_LENGTH}
+            className={mobile ? 'min-h-[40vh] text-base' : 'min-h-40'}
+          />
+          {/* Character count progress ring */}
+          {!mobile && (
+            <svg
+              className="absolute bottom-2 right-2"
+              width="40"
+              height="40"
+              viewBox="0 0 40 40"
+              style={{ transform: 'rotate(-90deg)' }}
+            >
+              <circle
+                cx="20"
+                cy="20"
+                r="16"
+                fill="none"
+                stroke="var(--color-border)"
+                strokeWidth="2"
+              />
+              <circle
+                cx="20"
+                cy="20"
+                r="16"
+                fill="none"
+                stroke={charCount > MAX_INPUT_LENGTH * 0.9 ? '#ef4444' : 'var(--color-accent)'}
+                strokeWidth="2"
+                strokeDasharray={`${(charCount / MAX_INPUT_LENGTH) * 100.53} 100.53`}
+                strokeLinecap="round"
+                style={{ transition: 'stroke 0.2s ease' }}
+              />
+              <text
+                x="20"
+                y="20"
+                textAnchor="middle"
+                dy="0.3em"
+                fontSize="10"
+                fill="var(--color-text-muted)"
+                style={{ transform: 'rotate(90deg)', transformOrigin: '20px 20px' }}
+              >
+                {Math.round((charCount / MAX_INPUT_LENGTH) * 100)}%
+              </text>
+            </svg>
+          )}
+        </div>
         <div className="flex justify-between text-xs" style={{ color: 'var(--color-text-dim)' }}>
           <span>{charCount}/{MAX_INPUT_LENGTH} characters</span>
           <span>{mobile ? 'Use plain language' : 'Include values like "20 m/s" or "45°"'}</span>

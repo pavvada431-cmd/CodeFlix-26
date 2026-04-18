@@ -131,18 +131,24 @@ function FormulaBlock({ formula, variables, active, onUse }) {
   const result = useMemo(() => formula.calc(input), [formula, input]);
 
   return (
-    <div className={`rounded-lg border p-3 ${active ? 'border-cyan-400/40 bg-cyan-500/10' : 'border-[var(--color-border)] bg-black/5'}`}>
+    <div className={`rounded-lg border p-3 transition-all ${active ? 'border-[var(--color-accent)]/60 bg-[var(--color-accent)]/8' : 'border-[var(--color-border)] bg-black/5'}`}>
       <p className="text-xs text-[var(--color-text)]/70">{formula.label}</p>
       <div
-        className="mt-1 text-base"
+        className="mt-2 p-3 rounded-lg bg-[var(--color-bg)]/50 border border-[var(--color-accent)]/30 text-base font-mono"
         dangerouslySetInnerHTML={{ __html: katex.renderToString(formula.tex, { throwOnError: false }) }}
+        style={{ color: 'var(--color-accent)' }}
       />
       <button
         type="button"
         onClick={onUse}
-        className="mt-2 rounded-md border border-cyan-400/30 bg-cyan-500/15 px-2 py-1 text-xs text-cyan-300"
+        className="mt-2 rounded-md border px-2 py-1 text-xs transition"
+        style={{
+          borderColor: 'var(--color-accent)',
+          backgroundColor: active ? 'var(--color-accent-dim)' : 'rgba(34, 211, 238, 0.08)',
+          color: active ? 'var(--color-accent)' : 'var(--color-text-muted)'
+        }}
       >
-        Use this
+        {active ? '✓ Active' : 'Use this'}
       </button>
       <div className="mt-3 grid grid-cols-2 gap-2">
         {formula.vars.map((key) => (
@@ -159,7 +165,7 @@ function FormulaBlock({ formula, variables, active, onUse }) {
         ))}
       </div>
       <p className="mt-2 text-xs text-[var(--color-text)]/70">
-        Result: <strong className="text-[var(--color-text)]">{formatNumber(result)}</strong> {formula.unit}
+        Result: <strong className="text-[var(--color-accent)]">{formatNumber(result)}</strong> {formula.unit}
       </p>
     </div>
   );
@@ -549,20 +555,22 @@ export default function SolutionPanel({
           </div>
           <AnimatePresence>
             {stepsVisible && (
-              <Motion.ol initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2 text-sm">
+              <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
                 {generatedSteps.slice(0, revealedSteps).map((step, index) => (
-                  <Motion.li
+                  <Motion.div
                     key={`${step}-${index}`}
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: showAllSteps ? 0 : index * 0.04 }}
-                    className="rounded-md border border-[var(--color-border)]/70 bg-black/5 px-2 py-1"
+                    className="rounded-lg border border-[var(--color-border)] bg-[color:color-mix(in_oklab,var(--color-bg)_78%,transparent)] p-3 flex gap-3"
                   >
-                    <span className="mr-2 text-cyan-300">{index + 1}.</span>
-                    {step}
-                  </Motion.li>
+                    <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-accent)]/50">
+                      <span className="text-xs font-semibold text-[var(--color-accent)]">{index + 1}</span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-[var(--color-text)] flex-1">{step}</p>
+                  </Motion.div>
                 ))}
-              </Motion.ol>
+              </Motion.div>
             )}
           </AnimatePresence>
         </div>
@@ -600,6 +608,30 @@ export default function SolutionPanel({
             ))}
           </div>
         </div>
+
+        {/* Copy Solution Button */}
+        <button
+          type="button"
+          onClick={() => {
+            const solutionText = `
+Simulation: ${TITLE_MAP[typeKey]?.title || 'Simulation'}
+Variables: ${Object.entries(currentVariables)
+              .map(([k, v]) => `${k}=${v}`)
+              .join(', ')}
+Steps: ${generatedSteps.join(' | ')}
+`.trim()
+            navigator.clipboard.writeText(solutionText)
+            alert('Solution copied to clipboard!')
+          }}
+          className="w-full rounded-lg border px-4 py-2 text-sm font-medium transition"
+          style={{
+            borderColor: 'var(--color-accent)',
+            backgroundColor: 'var(--color-accent-dim)',
+            color: 'var(--color-accent)'
+          }}
+        >
+          📋 Copy Solution
+        </button>
       </div>
     </div>
   );
