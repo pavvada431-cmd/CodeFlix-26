@@ -40,8 +40,24 @@ function TooltipContent({ active, payload, label }) {
 
 function EmptyGraphState({ mobile = false }) {
   return (
-    <div className={`flex items-center justify-center rounded-xl border border-[#1f2937] bg-[#0b0f17] ${mobile ? 'h-[60vh]' : 'h-[280px]'}`}>
-      <p className="text-sm text-[#9ca3af]">Run a simulation to generate graph data.</p>
+    <div
+      className={`flex flex-col items-center justify-center rounded-xl border border-[#1f2937] bg-[#0b0f17] relative ${
+        mobile ? 'h-[60vh]' : 'h-[280px]'
+      }`}
+    >
+      {/* Placeholder animated sine wave */}
+      <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 400 100" preserveAspectRatio="none">
+        <polyline
+          points="0,50 10,45 20,35 30,25 40,20 50,25 60,35 70,45 80,50 90,55 100,65 110,75 120,80 130,75 140,65 150,55 160,50 170,45 180,35 190,25 200,20 210,25 220,35 230,45 240,50 250,55 260,65 270,75 280,80 290,75 300,65 310,55 320,50 330,45 340,35 350,25 360,20 370,25 380,35 390,45 400,50"
+          fill="none"
+          stroke="#22d3ee"
+          strokeWidth="1.5"
+        />
+      </svg>
+      <div className="relative z-10 text-center">
+        <p className="text-sm text-[#9ca3af] font-semibold">Run a simulation to generate graph data</p>
+        <p className="text-xs text-[#6b7280] mt-1">Live telemetry will appear here</p>
+      </div>
     </div>
   )
 }
@@ -161,34 +177,83 @@ export default function GraphPanel({
       <Panel
         title="Graphs"
         subtitle={`Telemetry for ${simulationType || 'simulation'}`}
-        action={<Badge variant="neutral">{dataStream.length} samples</Badge>}
+        action={
+          <div className="flex items-center gap-2">
+            <Badge variant="neutral">{dataStream.length} samples</Badge>
+            {dataStream.length > 0 && (
+              <button
+                onClick={() => {
+                  const canvas = document.querySelector('canvas')
+                  if (canvas) {
+                    canvas.toBlob((blob) => {
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = `graph-${Date.now()}.png`
+                      a.click()
+                      URL.revokeObjectURL(url)
+                    })
+                  }
+                }}
+                className="px-3 py-1 text-xs rounded-lg border transition"
+                style={{
+                  borderColor: 'var(--color-border)',
+                  backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-text)'
+                }}
+              >
+                📸 Screenshot
+              </button>
+            )}
+          </div>
+        }
       >
         {!dataStream.length ? (
           <EmptyGraphState />
         ) : (
-          <div className="grid gap-4 xl:grid-cols-2">
-            <div className="rounded-xl border border-[#1f2937] bg-[#0b0f17] p-3">
-              <p className="mb-2 text-xs text-[#9ca3af]">{primaryKey} vs time</p>
-              <ChartSurface
-                dataStream={dataStream}
-                dataKey={primaryKey}
-                latestTime={latestTime}
-                accentColor={accentColor}
-                height={260}
-              />
+          <>
+            {/* Tab Bar */}
+            <div className="mb-4 flex gap-2 border-b" style={{ borderColor: 'var(--color-border)' }}>
+              {availableMetrics.map((metric) => (
+                <button
+                  key={metric}
+                  type="button"
+                  onClick={() => setSelectedMetric(metric)}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+                    primaryKey === metric
+                      ? 'border-cyan-400 text-cyan-300'
+                      : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+                  }`}
+                >
+                  {metric}
+                </button>
+              ))}
             </div>
 
-            <div className="rounded-xl border border-[#1f2937] bg-[#0b0f17] p-3">
-              <p className="mb-2 text-xs text-[#9ca3af]">{secondaryKey} vs time</p>
-              <ChartSurface
-                dataStream={dataStream}
-                dataKey={secondaryKey}
-                latestTime={latestTime}
-                accentColor="#94a3b8"
-                height={260}
-              />
+            <div className="grid gap-4 xl:grid-cols-2">
+              <div className="rounded-xl border border-[#1f2937] bg-[#0b0f17] p-3">
+                <p className="mb-2 text-xs text-[#9ca3af]">{primaryKey} vs time</p>
+                <ChartSurface
+                  dataStream={dataStream}
+                  dataKey={primaryKey}
+                  latestTime={latestTime}
+                  accentColor={accentColor}
+                  height={260}
+                />
+              </div>
+
+              <div className="rounded-xl border border-[#1f2937] bg-[#0b0f17] p-3">
+                <p className="mb-2 text-xs text-[#9ca3af]">{secondaryKey} vs time</p>
+                <ChartSurface
+                  dataStream={dataStream}
+                  dataKey={secondaryKey}
+                  latestTime={latestTime}
+                  accentColor="#94a3b8"
+                  height={260}
+                />
+              </div>
             </div>
-          </div>
+          </>
         )}
       </Panel>
     </div>

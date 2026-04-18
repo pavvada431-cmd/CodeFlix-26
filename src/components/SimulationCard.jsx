@@ -253,10 +253,39 @@ function SimulationViewport({
   onZoomOut,
   onResetZoom,
 }) {
+  // Extract telemetry from last data point
+  const telemetry = simulation.dataStream?.length > 0 
+    ? simulation.dataStream[simulation.dataStream.length - 1]
+    : null
+
+  const getTelemetryDisplay = () => {
+    if (!telemetry || !simulation.activeSimulation) return { label1: '', value1: '', label2: '', value2: '', label3: '', value3: '' }
+    
+    const simType = simulation.activeSimulation
+    if (simType === 'projectile_motion') {
+      return {
+        label1: 'x', value1: telemetry.x?.toFixed(2) || '—',
+        label2: 'y', value2: telemetry.y?.toFixed(2) || '—',
+        label3: 'v', value3: telemetry.speed?.toFixed(2) || '—'
+      }
+    }
+    if (simType === 'pendulum') {
+      return {
+        label1: 'θ', value1: telemetry.angle?.toFixed(1) || '—',
+        label2: 'ω', value2: telemetry.angularVelocity?.toFixed(2) || '—',
+        label3: 'E', value3: telemetry.energy?.toFixed(2) || '—'
+      }
+    }
+    // Generic fallback
+    return { label1: 't', value1: telemetry.t?.toFixed(2) || '—', label2: '', value2: '', label3: '', value3: '' }
+  }
+
+  const telemetryData = getTelemetryDisplay()
+
   return (
     <div
       data-tour="simulation-canvas"
-      className="relative w-full overflow-hidden border"
+      className="relative w-full overflow-hidden border flex flex-col"
       style={{
         height: mobile ? '100%' : '650px',
         minHeight: mobile ? '100%' : '450px',
@@ -266,9 +295,51 @@ function SimulationViewport({
         borderRadius: mobile ? '0.75rem' : '0.75rem',
       }}
     >
+      {/* Header Bar */}
+      {simulation.activeSimulation && !mobile && (
+        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--color-border)' }}>
+          <div className="flex items-center gap-3">
+            <div className="text-sm font-semibold text-[var(--color-text)]">
+              {getSimulationTitle(simulation.activeSimulation)}
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => simulation.isPlaying ? simulation.pause() : simulation.play()}
+              className="text-xs px-3 py-1 rounded-lg border transition"
+              style={{
+                borderColor: 'var(--color-border)',
+                backgroundColor: 'var(--color-surface)',
+                color: 'var(--color-text)'
+              }}
+            >
+              {simulation.isPlaying ? '⏸ Pause' : '▶ Play'}
+            </button>
+            <select
+              value={simulation.playbackSpeed || 1}
+              onChange={(e) => simulation.setSpeed(parseFloat(e.target.value))}
+              className="text-xs px-2 py-1 rounded-lg border"
+              style={{
+                borderColor: 'var(--color-border)',
+                backgroundColor: 'var(--color-surface)',
+                color: 'var(--color-text)'
+              }}
+            >
+              <option value={0.5}>0.5x</option>
+              <option value={1}>1x</option>
+              <option value={2}>2x</option>
+            </select>
+          </div>
+        </div>
+      )}
+
       <div
         className="absolute inset-0 transition-transform duration-300"
-        style={{ transform: mobile ? 'none' : `scale(${zoom})`, transformOrigin: 'center center' }}
+        style={{
+          transform: mobile ? 'none' : `scale(${zoom})`,
+          transformOrigin: 'center center',
+          top: simulation.activeSimulation && !mobile ? '50px' : '0'
+        }}
       >
         <SimulationTransition
           transitionKey={`${simulation.activeSimulation || 'idle'}-${simulation.simulationKey || '0'}`}
@@ -338,6 +409,39 @@ function SimulationViewport({
       ) : null}
 
       {simulation.activeSimulation && mobile ? <MobileFloatingControls simulation={simulation} /> : null}
+
+      {/* Telemetry Overlay */}
+      {simulation.activeSimulation && telemetry && !mobile && (
+        <div
+          className="absolute bottom-4 left-4 rounded-lg px-4 py-3 backdrop-blur-md"
+          style={{
+            backgroundColor: 'rgba(17, 24, 39, 0.8)',
+            borderColor: 'var(--color-border)',
+            border: '1px solid',
+          }}
+        >
+          <div className="flex gap-6 font-mono text-xs">
+            {telemetryData.label1 && (
+              <div>
+                <span style={{ color: 'var(--color-text-muted)' }}>{telemetryData.label1}:</span>{' '}
+                <span style={{ color: 'var(--color-accent)' }}>{telemetryData.value1}</span>
+              </div>
+            )}
+            {telemetryData.label2 && (
+              <div>
+                <span style={{ color: 'var(--color-text-muted)' }}>{telemetryData.label2}:</span>{' '}
+                <span style={{ color: 'var(--color-accent)' }}>{telemetryData.value2}</span>
+              </div>
+            )}
+            {telemetryData.label3 && (
+              <div>
+                <span style={{ color: 'var(--color-text-muted)' }}>{telemetryData.label3}:</span>{' '}
+                <span style={{ color: 'var(--color-accent)' }}>{telemetryData.value3}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
