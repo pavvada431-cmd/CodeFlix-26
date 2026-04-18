@@ -5,9 +5,9 @@ import { SimulationErrorBoundary } from './SimulationErrorBoundary'
 import { SimulationError } from './SimulationError'
 
 const InclinedPlane = lazy(() => import(/* webpackChunkName: "sim-inclined-plane" */ '../simulations/InclinedPlane'))
-const ProjectileMotion = lazy(() => import(/* webpackChunkName: "sim-projectile-motion" */ '../simulations/ProjectileMotion'))
-const Pendulum = lazy(() => import(/* webpackChunkName: "sim-pendulum" */ '../simulations/Pendulum'))
-const SpringMass = lazy(() => import(/* webpackChunkName: "sim-spring-mass" */ '../simulations/SpringMass'))
+const ProjectileMotion = lazy(() => import(/* webpackChunkName: "sim-projectile-motion" */ '../simulations/ProjectileMotion2D'))
+const Pendulum = lazy(() => import(/* webpackChunkName: "sim-pendulum" */ '../simulations/Pendulum2D'))
+const SpringMass = lazy(() => import(/* webpackChunkName: "sim-spring-mass" */ '../simulations/SpringMass2D'))
 const CircularMotion = lazy(() => import(/* webpackChunkName: "sim-circular-motion" */ '../simulations/CircularMotion'))
 const Collisions = lazy(() => import(/* webpackChunkName: "sim-collisions" */ '../simulations/Collisions'))
 const WaveMotion = lazy(() => import(/* webpackChunkName: "sim-wave-motion" */ '../simulations/WaveMotion'))
