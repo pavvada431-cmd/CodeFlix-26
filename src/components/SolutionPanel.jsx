@@ -12,6 +12,251 @@ const STATUS_STYLES = {
   Idle: 'bg-slate-500/15 text-slate-300 border-slate-400/30',
 };
 
+// Per-simulation "What If?" options. Values interpolate current variables
+// so suggestions remain relevant as the user scrubs parameters.
+function getWhatIfs(typeKey, vars, update) {
+  const safe = (key, fallback) => (Number.isFinite(vars?.[key]) ? vars[key] : fallback);
+  const fmt = (n, d = 2) => (Math.abs(n) >= 100 ? n.toFixed(0) : n.toFixed(d));
+
+  const byType = {
+    projectile_motion: () => {
+      const angle = safe('angle', 45);
+      const nextAngle = angle >= 45 ? 30 : 60;
+      const v0 = safe('velocity', 20);
+      return [
+        { label: `What if the launch angle was ${nextAngle}°?`, run: () => update('angle', nextAngle),
+          explain: 'Range peaks at 45°. Steeper angles trade horizontal reach for max height.' },
+        { label: `What if initial velocity doubled (${fmt(v0 * 2, 0)} m/s)?`, run: () => update('velocity', v0 * 2),
+          explain: 'Range scales with v₀² — doubling speed quadruples the horizontal distance.' },
+        { label: 'What if there was no gravity?', run: () => update('gravity', 0),
+          explain: 'No vertical pull — the projectile flies in a straight line indefinitely.' },
+        { label: 'What if this was on the Moon (g = 1.62)?', run: () => update('gravity', 1.62),
+          explain: 'Weaker gravity → longer flight time and ~6× the range on Earth.' },
+      ];
+    },
+    pendulum: () => {
+      const L = safe('length', 1);
+      const A = safe('angle', 20);
+      return [
+        { label: `What if length doubled (${fmt(L * 2)} m)?`, run: () => update('length', L * 2),
+          explain: 'Period ∝ √L — 2× the length gives ~1.41× slower swing.' },
+        { label: 'What if this was on the Moon (g = 1.62)?', run: () => update('gravity', 1.62),
+          explain: 'Weaker gravity stretches the period by √(g_earth / g_moon) ≈ 2.46.' },
+        { label: A < 30
+            ? `What if amplitude was 75°?`
+            : `What if amplitude was 10°?`,
+          run: () => update('angle', A < 30 ? 75 : 10),
+          explain: A < 30
+            ? 'Small-angle approximation breaks down — the period lengthens with amplitude.'
+            : 'Well within the small-angle regime — period is nearly amplitude-independent.' },
+      ];
+    },
+    spring_mass: () => {
+      const k = safe('stiffness', 10);
+      const m = safe('mass', 1);
+      const critical = 2 * Math.sqrt(k * m);
+      return [
+        { label: `What if stiffness quadrupled (${fmt(k * 4, 0)} N/m)?`, run: () => update('stiffness', k * 4),
+          explain: 'ω = √(k/m) — 4× stiffness doubles frequency and halves the period.' },
+        { label: `What if mass quadrupled (${fmt(m * 4)} kg)?`, run: () => update('mass', m * 4),
+          explain: 'Heavier bob halves the angular frequency and doubles the period.' },
+        { label: 'What if there was no damping?', run: () => update('damping', 0),
+          explain: 'Pure SHM — energy is perfectly conserved and oscillation never decays.' },
+        { label: `What if damping was critical (${fmt(critical)})?`, run: () => update('damping', critical),
+          explain: 'Returns to equilibrium as quickly as possible without overshoot.' },
+      ];
+    },
+    inclined_plane: () => {
+      const mu = safe('friction', 0.2);
+      const angle = safe('angle', 30);
+      const m = safe('mass', 1);
+      return [
+        { label: mu > 0 ? 'What if the ramp was frictionless?' : `What if friction was 0.4?`,
+          run: () => update('friction', mu > 0 ? 0 : 0.4),
+          explain: mu > 0
+            ? 'Block accelerates at g·sinθ with nothing opposing the slide.'
+            : 'With μ ≈ 0.4, the block may not slide at all if tanθ < μ.' },
+        { label: `What if the slope was ${angle < 45 ? 60 : 20}°?`,
+          run: () => update('angle', angle < 45 ? 60 : 20),
+          explain: 'Steeper slopes amplify the parallel component and shrink the normal force.' },
+        { label: `What if mass tripled (${fmt(m * 3)} kg)?`, run: () => update('mass', m * 3),
+          explain: 'Acceleration is mass-independent — gravity and friction scale together.' },
+      ];
+    },
+    circular_motion: () => {
+      const r = safe('radius', 2);
+      const v = safe('velocity', 5);
+      return [
+        { label: `What if the radius halved (${fmt(r / 2)} m)?`, run: () => update('radius', r / 2),
+          explain: 'Centripetal force = mv²/r — halving r doubles the required force.' },
+        { label: `What if speed doubled (${fmt(v * 2, 1)} m/s)?`, run: () => update('velocity', v * 2),
+          explain: 'Force scales with v² — four times the pull needed to hold the orbit.' },
+        { label: 'What if gravity was zero?', run: () => update('gravity', 0),
+          explain: 'Orbit persists forever — no weight to overcome and no tangential loss.' },
+      ];
+    },
+    collisions: () => {
+      const m1 = safe('mass1', 1);
+      return [
+        { label: 'What if perfectly elastic (e = 1)?', run: () => update('restitution', 1),
+          explain: 'All kinetic energy is preserved — objects rebound cleanly.' },
+        { label: 'What if perfectly inelastic (e = 0)?', run: () => update('restitution', 0),
+          explain: 'Maximum KE loss — objects stick together and move as one mass.' },
+        { label: `What if the target was 10× heavier (${fmt(m1 * 10)} kg)?`, run: () => update('mass2', m1 * 10),
+          explain: 'Heavy target barely moves; projectile rebounds near its incoming speed.' },
+      ];
+    },
+    wave_motion: () => {
+      const f = safe('frequency', 1);
+      const A = safe('amplitude', 1);
+      return [
+        { label: `What if frequency doubled (${fmt(f * 2, 1)} Hz)?`, run: () => update('frequency', f * 2),
+          explain: 'At fixed wave speed, wavelength halves (v = fλ).' },
+        { label: `What if amplitude halved (${fmt(A / 2, 2)})?`, run: () => update('amplitude', A / 2),
+          explain: 'Power scales with A² — four times less energy transmitted per second.' },
+      ];
+    },
+    gravitational_orbits: () => {
+      const M = safe('centralMass', 100);
+      const d = safe('distance', 5);
+      const v = safe('initialVelocity', 4);
+      return [
+        { label: `What if central mass doubled (${fmt(M * 2, 0)})?`, run: () => update('centralMass', M * 2),
+          explain: 'Stronger pull — orbit tightens and speeds up (T ∝ 1/√M).' },
+        { label: `What if distance doubled (${fmt(d * 2)} )?`, run: () => update('distance', d * 2),
+          explain: 'Kepler III: period scales with r^(3/2) — far orbits are much slower.' },
+        { label: `What if orbital speed halved (${fmt(v / 2, 2)})?`, run: () => update('initialVelocity', v / 2),
+          explain: 'Likely below circular velocity — the orbit collapses into the primary.' },
+      ];
+    },
+    radioactive_decay: () => {
+      const t = safe('halfLife', 5);
+      const N = safe('initialAmount', 100);
+      return [
+        { label: `What if half-life was 10× longer (${fmt(t * 10, 1)})?`, run: () => update('halfLife', t * 10),
+          explain: 'Decay slows dramatically — 97% of atoms remain after the original half-life.' },
+        { label: `What if initial amount doubled (${fmt(N * 2, 0)})?`, run: () => update('initialAmount', N * 2),
+          explain: 'Activity (decays/sec) doubles, but half-life is a property of the isotope.' },
+      ];
+    },
+    electric_fields: () => {
+      const q = safe('charge', 1);
+      const d = safe('distance', 1);
+      return [
+        { label: 'What if the charge flipped sign?', run: () => update('charge', -q),
+          explain: 'Field lines reverse — what was a source becomes a sink.' },
+        { label: `What if distance halved (${fmt(d / 2, 2)} m)?`, run: () => update('distance', d / 2),
+          explain: 'E ∝ 1/r² — halving the distance quadruples the field strength.' },
+      ];
+    },
+    magnetic_fields: () => {
+      const I = safe('current', 1);
+      return [
+        { label: `What if current doubled (${fmt(I * 2, 1)} A)?`, run: () => update('current', I * 2),
+          explain: 'B scales linearly with I — double the current, double the field.' },
+        { label: 'What if current reversed?', run: () => update('current', -I),
+          explain: 'Field lines reverse direction (right-hand rule flips).' },
+      ];
+    },
+    circuit: () => {
+      const V = safe('voltage', 9);
+      const R = safe('resistance', 100);
+      return [
+        { label: `What if voltage doubled (${fmt(V * 2, 0)} V)?`, run: () => update('voltage', V * 2),
+          explain: 'Ohm\'s law: I = V/R — current doubles, power quadruples.' },
+        { label: `What if resistance halved (${fmt(R / 2, 0)} Ω)?`, run: () => update('resistance', R / 2),
+          explain: 'Current doubles at fixed voltage; heat dissipation grows with I².' },
+      ];
+    },
+    gas_laws: () => {
+      const T = safe('temperature', 300);
+      const V = safe('volume', 1);
+      return [
+        { label: `What if temperature doubled (${fmt(T * 2, 0)} K)?`, run: () => update('temperature', T * 2),
+          explain: 'At constant V, pressure doubles (Gay-Lussac).' },
+        { label: `What if volume halved (${fmt(V / 2, 2)})?`, run: () => update('volume', V / 2),
+          explain: 'At constant T, pressure doubles (Boyle\'s law).' },
+      ];
+    },
+    optics: () => {
+      const f = safe('focalLength', 10);
+      const d = safe('objectDistance', 20);
+      return [
+        { label: `What if focal length halved (${fmt(f / 2, 1)} cm)?`, run: () => update('focalLength', f / 2),
+          explain: 'Stronger lens — image forms closer and magnification changes.' },
+        { label: `What if the object was at the focal point?`, run: () => update('objectDistance', f),
+          explain: 'Rays emerge parallel — image forms at infinity (no real image).' },
+        { label: `What if the object moved to 2f (${fmt(f * 2, 1)} cm)?`, run: () => update('objectDistance', f * 2),
+          explain: 'Image forms at 2f on the other side, same size, inverted.' },
+      ];
+    },
+    fluid_mechanics: () => {
+      const rho = safe('density', 1000);
+      return [
+        { label: 'What if the object was denser than water?', run: () => update('objectDensity', rho * 1.5),
+          explain: 'Negative buoyancy — object sinks until it meets the floor.' },
+        { label: 'What if the object was half as dense?', run: () => update('objectDensity', rho / 2),
+          explain: 'Floats with half its volume submerged (Archimedes\' balance).' },
+      ];
+    },
+    titration: () => {
+      const c = safe('titrantConcentration', 0.1);
+      return [
+        { label: `What if titrant concentration doubled (${fmt(c * 2, 2)} M)?`, run: () => update('titrantConcentration', c * 2),
+          explain: 'Equivalence reached in half the volume — steeper jump at endpoint.' },
+        { label: 'What if we used a weak acid instead?', run: () => update('acidStrength', 'weak'),
+          explain: 'Equivalence pH shifts above 7 and the titration curve\'s slope softens.' },
+      ];
+    },
+    stoichiometry: () => {
+      const n = safe('moles', 1);
+      return [
+        { label: `What if we doubled the reactant (${fmt(n * 2, 2)} mol)?`, run: () => update('moles', n * 2),
+          explain: 'Product amounts scale linearly if the limiting reagent is unchanged.' },
+      ];
+    },
+    combustion: () => {
+      const n = safe('fuelMoles', 1);
+      return [
+        { label: `What if fuel doubled (${fmt(n * 2, 2)} mol)?`, run: () => update('fuelMoles', n * 2),
+          explain: 'Products (CO₂, H₂O) and heat released both double.' },
+        { label: 'What if oxygen was limited?', run: () => update('oxygenRatio', 0.5),
+          explain: 'Incomplete combustion — CO and soot appear in the products.' },
+      ];
+    },
+    rotational_mechanics: () => {
+      const I = safe('inertia', 1);
+      const tau = safe('torque', 1);
+      return [
+        { label: `What if torque doubled (${fmt(tau * 2, 2)} N·m)?`, run: () => update('torque', tau * 2),
+          explain: 'α = τ/I — angular acceleration doubles.' },
+        { label: `What if moment of inertia halved (${fmt(I / 2, 2)})?`, run: () => update('inertia', I / 2),
+          explain: 'Same torque spins up the body twice as fast.' },
+      ];
+    },
+  };
+
+  if (byType[typeKey]) return byType[typeKey]();
+
+  // Generic fallback — picks up to three numeric variables and offers "double" probes
+  const numeric = Object.entries(vars || {}).filter(([, v]) => Number.isFinite(v) && v !== 0);
+  const out = [];
+  if ('gravity' in (vars || {})) {
+    out.push({ label: 'What if there was no gravity?', run: () => update('gravity', 0),
+      explain: 'Removes gravitational acceleration entirely.' });
+  }
+  for (const [k, v] of numeric.slice(0, 3)) {
+    if (k === 'gravity') continue;
+    out.push({
+      label: `What if ${k} doubled (${fmt(v * 2, 2)})?`,
+      run: () => update(k, v * 2),
+      explain: `Explore how scaling ${k} reshapes the simulation.`,
+    });
+    if (out.length >= 3) break;
+  }
+  return out;
+}
+
 const TITLE_MAP = {
   projectile_motion: { title: 'Projectile Motion', subtitle: 'Parabolic Trajectory Analysis', category: 'Mechanics → Kinematics' },
   pendulum: { title: 'Pendulum', subtitle: 'Nonlinear Oscillation Analysis', category: 'Mechanics → Oscillations' },
@@ -417,23 +662,10 @@ export default function SolutionPanel({
     });
   };
 
-  const whatIfOptions = [
-    {
-      label: 'What if the angle was 30°?',
-      run: () => updateVariable('angle', 30),
-      explain: 'Lowering launch angle usually reduces max height and can reduce range depending on initial setup.',
-    },
-    {
-      label: 'What if there was no gravity?',
-      run: () => updateVariable('gravity', 0),
-      explain: 'Without gravity there is no downward acceleration, so vertical velocity remains constant.',
-    },
-    {
-      label: 'What if the mass doubled?',
-      run: () => updateVariable('mass', (currentVariables.mass || 1) * 2),
-      explain: 'Mass directly scales inertia and energy, changing force response and kinetic/potential values.',
-    },
-  ];
+  const whatIfOptions = useMemo(
+    () => getWhatIfs(typeKey, currentVariables, updateVariable),
+    [typeKey, currentVariables, updateVariable]
+  );
 
   return (
     <div data-tour="solution-panel" className="solution-panel-scroll h-full overflow-y-auto pr-1 text-[var(--color-text)]">
@@ -590,6 +822,7 @@ export default function SolutionPanel({
           </Collapsible>
         )}
 
+        {whatIfOptions.length > 0 && (
         <div className="rounded-lg border border-[var(--color-border)] bg-[color:color-mix(in_oklab,var(--color-bg)_74%,transparent)] p-3 backdrop-blur-md">
           <p className="text-sm font-medium">What If?</p>
           <div className="mt-2 space-y-2">
@@ -608,6 +841,7 @@ export default function SolutionPanel({
             ))}
           </div>
         </div>
+        )}
 
         {/* Copy Solution Button */}
         <button
