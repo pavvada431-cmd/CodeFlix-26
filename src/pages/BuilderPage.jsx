@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Play, Pause, RotateCcw, Trash2, Share2, Copy } from 'lucide-react'
 import Panel from '../components/ui/Panel'
 import Button from '../components/ui/Button'
+import PageHeader from '../components/ui/PageHeader'
 
 // World in metres (y-up). SVG viewBox flips y via transform.
 const WORLD_W = 24
@@ -279,7 +280,19 @@ export default function BuilderPage() {
   }, [entities, isPlaying]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="px-6 py-4 flex gap-4" style={{ minHeight: 'calc(100vh - 4rem)' }}>
+    <div className="px-6 py-4" style={{ minHeight: 'calc(100vh - 4rem)' }}>
+      <PageHeader
+        eyebrow="Simulator · Builder"
+        title="Build your"
+        accent="Scene"
+        subtitle="Drag primitives onto the canvas, edit properties, then press play to watch gravity and collisions take over."
+        stats={[
+          { value: entities.filter(e => e.kind === 'ball').length, label: 'balls' },
+          { value: segments.length, label: 'segments' },
+          { value: entities.filter(e => e.kind === 'pivot').length, label: 'pivots' },
+        ]}
+      />
+      <div className="flex gap-4">
       {/* Palette */}
       <Panel className="w-52 shrink-0 p-3">
         <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--color-text)' }}>Palette</h3>
@@ -466,6 +479,7 @@ export default function BuilderPage() {
           </button>
         </div>
       </Panel>
+      </div>
     </div>
   )
 }

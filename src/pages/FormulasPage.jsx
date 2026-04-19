@@ -1,5 +1,6 @@
-import { Code2, BookOpen, Plus, Minus, Circle, Zap } from 'lucide-react'
+import { BookOpen, ArrowLeft, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import PageHeader from '../components/ui/PageHeader'
 
 const FORMULAS_BY_TOPIC = {
   'Kinematics': [
@@ -73,102 +74,117 @@ const FORMULAS_BY_TOPIC = {
   ],
 }
 
+const CONSTANTS = [
+  { name: 'Gravity', symbol: 'g', value: '9.81 m/s²' },
+  { name: 'Speed of Light', symbol: 'c', value: '3×10⁸ m/s' },
+  { name: 'Coulomb Constant', symbol: 'k', value: '8.99×10⁹ N·m²/C²' },
+  { name: 'Planck Constant', symbol: 'h', value: '6.626×10⁻³⁴ J·s' },
+  { name: 'Gas Constant', symbol: 'R', value: '8.314 J/(mol·K)' },
+  { name: 'Gravitational Constant', symbol: 'G', value: '6.674×10⁻¹¹ N·m²/kg²' },
+]
+
 export default function FormulasPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a0f1e] via-[#111827] to-[#0a0f1e] pt-20 pb-16">
-      {/* Header */}
-      <div className="mx-auto max-w-6xl px-4 mb-12">
-        <Link to="/" className="mb-8 inline-flex items-center text-[#22d3ee] hover:text-white transition-colors">
-          <Code2 className="mr-2 h-4 w-4" />
-          Back to Home
-        </Link>
-        
-        <div className="mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 flex items-center">
-            <BookOpen className="mr-4 h-10 w-10 text-[#22d3ee]" />
-            Physics Formulas Reference
-          </h1>
-          <p className="text-lg text-[var(--color-text-muted)]">
-            Complete collection of physics formulas organized by topic
-          </p>
-        </div>
-      </div>
-
-      {/* Formulas Grid */}
+    <div className="min-h-screen pt-20 pb-16" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
       <div className="mx-auto max-w-6xl px-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <Link
+          to="/"
+          className="mb-6 inline-flex items-center gap-2 text-sm transition-colors"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to home
+        </Link>
+
+        <PageHeader
+          eyebrow="Reference"
+          title="Formula"
+          accent="Sheet"
+          subtitle="A curated reference for the core physics equations you'll encounter across the simulator."
+          stats={[
+            { value: Object.keys(FORMULAS_BY_TOPIC).length, label: 'topics' },
+            { value: Object.values(FORMULAS_BY_TOPIC).flat().length, label: 'formulas' },
+            { value: CONSTANTS.length, label: 'constants' },
+          ]}
+        />
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {Object.entries(FORMULAS_BY_TOPIC).map(([topic, formulas]) => (
-            <div
+            <section
               key={topic}
-              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur p-6 hover:border-[#22d3ee]/30 transition-colors"
+              className="rounded-2xl border p-5 transition-colors"
+              style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
             >
-              {/* Topic Header */}
-              <h2 className="text-xl font-bold text-[#22d3ee] mb-6 flex items-center">
-                <Zap className="mr-2 h-5 w-5" />
+              <h2 className="mb-4 flex items-center gap-2 text-base font-semibold" style={{ color: 'var(--color-text)' }}>
+                <Zap className="h-4 w-4 text-cyan-400" />
                 {topic}
               </h2>
 
-              {/* Formulas List */}
-              <div className="space-y-4">
-                {formulas.map((formula, idx) => (
+              <div className="space-y-3">
+                {formulas.map((formula) => (
                   <div
-                    key={idx}
-                    className="p-4 rounded-lg bg-[var(--color-border)]/50 border border-[var(--color-border)] hover:border-[#22d3ee]/20 transition-all"
+                    key={formula.name}
+                    className="rounded-xl border p-3"
+                    style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)' }}
                   >
-                    <h3 className="text-sm font-semibold text-white mb-2">
+                    <h3 className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
                       {formula.name}
                     </h3>
-                    <div className="bg-[var(--color-bg)] p-3 rounded border border-[var(--color-border)] mb-2 font-mono text-sm text-[#4ade80]">
+                    <div
+                      className="mt-2 rounded-md px-3 py-2 font-mono text-sm"
+                      style={{
+                        backgroundColor: 'color-mix(in srgb, var(--color-accent) 10%, transparent)',
+                        color: 'var(--color-accent)',
+                      }}
+                    >
                       {formula.formula}
                     </div>
-                    <p className="text-xs text-[var(--color-text-muted)]">
+                    <p className="mt-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
                       {formula.description}
                     </p>
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
           ))}
         </div>
-      </div>
 
-      {/* Constants Section */}
-      <div className="mx-auto max-w-6xl px-4 mt-12">
-        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur p-6">
-          <h2 className="text-2xl font-bold text-[#22d3ee] mb-6">Physical Constants</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {[
-              { name: 'Gravity', symbol: 'g', value: '9.81 m/s²' },
-              { name: 'Speed of Light', symbol: 'c', value: '3×10⁸ m/s' },
-              { name: 'Coulomb Constant', symbol: 'k', value: '8.99×10⁹ N·m²/C²' },
-              { name: 'Planck Constant', symbol: 'h', value: '6.626×10⁻³⁴ J·s' },
-              { name: 'Gas Constant', symbol: 'R', value: '8.314 J/(mol·K)' },
-              { name: 'Gravitational Constant', symbol: 'G', value: '6.674×10⁻¹¹ N·m²/kg²' },
-            ].map((constant) => (
+        <section
+          className="mt-8 rounded-2xl border p-5"
+          style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}
+        >
+          <h2 className="mb-4 text-base font-semibold" style={{ color: 'var(--color-text)' }}>
+            Physical Constants
+          </h2>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            {CONSTANTS.map((c) => (
               <div
-                key={constant.symbol}
-                className="p-4 rounded-lg bg-[var(--color-border)]/50 border border-[var(--color-border)]"
+                key={c.symbol}
+                className="rounded-xl border p-3"
+                style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)' }}
               >
-                <p className="text-xs text-[var(--color-text-muted)] mb-1">{constant.name}</p>
-                <p className="font-mono text-sm text-[#4ade80] mb-1">
-                  {constant.symbol}
+                <p className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
+                  {c.name}
                 </p>
-                <p className="text-sm text-white font-semibold">{constant.value}</p>
+                <p className="mt-1 font-mono text-lg font-semibold" style={{ color: 'var(--color-accent)' }}>
+                  {c.symbol}
+                </p>
+                <p className="text-sm" style={{ color: 'var(--color-text)' }}>
+                  {c.value}
+                </p>
               </div>
             ))}
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* CTA */}
-      <div className="mx-auto max-w-6xl px-4 mt-12 text-center">
-        <Link
-          to="/app"
-          className="inline-flex items-center justify-center rounded-lg border border-[#22d3ee] bg-gradient-to-r from-[#22d3ee] to-[#06b6d4] px-8 py-3 font-semibold text-[#0b0f17] hover:shadow-lg hover:shadow-[#22d3ee]/25 transition-all"
-        >
-          <Code2 className="mr-2 h-5 w-5" />
-          Try an Interactive Simulation
-        </Link>
+        <div className="mt-10 flex justify-center">
+          <Link
+            to="/app"
+            className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/40 bg-cyan-400 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:scale-[1.02]"
+          >
+            <BookOpen className="h-4 w-4" />
+            Try an interactive simulation
+          </Link>
+        </div>
       </div>
     </div>
   )
