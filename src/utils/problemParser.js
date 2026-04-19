@@ -477,14 +477,40 @@ function mergeExtractedVariables(parsedProblem, extractedVariables) {
   return merged
 }
 
+function humanizeParseError(error, normalized) {
+  const raw = error?.message || ''
+  const detectedType = normalized?.detectedType
+
+  if (/Failed to reach API|network|ECONNREFUSED|timeout/i.test(raw)) {
+    return "Couldn't reach the AI service. Check your internet connection, or the backend may be offline. You can still click a library example to run offline."
+  }
+  if (error instanceof MaxRetriesExceededError || /Invalid JSON|not valid JSON/i.test(raw)) {
+    return `The AI returned a response I couldn't read.${detectedType ? ` It looked like a ${detectedType.replace(/_/g, ' ')} problem — try rephrasing with clearer numbers (e.g. "mass = 2 kg, angle = 30°").` : ' Try rephrasing with explicit values and units.'}`
+  }
+  if (/type .* does not match domain/i.test(raw)) {
+    return 'The AI mislabeled this problem as physics/chemistry. Try making the topic more explicit (e.g. "titration of HCl" or "projectile motion").'
+  }
+  if (/units\.\w+ is required|must be a non-empty string/i.test(raw)) {
+    return 'Some values were missing units. Include units next to each number — for example, "20 m/s" instead of just "20".'
+  }
+  if (/must be greater than 0|must be between/i.test(raw)) {
+    const m = raw.match(/(\w+) must be (.+)/)
+    return m ? `Invalid value: ${m[1]} ${m[2]}. Please adjust this parameter and try again.` : raw
+  }
+  if (/supported problem types/i.test(raw)) {
+    return `This topic isn't in the supported library yet. Supported: projectile, pendulum, inclined plane, spring, collisions, waves, optics, gas laws, titration, and more. Try rephrasing to match one of these.`
+  }
+  return raw || 'Something went wrong while parsing. Try rephrasing the problem with specific numbers and units.'
+}
+
 export async function parseProblem(problemText, provider = 'openai') {
   if (typeof problemText !== 'string' || problemText.trim().length === 0) {
-    throw new Error('problemText must be a non-empty string')
+    throw new Error('Please enter a problem description first.')
   }
 
   const normalized = normalizeProblemText(problemText)
   const cleanedText = normalized.cleaned
-  
+
   console.log('Problem type detected:', normalized.detectedType)
   console.log('Variables extracted:', normalized.extractedVariables)
   console.log('Cleaned problem text:', cleanedText)
@@ -492,16 +518,13 @@ export async function parseProblem(problemText, provider = 'openai') {
   try {
     return await parseWithRetry(cleanedText, BASE_SYSTEM_PROMPT, provider, 2)
   } catch (error) {
-    // If offline mode is enabled and API call failed, use offline parsing
-    if (isOfflineModeEnabled()) {
-      console.warn('API failed, using offline fallback:', error?.message)
-      const offlineData = getOfflineParsedData(cleanedText)
-      if (offlineData) {
-        console.log('Offline fallback successful:', offlineData)
-        return offlineData
-      }
+    console.warn('API parse failed, trying offline fallback:', error?.message)
+    const offlineData = getOfflineParsedData(cleanedText)
+    if (offlineData) {
+      console.log('Offline fallback successful:', offlineData)
+      return { ...offlineData, _usedFallback: true, _fallbackReason: humanizeParseError(error, normalized) }
     }
-    throw error
+    throw new Error(humanizeParseError(error, normalized))
   }
 }
 

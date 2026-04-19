@@ -108,7 +108,7 @@ export default function ProblemInput({
         parsedData.stages.length > 0
 
       if (!parsedData?.type && !hasMultiConceptStages) {
-        throw new Error('Could not understand the problem. Try rephrasing!')
+        throw new Error("I couldn't match this to a supported topic. Try including the topic name (e.g. 'projectile', 'pendulum', 'titration') along with numbers and units.")
       }
 
       setConnected(true)
@@ -117,16 +117,7 @@ export default function ProblemInput({
       onSolved?.(parsedData)
     } catch (solveError) {
       setConnected(false)
-      
-      let errorMsg = solveError?.message || 'Something went wrong. Please try again!'
-      
-      if (errorMsg.includes('Failed to reach API') || 
-          errorMsg.includes('network error') ||
-          errorMsg.includes('ECONNREFUSED')) {
-        errorMsg = "⚠️ Backend not running. Start it with `npm run dev:api` or check your API keys in .env"
-      }
-      
-      setError(errorMsg)
+      setError(solveError?.message || 'Something went wrong. Please try again with more specific values and units.')
       setSuccess(false)
       onApiStatusChange?.(false)
     } finally {
