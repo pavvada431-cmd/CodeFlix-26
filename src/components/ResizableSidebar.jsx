@@ -88,9 +88,6 @@ export default function ResizableSidebar({
                 <Button variant="secondary" onClick={onDemoMode} className="text-xs">
                   🎲 Demo
                 </Button>
-                <Button variant="ghost" onClick={onShowSession} className="text-xs col-span-2">
-                  📊 Session Summary
-                </Button>
               </div>
             </Panel>
           </div>

@@ -13,7 +13,7 @@ export default function Sidebar({
   onShowSession,
 }) {
   return (
-    <aside className="w-[280px] shrink-0 space-y-4 border-r border-[#1f2937] bg-[#111827] p-4">
+    <aside className="w-[280px] shrink-0 space-y-4 border-r border-[var(--color-border)] bg-[var(--color-surface)] p-4">
       <ProblemInput
         onSolved={onSolved}
         isLoading={isLoading}
@@ -29,9 +29,6 @@ export default function Sidebar({
           </Button>
           <Button variant="secondary" onClick={onDemoMode}>
             Load Demo
-          </Button>
-          <Button variant="ghost" onClick={onShowSession}>
-            Session Summary
           </Button>
         </div>
       </Panel>

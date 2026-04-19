@@ -113,7 +113,7 @@ function ProblemInputPanel({ problem, setProblem, solution }) {
         {fields.map((field) => (
           <label
             key={field.key}
-            className="rounded-3xl border border-white/10 bg-[#0b1324]/80 p-4"
+            className="rounded-3xl border border-white/10 bg-[var(--color-bg)]/80 p-4"
           >
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-medium text-slate-200">{field.label}</span>
@@ -139,7 +139,7 @@ function ProblemInputPanel({ problem, setProblem, solution }) {
         {highlights.map((item) => (
           <div
             key={item.key}
-            className="rounded-3xl border border-[rgba(0,245,255,0.12)] bg-[#07111f]/80 p-4"
+            className="rounded-3xl border border-[rgba(0,245,255,0.12)] bg-[var(--color-bg)]/80 p-4"
           >
             <p className="text-sm text-slate-400">{item.label}</p>
             <p className="mt-3 font-heading text-3xl font-semibold tracking-tight text-white">

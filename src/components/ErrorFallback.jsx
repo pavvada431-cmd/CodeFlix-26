@@ -1,12 +1,12 @@
 import { AlertCircle, RefreshCw } from 'lucide-react'
 
 export default function ErrorFallback({ error, resetError, isDark = true }) {
-  const bgClass = isDark ? 'bg-[#111827]' : 'bg-white'
-  const borderClass = isDark ? 'border-[#1f2937]' : 'border-gray-200'
-  const textClass = isDark ? 'text-[#e5e7eb]' : 'text-gray-900'
-  const subtextClass = isDark ? 'text-[#9ca3af]' : 'text-gray-600'
+  const bgClass = isDark ? 'bg-[var(--color-surface)]' : 'bg-white'
+  const borderClass = isDark ? 'border-[var(--color-border)]' : 'border-gray-200'
+  const textClass = isDark ? 'text-[var(--color-text)]' : 'text-gray-900'
+  const subtextClass = isDark ? 'text-[var(--color-text-muted)]' : 'text-gray-600'
   const buttonClass = isDark
-    ? 'bg-[#0d1a28] border-[#1f2937] text-[#e5e7eb] hover:bg-[#1f2937]'
+    ? 'bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-border)]'
     : 'bg-gray-100 border-gray-300 text-gray-900 hover:bg-gray-200'
 
   const errorMessage = error?.message || 'Something went wrong'

@@ -81,13 +81,19 @@ export default function InclinedPlane2D(rawProps) {
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [isPlaying, f.acceleration, f.normal, f.frictionForce, f.netForce, f.parallel, onComplete, onDataPoint, blockSize, rampLength]);
 
+  // Ramp goes from bottom-left (0,0) up to top-right (topX, topY).
+  // Block starts at the top and slides DOWN the slope due to gravity.
+  // `s` is distance slid from the top, in metres.
   const rx = 0;
   const ry = 0;
   const topX = rx + rampLength * Math.cos(f.theta);
   const topY = ry + rampLength * Math.sin(f.theta);
   const s = sRef.current;
-  const blockCx = rx + s * Math.cos(f.theta) + blockSize / 2 * Math.cos(f.theta) - blockSize / 2 * Math.sin(f.theta);
-  const blockCy = ry + s * Math.sin(f.theta) + blockSize / 2 * Math.sin(f.theta) + blockSize / 2 * Math.cos(f.theta);
+  const slideX = topX - s * Math.cos(f.theta);
+  const slideY = topY - s * Math.sin(f.theta);
+  // Block centre sits one half-height above the slope surface (normal direction).
+  const blockCx = slideX - (blockSize / 2) * Math.sin(f.theta);
+  const blockCy = slideY + (blockSize / 2) * Math.cos(f.theta);
 
   const bodies = [
     { id: 'ground', type: 'rect', x: (world.width) / 2 - 2, y: -0.2, w: world.width, h: 0.4,
@@ -107,7 +113,7 @@ export default function InclinedPlane2D(rawProps) {
   const labels = [
     { id: 'theta', x: rx + 1.4 * Math.cos(f.theta / 2), y: ry + 0.7 * Math.sin(f.theta / 2),
       text: `θ = ${angle.toFixed(0)}°`, color: '#00f5ff' },
-    { id: 'a', x: blockCx + 0.8, y: blockCy + 0.6,
+    { id: 'a', x: blockCx + blockSize * 1.3, y: blockCy + 0.3,
       text: `a = ${f.acceleration.toFixed(2)} m/s²`, color: '#ffaa00', anchor: 'start' },
     { id: 'mu', x: topX, y: topY + 0.6, text: `μ = ${friction.toFixed(2)}`, color: '#e5f8ff', anchor: 'end' },
   ];

@@ -559,13 +559,13 @@ function SimulationCanvasContent({
   return (
     <>
       <div className="pointer-events-none absolute left-5 top-5 z-10 flex flex-wrap items-center gap-3">
-        <div className="rounded-full border border-white/10 bg-[#081221]/72 px-4 py-2 font-mono-display text-xs uppercase tracking-[0.24em] text-slate-200 backdrop-blur-md">
+        <div className="rounded-full border border-white/10 bg-[var(--color-bg)]/72 px-4 py-2 font-mono-display text-xs uppercase tracking-[0.24em] text-slate-200 backdrop-blur-md">
           Time {formatNumber(simulationTime)} s
         </div>
-        <div className="rounded-full border border-white/10 bg-[#081221]/72 px-4 py-2 font-mono-display text-xs uppercase tracking-[0.24em] text-slate-200 backdrop-blur-md">
+        <div className="rounded-full border border-white/10 bg-[var(--color-bg)]/72 px-4 py-2 font-mono-display text-xs uppercase tracking-[0.24em] text-slate-200 backdrop-blur-md">
           FPS {formatNumber(fps, 0)}
         </div>
-        <div className="rounded-full border border-white/10 bg-[#081221]/72 px-4 py-2 font-mono-display text-xs uppercase tracking-[0.24em] text-slate-200 backdrop-blur-md">
+        <div className="rounded-full border border-white/10 bg-[var(--color-bg)]/72 px-4 py-2 font-mono-display text-xs uppercase tracking-[0.24em] text-slate-200 backdrop-blur-md">
           <span
             className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${
               resolvedIsPlaying
@@ -595,12 +595,12 @@ function SimulationCanvasContent({
               Reset
             </button>
 
-            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[#081221]/78 px-3 py-2 font-mono-display text-xs uppercase tracking-[0.24em] text-slate-300">
+            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[var(--color-bg)]/78 px-3 py-2 font-mono-display text-xs uppercase tracking-[0.24em] text-slate-300">
               Speed
               <select
                 value={String(resolvedPlaybackSpeed)}
                 onChange={(event) => setPlaybackSpeedState(Number(event.target.value))}
-                className="rounded-xl border border-white/10 bg-[#0b1324] px-2 py-1 text-xs text-white outline-none"
+                className="rounded-xl border border-white/10 bg-[var(--color-bg)] px-2 py-1 text-xs text-white outline-none"
               >
                 {SPEED_OPTIONS.map((option) => (
                   <option
@@ -649,7 +649,7 @@ export default function SimulationCanvas({
 
   if (webglSupported === undefined) {
     return (
-      <section className="relative flex h-full min-h-[400px] items-center justify-center overflow-hidden rounded-[24px] border border-white/10 bg-[#07111f]/85">
+      <section className="relative flex h-full min-h-[400px] items-center justify-center overflow-hidden rounded-[24px] border border-white/10 bg-[var(--color-bg)]/85">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#00f5ff] border-t-transparent" />
       </section>
     )
@@ -657,14 +657,14 @@ export default function SimulationCanvas({
 
   if (webglSupported === false) {
     return (
-      <section className="relative h-full min-h-[400px] overflow-hidden rounded-[24px] border border-white/10 bg-[#07111f]/85">
+      <section className="relative h-full min-h-[400px] overflow-hidden rounded-[24px] border border-white/10 bg-[var(--color-bg)]/85">
         <WebGLFallback />
       </section>
     )
   }
 
   return (
-    <section className="relative h-full min-h-[760px] overflow-hidden rounded-[34px] border border-[rgba(0,245,255,0.14)] bg-[#07111f]/85 shadow-[0_26px_90px_rgba(2,8,23,0.6)]">
+    <section className="relative h-full min-h-[760px] overflow-hidden rounded-[34px] border border-[rgba(0,245,255,0.14)] bg-[var(--color-bg)]/85 shadow-[0_26px_90px_rgba(2,8,23,0.6)]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(0,245,255,0.12),transparent_32%),linear-gradient(180deg,rgba(10,15,30,0.12),rgba(10,15,30,0.55))]" />
 
       <canvas

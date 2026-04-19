@@ -145,7 +145,7 @@ export default function PhysicsLibrary({ isOpen, onClose, onSelectSimulation }) 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
       <div className="max-h-[85vh] w-full max-w-5xl overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-b from-[#1a1a2e] to-[#0d1117] shadow-2xl">
-        <div className="sticky top-0 z-10 border-b border-white/10 bg-[#0d1117]/95 p-6 backdrop-blur-xl">
+        <div className="sticky top-0 z-10 border-b border-white/10 bg-[var(--color-bg)]/95 p-6 backdrop-blur-xl">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-heading text-2xl font-bold text-white">
@@ -201,7 +201,7 @@ export default function PhysicsLibrary({ isOpen, onClose, onSelectSimulation }) 
           </div>
         </div>
 
-        <div className="sticky bottom-0 border-t border-white/10 bg-[#0d1117]/95 p-4 backdrop-blur-xl">
+        <div className="sticky bottom-0 border-t border-white/10 bg-[var(--color-bg)]/95 p-4 backdrop-blur-xl">
           <div className="flex items-center justify-between">
             <p className="text-xs text-slate-500">
               {Object.values(SIMULATION_CATEGORIES).flat().length} simulations available

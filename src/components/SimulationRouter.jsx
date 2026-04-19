@@ -28,7 +28,7 @@ const ChemicalBonding = lazy(() => import(/* webpackChunkName: "sim-chemical-bon
 
 function LoadingSimulation() {
   return (
-    <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-white/10 bg-[#07111f]/80 p-8">
+    <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-white/10 bg-[var(--color-bg)]/80 p-8">
       <div className="relative mb-6 h-16 w-16">
         <div className="absolute inset-0 animate-ping rounded-full border-2 border-[#00f5ff] border-opacity-50" />
         <div className="absolute inset-0 flex items-center justify-center rounded-full border border-[rgba(0,245,255,0.3)] bg-[rgba(0,245,255,0.1)]">
@@ -50,12 +50,12 @@ function LoadingSimulation() {
 
 function SimulationNotSupported({ simulationType }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-white/10 bg-[#07111f]/80 p-8 text-center">
+    <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-white/10 bg-[var(--color-bg)]/80 p-8 text-center">
       <h3 className="mb-2 font-heading text-2xl font-semibold text-white">Simulation Not Yet Supported</h3>
       <p className="mb-6 max-w-md text-sm text-slate-400">
         The problem type <span className="font-mono text-[#ff6b6b]">"{simulationType}"</span> is not currently available.
       </p>
-      <div className="w-full max-w-sm rounded-[20px] border border-white/10 bg-[#0b1324]/80 p-4">
+      <div className="w-full max-w-sm rounded-[20px] border border-white/10 bg-[var(--color-bg)]/80 p-4">
         <p className="mb-3 font-mono-display text-xs uppercase tracking-[0.24em] text-slate-400">Currently Supported</p>
         <div className="space-y-2">
           {SUPPORTED_SIMULATION_TYPES.map((type) => (
@@ -90,7 +90,7 @@ function detectWebGLAvailability() {
 
 function WebGLUnavailable({ parsedData }) {
   return (
-    <div className="flex h-full flex-col overflow-y-auto rounded-[24px] border border-amber-400/20 bg-[#07111f]/80 p-8">
+    <div className="flex h-full flex-col overflow-y-auto rounded-[24px] border border-amber-400/20 bg-[var(--color-bg)]/80 p-8">
       <h3 className="mb-2 font-heading text-xl font-semibold text-white">WebGL Context Unavailable</h3>
       <p className="mb-6 max-w-md text-sm text-slate-400">
         Your browser could not create a stable 3D context right now. Here's the solution instead:
@@ -553,7 +553,7 @@ function MultiConceptView({
 
   if (pipelineError) {
     return (
-      <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-red-400/20 bg-[#07111f]/80 p-8 text-center">
+      <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-red-400/20 bg-[var(--color-bg)]/80 p-8 text-center">
         <h3 className="mb-2 font-heading text-xl font-semibold text-white">Pipeline Error</h3>
         <p className="mb-4 max-w-md text-sm text-slate-400">{pipelineError}</p>
         <p className="text-xs text-slate-500">Try a simpler single-concept problem, or refresh the page.</p>

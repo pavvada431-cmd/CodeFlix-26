@@ -139,7 +139,7 @@ export default function MultiConceptSimulation({ parsedProblem, onClose }) {
       </div>
 
       {/* Stage Indicator */}
-      <div className="bg-[#0a1421]/50 rounded-lg p-4 space-y-3">
+      <div className="bg-[var(--color-bg)]/50 rounded-lg p-4 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-mono text-slate-400">Current Stage</span>
           <span className="text-lg font-semibold text-[#00f5ff]">
@@ -171,7 +171,7 @@ export default function MultiConceptSimulation({ parsedProblem, onClose }) {
       </div>
 
       {/* Stage Variables */}
-      <div className="bg-[#0a1421]/50 rounded-lg p-4">
+      <div className="bg-[var(--color-bg)]/50 rounded-lg p-4">
         <h4 className="text-sm font-semibold text-slate-300 mb-2">Variables</h4>
         <div className="grid grid-cols-2 gap-2 text-xs">
           {Object.entries(currentStageInfo?.variables || {}).map(([key, value]) => (
@@ -186,7 +186,7 @@ export default function MultiConceptSimulation({ parsedProblem, onClose }) {
       </div>
 
       {/* Canvas for Visualization */}
-      <div className="relative bg-[#0a1421] rounded-lg overflow-hidden" style={{ height: '300px' }}>
+      <div className="relative bg-[var(--color-bg)] rounded-lg overflow-hidden" style={{ height: '300px' }}>
         <canvas
           ref={canvasRef}
           width={800}
@@ -211,7 +211,7 @@ export default function MultiConceptSimulation({ parsedProblem, onClose }) {
       </div>
 
       {/* Time Display */}
-      <div className="bg-[#0a1421]/50 rounded-lg p-3 space-y-1">
+      <div className="bg-[var(--color-bg)]/50 rounded-lg p-3 space-y-1">
         <div className="flex justify-between items-center">
           <span className="text-sm font-mono text-slate-400">Elapsed Time</span>
           <span className="text-lg font-mono text-[#00f5ff]">{formatNumber(timeElapsed, 2)}s</span>
@@ -220,7 +220,7 @@ export default function MultiConceptSimulation({ parsedProblem, onClose }) {
 
       {/* Transitions Info */}
       {isMultiConcept && pipelineInfo.transitions.length > 0 && (
-        <div className="bg-[#0a1421]/50 rounded-lg p-4 space-y-2">
+        <div className="bg-[var(--color-bg)]/50 rounded-lg p-4 space-y-2">
           <h4 className="text-sm font-semibold text-slate-300">Transitions</h4>
           <div className="space-y-1 text-xs text-slate-400">
             {pipelineInfo.transitions.map((t, idx) => (

@@ -34,7 +34,7 @@ function AnimatedLogo({ onComplete }) {
   }).join(' ')
 
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden bg-[#0a0f1e]">
+    <div className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden bg-[var(--color-bg)]">
       {particles.map(p => (
         <div
           key={p.id}

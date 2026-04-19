@@ -16,7 +16,7 @@ function ToastItem({ toast, onRemove }) {
   }, [toast, onRemove])
 
   const typeStyles = {
-    info: 'border-[#1f2937] bg-[#111827]',
+    info: 'border-[var(--color-border)] bg-[var(--color-surface)]',
     warning: 'border-amber-900/60 bg-amber-500/10',
     error: 'border-red-900/60 bg-red-500/10',
     success: 'border-emerald-900/60 bg-emerald-500/10',
@@ -61,13 +61,13 @@ function ToastItem({ toast, onRemove }) {
       <span className={iconStyles[toast.type] || iconStyles.info}>
         {icons[toast.type] || icons.info}
       </span>
-      <p className="flex-1 text-sm text-[#e5e7eb]">{toast.message}</p>
+      <p className="flex-1 text-sm text-[var(--color-text)]">{toast.message}</p>
       <button
         onClick={() => {
           setIsExiting(true)
           setTimeout(() => onRemove(toast.id), 300)
         }}
-        className="text-[#9ca3af] transition hover:text-[#e5e7eb]"
+        className="text-[var(--color-text-muted)] transition hover:text-[var(--color-text)]"
       >
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

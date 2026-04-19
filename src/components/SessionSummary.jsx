@@ -16,7 +16,7 @@ export default function SessionSummary({ summary, isOpen, onClose }) {
         className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-[#0a0f1e] p-6 shadow-2xl">
+      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-[var(--color-bg)] p-6 shadow-2xl">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="font-heading text-2xl font-semibold text-white">
             Session Summary

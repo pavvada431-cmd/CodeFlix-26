@@ -40,24 +40,24 @@ export default function OnboardingTour({ isOpen, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-[#0b0f17]/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-[var(--color-bg)]/40 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative rounded-2xl border border-[#1f2937] bg-[#111827] p-8 shadow-2xl max-w-md">
+      <div className="relative rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-2xl max-w-md">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-[#6b7280] hover:text-[#e5e7eb] transition-colors"
+          className="absolute top-4 right-4 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
         >
           <X className="h-5 w-5" />
         </button>
 
         {/* Content */}
         <div className="mb-6">
-          <h2 className="mb-2 text-2xl font-bold text-[#e5e7eb]">{step.title}</h2>
-          <p className="text-[#9ca3af]">{step.description}</p>
+          <h2 className="mb-2 text-2xl font-bold text-[var(--color-text)]">{step.title}</h2>
+          <p className="text-[var(--color-text-muted)]">{step.description}</p>
         </div>
 
         {/* Progress */}
@@ -67,7 +67,7 @@ export default function OnboardingTour({ isOpen, onClose }) {
               <div
                 key={idx}
                 className={`h-1 flex-1 rounded-full transition-colors ${
-                  idx <= currentStep ? 'bg-[#22d3ee]' : 'bg-[#1f2937]'
+                  idx <= currentStep ? 'bg-[#22d3ee]' : 'bg-[var(--color-border)]'
                 }`}
               />
             ))}
@@ -79,7 +79,7 @@ export default function OnboardingTour({ isOpen, onClose }) {
           {currentStep > 0 && (
             <button
               onClick={() => setCurrentStep(currentStep - 1)}
-              className="flex-1 rounded-lg border border-[#1f2937] bg-[#0d1a28] px-4 py-2 font-semibold text-[#e5e7eb] hover:bg-[#1f2937] transition-colors"
+              className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-2 font-semibold text-[var(--color-text)] hover:bg-[var(--color-border)] transition-colors"
             >
               Back
             </button>

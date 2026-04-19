@@ -11,7 +11,7 @@ import { formatNumber } from '../utils/formatters'
 
 function TrajectoryChart({ data }) {
   return (
-    <section className="rounded-[30px] border border-white/10 bg-[#081221]/78 p-5">
+    <section className="rounded-[30px] border border-white/10 bg-[var(--color-bg)]/78 p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-mono-display text-xs uppercase tracking-[0.32em] text-[rgba(0,245,255,0.72)]">

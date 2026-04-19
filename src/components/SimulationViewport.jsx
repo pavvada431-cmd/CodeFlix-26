@@ -28,7 +28,7 @@ const telemetry = [
 
 function SimulationViewport({ solution }) {
   return (
-    <section className="relative min-h-[760px] overflow-hidden rounded-[34px] border border-[rgba(0,245,255,0.14)] bg-[#07111f]/85 shadow-[0_26px_90px_rgba(2,8,23,0.6)]">
+    <section className="relative min-h-[760px] overflow-hidden rounded-[34px] border border-[rgba(0,245,255,0.14)] bg-[var(--color-bg)]/85 shadow-[0_26px_90px_rgba(2,8,23,0.6)]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(0,245,255,0.12),transparent_32%),linear-gradient(180deg,rgba(10,15,30,0.12),rgba(10,15,30,0.55))]" />
 
       <div className="relative flex h-full flex-col">
@@ -71,7 +71,7 @@ function SimulationViewport({ solution }) {
             <span className="rounded-full border border-[rgba(0,245,255,0.25)] bg-[rgba(0,245,255,0.1)] px-3 py-1 font-mono-display text-[11px] uppercase tracking-[0.28em] text-[#00f5ff]">
               Orbit Enabled
             </span>
-            <span className="rounded-full border border-white/10 bg-[#081221]/85 px-3 py-1 font-mono-display text-[11px] uppercase tracking-[0.28em] text-slate-300">
+            <span className="rounded-full border border-white/10 bg-[var(--color-bg)]/85 px-3 py-1 font-mono-display text-[11px] uppercase tracking-[0.28em] text-slate-300">
               Range {formatNumber(solution.range)} m
             </span>
           </div>

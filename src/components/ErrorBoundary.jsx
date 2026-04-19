@@ -113,8 +113,8 @@ class ErrorBoundary extends Component {
       const isDev = import.meta.env.DEV
       
       return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-[#0b0f17] p-4">
-          <div className="flex min-h-[400px] w-full max-w-md flex-col items-center justify-center rounded-[24px] border border-[rgba(248,113,113,0.3)] bg-[#07111f]/90 p-8 text-center">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-bg)] p-4">
+          <div className="flex min-h-[400px] w-full max-w-md flex-col items-center justify-center rounded-[24px] border border-[rgba(248,113,113,0.3)] bg-[var(--color-bg)]/90 p-8 text-center">
             <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-[rgba(248,113,113,0.3)] bg-[rgba(248,113,113,0.1)]">
               <svg
                 className="h-8 w-8 text-[#ff6b6b]"

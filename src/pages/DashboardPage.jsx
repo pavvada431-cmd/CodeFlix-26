@@ -10,7 +10,7 @@ function DashboardPage() {
   const solution = useProjectileSolution(problem)
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0a0f1e] text-white">
+    <div className="relative min-h-screen overflow-hidden bg-[var(--color-bg)] text-white">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(0,245,255,0.14),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(0,245,255,0.1),transparent_28%)]" />
 
       <div className="relative mx-auto flex min-h-screen max-w-[1600px] flex-col px-4 pb-4 lg:px-6">

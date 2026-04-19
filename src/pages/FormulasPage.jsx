@@ -88,7 +88,7 @@ export default function FormulasPage() {
             <BookOpen className="mr-4 h-10 w-10 text-[#22d3ee]" />
             Physics Formulas Reference
           </h1>
-          <p className="text-lg text-[#9ca3af]">
+          <p className="text-lg text-[var(--color-text-muted)]">
             Complete collection of physics formulas organized by topic
           </p>
         </div>
@@ -100,7 +100,7 @@ export default function FormulasPage() {
           {Object.entries(FORMULAS_BY_TOPIC).map(([topic, formulas]) => (
             <div
               key={topic}
-              className="rounded-lg border border-[#1f2937] bg-[#0b0f17]/80 backdrop-blur p-6 hover:border-[#22d3ee]/30 transition-colors"
+              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur p-6 hover:border-[#22d3ee]/30 transition-colors"
             >
               {/* Topic Header */}
               <h2 className="text-xl font-bold text-[#22d3ee] mb-6 flex items-center">
@@ -113,15 +113,15 @@ export default function FormulasPage() {
                 {formulas.map((formula, idx) => (
                   <div
                     key={idx}
-                    className="p-4 rounded-lg bg-[#1f2937]/50 border border-[#374151] hover:border-[#22d3ee]/20 transition-all"
+                    className="p-4 rounded-lg bg-[var(--color-border)]/50 border border-[var(--color-border)] hover:border-[#22d3ee]/20 transition-all"
                   >
                     <h3 className="text-sm font-semibold text-white mb-2">
                       {formula.name}
                     </h3>
-                    <div className="bg-[#0a0f1e] p-3 rounded border border-[#374151] mb-2 font-mono text-sm text-[#4ade80]">
+                    <div className="bg-[var(--color-bg)] p-3 rounded border border-[var(--color-border)] mb-2 font-mono text-sm text-[#4ade80]">
                       {formula.formula}
                     </div>
-                    <p className="text-xs text-[#9ca3af]">
+                    <p className="text-xs text-[var(--color-text-muted)]">
                       {formula.description}
                     </p>
                   </div>
@@ -134,7 +134,7 @@ export default function FormulasPage() {
 
       {/* Constants Section */}
       <div className="mx-auto max-w-6xl px-4 mt-12">
-        <div className="rounded-lg border border-[#1f2937] bg-[#0b0f17]/80 backdrop-blur p-6">
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur p-6">
           <h2 className="text-2xl font-bold text-[#22d3ee] mb-6">Physical Constants</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[
@@ -147,9 +147,9 @@ export default function FormulasPage() {
             ].map((constant) => (
               <div
                 key={constant.symbol}
-                className="p-4 rounded-lg bg-[#1f2937]/50 border border-[#374151]"
+                className="p-4 rounded-lg bg-[var(--color-border)]/50 border border-[var(--color-border)]"
               >
-                <p className="text-xs text-[#9ca3af] mb-1">{constant.name}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mb-1">{constant.name}</p>
                 <p className="font-mono text-sm text-[#4ade80] mb-1">
                   {constant.symbol}
                 </p>

@@ -43,16 +43,16 @@ function LoadingOverlay({ isVisible, message = 'Parsing problem...' }) {
   if (!isVisible) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0f17]/70 backdrop-blur-sm">
-      <div className="rounded-xl border border-[#1f2937] bg-[#111827] p-8 shadow-2xl max-w-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-bg)]/70 backdrop-blur-sm">
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-2xl max-w-sm">
         <div className="mb-4 flex justify-center">
           <div className="relative h-8 w-8">
-            <div className="absolute inset-0 rounded-full border-2 border-[#1f2937]" />
+            <div className="absolute inset-0 rounded-full border-2 border-[var(--color-border)]" />
             <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#22d3ee] animate-spin" />
           </div>
         </div>
-        <p className="text-center text-sm text-[#e5e7eb]">{message}</p>
-        <p className="mt-2 text-center text-xs text-[#6b7280]">This may take a few moments...</p>
+        <p className="text-center text-sm text-[var(--color-text)]">{message}</p>
+        <p className="mt-2 text-center text-xs text-[var(--color-text-muted)]">This may take a few moments...</p>
       </div>
     </div>
   )
@@ -180,7 +180,7 @@ export default function SimulatorApp() {
   }, [aiProvider, simulation])
 
   return (
-    <div className="min-h-screen bg-[#0b0f17] text-[#e5e7eb]">
+    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
       <Navbar
         mode={mode}
         onModeChange={setMode}

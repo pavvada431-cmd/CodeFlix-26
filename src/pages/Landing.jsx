@@ -13,6 +13,8 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import Navbar from '../components/Navbar'
+import { useEffect, useState } from 'react'
+import ProjectileMotion2D from '../simulations/ProjectileMotion2D'
 
 const featureCards = [
   {
@@ -76,6 +78,33 @@ const coverage = [
   'Chemical Bonding',
   'Titration',
 ]
+
+function LandingMiniSim() {
+  const [playing, setPlaying] = useState(false)
+  const [cycle, setCycle] = useState(0)
+  useEffect(() => {
+    const start = setTimeout(() => setPlaying(true), 400)
+    const loop = setInterval(() => {
+      setPlaying(false)
+      setTimeout(() => {
+        setCycle((c) => c + 1)
+        setPlaying(true)
+      }, 400)
+    }, 5200)
+    return () => { clearTimeout(start); clearInterval(loop) }
+  }, [])
+  return (
+    <div className="w-full max-w-md h-96 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-2xl">
+      <ProjectileMotion2D
+        key={cycle}
+        initialVelocity={28}
+        launchAngle={55}
+        height={1.5}
+        isPlaying={playing}
+      />
+    </div>
+  )
+}
 
 function FadeUp({ children, delay = 0, className = '' }) {
   return (
@@ -155,16 +184,7 @@ export default function Landing() {
 
             {/* RIGHT: Mini Simulation */}
             <FadeUp delay={0.08} className="flex items-center justify-center">
-              <div className="w-full max-w-md h-96 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-2xl">
-                {/* Placeholder for mini simulation */}
-                <div className="w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center relative">
-                  <div className="text-center opacity-60">
-                    <FlaskConical size={48} className="mx-auto mb-2 text-cyan-400" />
-                    <p className="text-sm text-[var(--color-text-muted)]">Mini Simulation</p>
-                    <p className="text-xs text-[var(--color-text-dim)] mt-1">Projectile Motion Demo</p>
-                  </div>
-                </div>
-              </div>
+              <LandingMiniSim />
             </FadeUp>
           </div>
 

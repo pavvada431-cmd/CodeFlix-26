@@ -1,7 +1,7 @@
 const VARIANT_CLASSES = {
   primary: 'border-[#22d3ee] bg-[#22d3ee] text-[#0b0f17] hover:opacity-90',
-  secondary: 'border-[#1f2937] bg-[#111827] text-[#e5e7eb] hover:bg-[#0f172a]',
-  ghost: 'border-transparent bg-transparent text-[#9ca3af] hover:bg-[#111827] hover:text-[#e5e7eb]',
+  secondary: 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:bg-[var(--color-bg)]',
+  ghost: 'border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]',
 }
 
 export default function Button({

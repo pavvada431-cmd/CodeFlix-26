@@ -150,7 +150,7 @@ export default function FormulaSheet({ isOpen, onClose }) {
         className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="fixed right-0 top-0 z-50 h-full w-[480px] overflow-hidden border-l border-white/10 bg-[#0a0f1e] shadow-2xl">
+      <div className="fixed right-0 top-0 z-50 h-full w-[480px] overflow-hidden border-l border-white/10 bg-[var(--color-bg)] shadow-2xl">
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-white/10 p-4">
             <h2 className="font-heading text-xl font-semibold text-white">
