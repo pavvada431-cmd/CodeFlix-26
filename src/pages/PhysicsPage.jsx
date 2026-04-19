@@ -9,6 +9,9 @@ import useSimulation from '../hooks/useSimulation'
 import usePerformanceMonitor from '../hooks/usePerformanceMonitor'
 import useSession from '../hooks/useSession'
 import { getPhysicsDemos, getChemistryDemos } from '../data/demos'
+import PageHeader from '../components/ui/PageHeader'
+import Button from '../components/ui/Button'
+import { BookOpen, Dice5 } from 'lucide-react'
 
 const AI_PROVIDER_STORAGE_KEY = 'simusolve.aiProvider-physics'
 const AI_PROVIDERS = ['anthropic', 'openai', 'gemini', 'groq', 'ollama']
@@ -140,14 +143,27 @@ export default function PhysicsPage({ sidebarWidth, onSidebarWidthChange, rightP
 
       <main className="flex-1 overflow-auto p-6" style={{ backgroundColor: 'var(--color-bg)' }}>
         <div className="mx-auto max-w-[1200px] space-y-6">
-          <div className="mb-4">
-            <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
-              ⚡ Physics Simulations
-            </h1>
-            <p className="mt-1" style={{ color: 'var(--color-text-muted)' }}>
-              Explore mechanics, waves, electricity, and more through interactive 3D simulations.
-            </p>
-          </div>
+          <PageHeader
+            eyebrow="Simulator · Physics"
+            title="See the"
+            accent="Physics"
+            subtitle="Mechanics, waves, electromagnetism, optics, fluids, and nuclear decay — parsed from plain-English problems and rendered live."
+            stats={[
+              { value: '16', label: 'simulations' },
+              { value: 'Live', label: 'telemetry' },
+              { value: 'Offline', label: 'fallback' },
+            ]}
+            actions={
+              <>
+                <Button variant="secondary" onClick={() => setShowLibrary(true)}>
+                  <BookOpen className="mr-2 h-4 w-4" /> Library
+                </Button>
+                <Button variant="primary" onClick={handleDemoMode}>
+                  <Dice5 className="mr-2 h-4 w-4" /> Random demo
+                </Button>
+              </>
+            }
+          />
 
           {simulation.activeSimulation ? (
             <SimulationCard simulation={simulation} particleMultiplier={particleMultiplier} />

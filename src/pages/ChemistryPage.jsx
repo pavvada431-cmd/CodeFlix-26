@@ -9,6 +9,9 @@ import useSimulation from '../hooks/useSimulation'
 import usePerformanceMonitor from '../hooks/usePerformanceMonitor'
 import useSession from '../hooks/useSession'
 import { getChemistryDemos } from '../data/demos'
+import PageHeader from '../components/ui/PageHeader'
+import Button from '../components/ui/Button'
+import { BookOpen, Dice5 } from 'lucide-react'
 
 const AI_PROVIDER_STORAGE_KEY = 'simusolve.aiProvider-chemistry'
 const AI_PROVIDERS = ['anthropic', 'openai', 'gemini', 'groq', 'ollama']
@@ -110,14 +113,27 @@ export default function ChemistryPage({ sidebarWidth, onSidebarWidthChange, righ
 
       <main className="flex-1 overflow-auto p-6" style={{ backgroundColor: 'var(--color-bg)' }}>
         <div className="mx-auto max-w-[1200px] space-y-6">
-          <div className="mb-4">
-            <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
-              🧪 Chemistry Simulations
-            </h1>
-            <p className="mt-1" style={{ color: 'var(--color-text-muted)' }}>
-              Discover organic chemistry, reactions, stoichiometry, and molecular structures.
-            </p>
-          </div>
+          <PageHeader
+            eyebrow="Simulator · Chemistry"
+            title="See the"
+            accent="Chemistry"
+            subtitle="Organic molecules, stoichiometry, titration, atomic structure, bonding, gas laws, and combustion — all interactive."
+            stats={[
+              { value: '7', label: 'simulations' },
+              { value: 'Balanced', label: 'equations' },
+              { value: 'Live', label: 'telemetry' },
+            ]}
+            actions={
+              <>
+                <Button variant="secondary" onClick={() => setShowLibrary(true)}>
+                  <BookOpen className="mr-2 h-4 w-4" /> Library
+                </Button>
+                <Button variant="primary" onClick={handleDemoMode}>
+                  <Dice5 className="mr-2 h-4 w-4" /> Random demo
+                </Button>
+              </>
+            }
+          />
 
           {simulation.activeSimulation ? (
             <SimulationCard simulation={simulation} particleMultiplier={particleMultiplier} />
