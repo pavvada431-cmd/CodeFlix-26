@@ -25,6 +25,7 @@ const Titration = lazy(() => import(/* webpackChunkName: "sim-titration" */ '../
 const AtomicStructure = lazy(() => import(/* webpackChunkName: "sim-atomic-structure" */ '../simulations/AtomicStructure2D'))
 const GasLaws = lazy(() => import(/* webpackChunkName: "sim-gas-laws" */ '../simulations/GasLaws2D'))
 const ChemicalBonding = lazy(() => import(/* webpackChunkName: "sim-chemical-bonding" */ '../simulations/ChemicalBonding'))
+const Combustion = lazy(() => import(/* webpackChunkName: "sim-combustion" */ '../simulations/Combustion2D'))
 
 function LoadingSimulation() {
   return (
@@ -354,6 +355,13 @@ case 'gas_laws':
         molecule: resolvedVariables.molecule ?? 'H2O',
         variables: resolvedVariables,
       }
+    case 'combustion':
+      return {
+        ...defaultProps,
+        fuel: resolvedVariables.fuel ?? 'methane',
+        fuelMoles: safeNum(resolvedVariables.fuelMoles ?? resolvedVariables.moles, 1),
+        variables: resolvedVariables,
+      }
     default:
       return {
         ...defaultProps,
@@ -407,6 +415,8 @@ function renderSingleSimulation(simulationType, simulationProps, commonProps) {
       return <GasLaws {...simulationProps} {...commonProps} />
     case 'chemical_bonding':
       return <ChemicalBonding {...simulationProps} {...commonProps} />
+    case 'combustion':
+      return <Combustion {...simulationProps} {...commonProps} />
     default:
       return <SimulationNotSupported simulationType={simulationType} />
   }

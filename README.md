@@ -1,183 +1,152 @@
-# SimuSolve
+<div align="center">
 
-Interactive physics simulation platform that parses word problems into step-by-step solutions with live 3D trajectory visualizations.
+<img src="public/logo.svg" width="96" alt="SeeTheScience"/>
 
-## Tech Stack
+# SeeTheScience
 
-- React 19 + Vite 8
-- Three.js with `@react-three/fiber` and `@react-three/drei`
-- Matter.js (physics engine)
-- Recharts
-- Tailwind CSS
+**Type a physics or chemistry problem in plain English. Watch it come alive.**
 
-## Project Structure
+AI-powered parsing → interactive 2D simulations → step-by-step solutions → live telemetry graphs.
 
-```
-SimuSolve/
-├── src/
-│   ├── components/          # UI components
-│   │   ├── Navbar.jsx
-│   │   ├── ProblemInput.jsx
-│   │   ├── SolutionPanel.jsx
-│   │   ├── GraphPanel.jsx       # Enhanced with AI analysis
-│   │   ├── SimulationRouter.jsx
-│   │   ├── SplashScreen.jsx
-│   │   └── Toast.jsx
-│   ├── simulations/         # Physics simulations
-│   │   ├── CircularMotion.jsx   # Orbital dynamics
-│   │   ├── Collisions.jsx      # Elastic/inelastic collisions
-│   │   ├── ElectricFields.jsx   # Coulomb force visualization
-│   │   ├── FluidMechanics.jsx  # Archimedes & Bernoulli
-│   │   ├── GravitationalOrbits.jsx
-│   │   ├── InclinedPlane.jsx
-│   │   ├── Optics.jsx          # Lenses & mirrors
-│   │   ├── Pendulum.jsx
-│   │   ├── ProjectileMotion.jsx
-│   │   ├── RadioactiveDecay.jsx
-│   │   ├── RotationalMechanics.jsx
-│   │   ├── SpringMass.jsx
-│   │   ├── Thermodynamics.jsx   # Maxwell-Boltzmann
-│   │   └── WaveMotion.jsx      # Standing & traveling waves
-│   ├── hooks/               # Custom React hooks
-│   │   └── useSimulation.js
-│   ├── data/                # Demo problems
-│   └── utils/               # Utilities
-│       ├── share.js         # URL encoding/decoding
-│       └── toast.js         # Toast notifications
-├── backend/
-│   ├── server.js             # Unified AI proxy route (/api/ai)
-│   └── providers.js          # Multi-provider adapters
-├── server.js                 # Legacy entrypoint (loads backend/server.js)
-├── index.html
-├── vite.config.js
-└── package.json
-```
+[Quickstart](#quickstart) · [Simulations](#simulations) · [Architecture](#architecture) · [AI Providers](#ai-providers) · [Deployment](#deployment)
 
-## Architecture Diagram
+</div>
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                          App                                 │
-│  ┌──────────────┐  ┌────────────────┐  ┌────────────────┐  │
-│  │ SplashScreen │  │     Navbar     │  │  ProblemInput  │  │
-│  └──────────────┘  │  ┌────────────┐ │  └────────────────┘  │
-│                    │  │ Share Btn  │ │                      │
-│                    │  │ Demo Btn   │ │                      │
-│                    │  └────────────┘ │                      │
-│                    └────────────────┘                      │
-│  ┌──────────────────────┐  ┌──────────────────────────────┐│
-│  │    SolutionPanel      │  │       SimulationRouter       ││
-│  │  ┌────────────────┐  │  │  ┌────────────────────────┐  ││
-│  │  │ Step-by-Step   │  │  │  │   3D Canvas (R3F)    │  ││
-│  │  │ Solution       │  │  │  │  ┌──────────────────┐  │  ││
-│  │  └────────────────┘  │  │  │ All 16 Simulations │  │  ││
-│  │  ┌────────────────┐  │  │  └──────────────────┘  │  ││
-│  │  │ GraphPanel     │  │  │  + AI Physics Tutor    │  ││
-│  │  │ + AI Analysis  │  │  └────────────────────────┘  ││
-│  │  │ + Quiz Mode    │  │                               ││
-│  │  │ + Compare Mode │  │                               ││
-│  │  └────────────────┘  │                               ││
-│  └──────────────────────┘  └──────────────────────────────┘│
-│                          useSimulation Hook                   │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              Physics Engine (Matter.js)                 │  │
-│  │              Scene Manager (Three.js)                  │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
+---
 
-## Getting Started
+## What it does
+
+Paste a word problem. A language model extracts the variables, units, and assumptions. The app picks the right simulation, renders it live, steps you through the derivation, and plots telemetry as it runs. You can scrub variables and watch the physics respond in real time.
+
+No mouse-and-menu formula picker. No fiddling with 3D cameras. Just the problem → the science.
+
+## Features
+
+- **Natural-language parser** — one-shot problem → `{type, variables, steps}` JSON with a safety-net offline parser when the API is down.
+- **23 interactive simulations** spanning mechanics, E&M, optics, thermodynamics, fluids, nuclear, and chemistry — all rendered as crisp 2D SVG (no WebGL tax).
+- **Live telemetry** — Recharts plots update every frame; drift from energy conservation is flagged in red.
+- **Variable scrubbing** — edit any parameter; the sim pauses, reseeds, and replays.
+- **Solution timeline** — step-by-step derivation with KaTeX math, synced to playback.
+- **Compare mode** — overlay two runs with different parameters on the same axes.
+- **Quiz & tutor** — model-generated multiple-choice questions grounded in the live data stream.
+- **Multi-concept pipeline** — chain sims (e.g. "projectile lands on incline") into staged scenarios.
+- **Builder** — save, gallery, and share custom scenarios via URL.
+- **Offline-first** — every feature degrades gracefully when no API key is configured.
+
+## Quickstart
 
 ```bash
 npm install
-npm run dev
+npm run dev         # frontend only  (http://localhost:5173)
+npm run dev:api     # backend only   (http://localhost:3001)
+npm run dev:all     # both, concurrently
 ```
 
-Open http://localhost:5173
+Open `http://localhost:5173`. No API key needed for the offline parser and all simulations.
 
-## AI-Powered Analysis (Optional)
+## AI providers
 
-To enable AI-powered physics tutoring and quiz generation:
-
-```bash
-# Install API dependencies
-npm install cors express
-
-# Set one or more AI provider keys
-export ANTHROPIC_API_KEY=...
-export OPENAI_API_KEY=...
-export GEMINI_API_KEY=...
-export GROQ_API_KEY=...
-
-# Run both servers
-npm run dev:all
-```
-
-The GraphPanel will automatically:
-1. Analyze simulation data after 5 seconds
-2. Generate physics insights (principle, insight, application, experiment)
-3. Create quiz questions based on the data
-4. Detect energy conservation anomalies (highlights in red if >5% drift)
-
-If the API is unavailable, local fallback analysis is used.
-
-## Simulations
-
-16 physics simulations covering:
-
-| Category | Simulations |
-|----------|------------|
-| **Mechanics** | Inclined Plane, Projectile Motion, Pendulum, Circular Motion, Rotational Mechanics |
-| **Energy** | Spring-Mass, Gravitational Orbits, Collisions |
-| **Waves** | Wave Motion (Transverse, Longitudinal, Standing, Interference) |
-| **Thermodynamics** | Ideal Gas, Maxwell-Boltzmann Distribution |
-| **Electromagnetism** | Electric Fields, Equipotential Lines |
-| **Optics** | Lenses, Mirrors, Dispersion, Total Internal Reflection |
-| **Fluids** | Buoyancy, Bernoulli's Principle |
-| **Nuclear** | Radioactive Decay, Chain Decay |
-
-## GraphPanel Features
-
-- **Real-time telemetry**: Live data visualization with Recharts
-- **Compare mode**: Overlay two simulation runs with different variables
-- **Energy conservation detection**: Highlights anomalies in red
-- **CSV export**: Download full data stream
-- **AI Physics Tutor**: 4-card analysis (principle, insight, application, experiment)
-- **Quiz Mode**: Multiple-choice questions generated from simulation data
-
-## Demo Problems
-
-Click "Try Demo" to load one of 5 pre-configured physics problems:
-
-1. **Inclined Plane** - Box sliding down a ramp
-2. **Projectile Motion** - Ball thrown at an angle
-3. **Pendulum** - Swinging pendulum simulation
-4. **Free Fall** - Object dropped from height
-5. **Two-Body** - Connected masses system
-
-## Sharing
-
-Click "Share" to copy a URL with the problem encoded as a query parameter. Anyone with the link will see the same demo.
-
-## Build
-
-```bash
-npm run build    # Production build
-npm run preview  # Preview production build
-npm run lint     # Run ESLint
-```
-
-## Environment Variables
-
-Create `.env` from `.env.example`:
+Drop any subset of keys in `.env` — the app auto-selects a provider and falls back to offline parsing if none respond.
 
 ```bash
 cp .env.example .env
 ```
 
-| Variable | Description | Default |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | Anthropic API key (`claude-sonnet-4-20250514`) | - |
-| `OPENAI_API_KEY` | OpenAI API key (`gpt-4o`) | - |
-| `GEMINI_API_KEY` | Gemini API key (`gemini-1.5-flash`) | - |
-| `GROQ_API_KEY` | Groq API key (`llama-3.3-70b-versatile`) | - |
+| Key | Model |
+|---|---|
+| `ANTHROPIC_API_KEY` | `claude-sonnet-4-20250514` |
+| `OPENAI_API_KEY` | `gpt-4o` |
+| `GEMINI_API_KEY` | `gemini-1.5-flash` |
+| `GROQ_API_KEY` | `llama-3.3-70b-versatile` |
+
+All provider calls go through `backend/server.js` — keys never touch the browser.
+
+## Simulations
+
+| Category | Topics |
+|---|---|
+| **Mechanics** | Inclined plane · Projectile motion · Pendulum · Circular motion · Collisions · Rotational mechanics |
+| **Energy & gravity** | Spring-mass (SHM + damped) · Gravitational orbits |
+| **Waves** | Transverse · longitudinal · standing · interference |
+| **Fluids & thermo** | Buoyancy · Bernoulli · Ideal gas PV diagrams · Maxwell-Boltzmann |
+| **E & M** | Electric fields + equipotentials · Magnetic fields · Circuits |
+| **Optics** | Lenses · mirrors · ray diagrams |
+| **Nuclear** | Radioactive decay · chain decay · half-life |
+| **Chemistry** | Organic chemistry · stoichiometry · titration · atomic structure · gas laws · chemical bonding · combustion |
+
+Every entry in the in-app Physics and Chemistry libraries has a live simulation behind it.
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Browser (React 19 + Vite 8 + Tailwind 4)                    │
+│                                                              │
+│   Landing → Physics / Chemistry / Builder / Formulas         │
+│      │                                                       │
+│      ▼                                                       │
+│   ProblemInput ──► useSimulation ──► SimulationRouter        │
+│                        │                   │                 │
+│                        ▼                   ▼                 │
+│                  Telemetry buffer    23 × 2D SVG sims        │
+│                        │                                     │
+│                        ▼                                     │
+│                   GraphPanel (Recharts) · SolutionTimeline   │
+│                                                              │
+└───────────────────────────┬──────────────────────────────────┘
+                            │ POST /api/ai
+                            ▼
+┌──────────────────────────────────────────────────────────────┐
+│  Express proxy (backend/server.js)                           │
+│    providers.js: Anthropic · OpenAI · Gemini · Groq          │
+│    rateLimit.js · logger.js · offline fallback parser        │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Key paths**
+
+- `src/simulations/*2D.jsx` — each topic is one self-contained SVG component.
+- `src/hooks/useSimulation.js` — playback state, circular telemetry buffer, variable scrubbing.
+- `src/utils/problemParser.js` — AI call + offline heuristic parser.
+- `src/utils/physicsEngine.js` — Matter.js bridge for rigid-body sims.
+- `backend/providers.js` — one adapter per LLM provider.
+
+## Scripts
+
+```bash
+npm run dev          # vite dev server
+npm run dev:api      # express API on :3001
+npm run dev:all      # both
+npm run build        # production bundle
+npm run preview      # serve the build
+npm run lint         # eslint
+npm run type-check   # tsc --noEmit
+npm start            # NODE_ENV=production node backend/server.js
+```
+
+## Deployment
+
+**Docker**
+
+```bash
+docker compose up --build
+```
+
+Separate images are provided for `frontend` (nginx + static build) and `backend` (node).
+
+**Bare metal**
+
+```bash
+npm ci && npm run build
+NODE_ENV=production node backend/server.js
+```
+
+`nginx.conf` is included for reverse-proxying the static bundle + `/api/*`.
+
+## Contributing
+
+Pull requests are welcome. For new simulations: add `src/simulations/YourTopic2D.jsx`, register the type in `src/hooks/useSimulation.js` (`SIMULATION_*` maps) and route it in `src/components/SimulationRouter.jsx`.
+
+## License
+
+MIT.

@@ -69,9 +69,14 @@ export default function ChemistryPage({ sidebarWidth, onSidebarWidthChange, righ
 
   const handleSelectSimulation = useCallback((simulationType) => {
     const demo = getChemistryDemos().find(d => d.type === simulationType)
-    if (demo) {
-      simulation.solve(demo.parsedData, aiProvider)
+    const parsedData = demo?.parsedData ?? {
+      domain: 'chemistry',
+      type: simulationType,
+      variables: {},
+      units: {},
+      steps: [],
     }
+    simulation.solve(parsedData, aiProvider)
     setShowLibrary(false)
   }, [aiProvider, simulation])
 

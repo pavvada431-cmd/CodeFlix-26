@@ -26,15 +26,12 @@ export default function Navbar({
       >
         <div className="mx-auto flex h-16 max-w-[1800px] items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-xl font-bold shadow-lg"
-              style={{
-                background: 'linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end))',
-                color: '#fff',
-              }}
-            >
-              ℂ
-            </div>
+            <img
+              src="/logo.svg"
+              alt="SeeTheScience"
+              className="h-9 w-9 rounded-xl shadow-lg"
+              style={{ display: 'block' }}
+            />
             <span className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>SeeTheScience</span>
           </div>
 
@@ -93,15 +90,12 @@ export default function Navbar({
           )}
           
           <div className="flex items-center gap-3">
-            <div 
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-xl font-bold shadow-lg"
-              style={{ 
-                background: `linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end))`,
-                color: '#fff'
-              }}
-            >
-              ℂ
-            </div>
+            <img
+              src="/logo.svg"
+              alt="SeeTheScience"
+              className="h-9 w-9 rounded-xl shadow-lg"
+              style={{ display: 'block' }}
+            />
             <div>
               <span className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>SeeTheScience</span>
               <span className="ml-2 hidden text-xs font-medium sm:inline" style={{ color: 'var(--color-text-muted)' }}>

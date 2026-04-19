@@ -65,18 +65,11 @@ const workflow = [
 ]
 
 const coverage = [
-  'Projectile Motion',
-  'Pendulum',
-  'Collisions',
-  'Waves',
-  'Electric Fields',
-  'Optics',
-  'Thermodynamics',
-  'Stoichiometry',
-  'Atomic Structure',
-  'Gas Laws',
-  'Chemical Bonding',
-  'Titration',
+  'Projectile Motion', 'Pendulum', 'Collisions', 'Waves', 'Circular Motion',
+  'Rotational Mechanics', 'Spring-Mass', 'Inclined Plane', 'Gravitational Orbits',
+  'Electric Fields', 'Magnetic Fields', 'Optics', 'Buoyancy', 'Ideal Gas',
+  'Radioactive Decay', 'Stoichiometry', 'Atomic Structure', 'Gas Laws',
+  'Chemical Bonding', 'Titration', 'Combustion', 'Organic Chemistry',
 ]
 
 function LandingMiniSim() {
@@ -156,12 +149,32 @@ export default function Landing() {
               </div>
 
               <h1 className="text-5xl font-bold leading-tight md:text-7xl text-white">
-                See Physics Come Alive
+                See the{' '}
+                <span className="bg-gradient-to-r from-cyan-300 via-indigo-300 to-violet-300 bg-clip-text text-transparent">
+                  Science
+                </span>
               </h1>
 
               <p className="max-w-xl text-base text-[var(--color-text-muted)] md:text-lg">
-                SeeTheScience turns plain-English physics and chemistry problems into live, visual, interactive simulations with guided steps and real-time graphs.
+                Type a physics or chemistry problem in plain English. Watch it come alive as an interactive simulation with step-by-step reasoning and live telemetry — no setup, no formulas to memorize.
               </p>
+
+              <div className="grid max-w-lg grid-cols-4 gap-3 pt-2">
+                {[
+                  { n: '23', l: 'simulations' },
+                  { n: '2', l: 'domains' },
+                  { n: '4', l: 'AI providers' },
+                  { n: '0', l: 'keys needed' },
+                ].map(s => (
+                  <div
+                    key={s.l}
+                    className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5"
+                  >
+                    <div className="text-xl font-bold leading-none text-white md:text-2xl">{s.n}</div>
+                    <div className="mt-1 text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">{s.l}</div>
+                  </div>
+                ))}
+              </div>
 
               <div className="flex flex-wrap gap-3">
                 <button
@@ -193,12 +206,12 @@ export default function Landing() {
             <div className="animate-slide-horizontal whitespace-nowrap">
               <div className="inline-block pr-8">
                 <span className="font-mono text-xs text-[var(--color-text-muted)]">
-                  16 Simulations · Physics + Chemistry · AI-Powered · 3D Visualizations · Real-Time Graphs · Guided Learning
+                  23 Simulations · Physics + Chemistry · 4 AI Providers · Live Telemetry · Offline Fallback · Guided Learning
                 </span>
               </div>
               <div className="inline-block pr-8">
                 <span className="font-mono text-xs text-[var(--color-text-muted)]">
-                  16 Simulations · Physics + Chemistry · AI-Powered · 3D Visualizations · Real-Time Graphs · Guided Learning
+                  23 Simulations · Physics + Chemistry · 4 AI Providers · Live Telemetry · Offline Fallback · Guided Learning
                 </span>
               </div>
             </div>

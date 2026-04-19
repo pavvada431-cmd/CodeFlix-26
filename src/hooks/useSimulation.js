@@ -214,6 +214,7 @@ export const SUPPORTED_SIMULATION_TYPES = [
   'atomic_structure',
   'gas_laws',
   'chemical_bonding',
+  'combustion',
 ]
 
 export const SIMULATION_DISPLAY_NAMES = {

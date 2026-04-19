@@ -131,20 +131,46 @@ export default function BuilderPage() {
     [entities]
   )
 
-  // Start/stop physics
+  // Live refs so we can edit during simulation without resetting state
+  const entitiesRef = useRef(entities)
+  const segmentsRef = useRef(segments)
+  useEffect(() => { entitiesRef.current = entities }, [entities])
+  useEffect(() => { segmentsRef.current = segments }, [segments])
+
+  // Start/stop physics — depends ONLY on play state so edits don't snap balls back
   useEffect(() => {
     if (!isPlaying) { cancelAnimationFrame(rafRef.current); return }
-    stateRef.current.balls = entities
+    // Snapshot current balls at the moment play begins
+    const existingById = new Map(stateRef.current.balls.map(b => [b.id, b]))
+    stateRef.current.balls = entitiesRef.current
       .filter(e => e.kind === 'ball')
-      .map(e => ({ id: e.id, x: e.x, y: e.y, r: e.r, vx: e.vx0 || 0, vy: e.vy0 || 0 }))
+      .map(e => {
+        const prev = existingById.get(e.id)
+        return prev ?? { id: e.id, x: e.x, y: e.y, r: e.r, vx: e.vx0 || 0, vy: e.vy0 || 0 }
+      })
     const loop = () => {
-      stepPhysics(stateRef.current, segments)
+      // Keep radius in sync with latest entity edits
+      const latestById = new Map(entitiesRef.current.filter(e => e.kind === 'ball').map(e => [e.id, e]))
+      stateRef.current.balls = stateRef.current.balls
+        .filter(b => latestById.has(b.id))
+        .map(b => {
+          const e = latestById.get(b.id)
+          return { ...b, r: e.r }
+        })
+      // Pick up any newly-added balls while playing
+      for (const e of entitiesRef.current) {
+        if (e.kind !== 'ball') continue
+        if (!stateRef.current.balls.find(b => b.id === e.id)) {
+          stateRef.current.balls.push({ id: e.id, x: e.x, y: e.y, r: e.r, vx: e.vx0 || 0, vy: e.vy0 || 0 })
+        }
+      }
+      stepPhysics(stateRef.current, segmentsRef.current)
       forceRender(n => n + 1)
       rafRef.current = requestAnimationFrame(loop)
     }
     rafRef.current = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(rafRef.current)
-  }, [isPlaying, segments, entities])
+  }, [isPlaying])
 
   const handlePaletteDragStart = (kind) => (e) => {
     setDraggingKind(kind)
@@ -175,12 +201,17 @@ export default function BuilderPage() {
     setSelectedId(entity.id)
     if (isPlaying) return
     const { x, y } = clientToWorld(svgRef.current, e.clientX, e.clientY)
-    setMoving({
-      id: entity.id,
-      endpoint,
-      offsetX: endpoint === '1' ? x - entity.x1 : endpoint === '2' ? x - entity.x2 : x - (entity.x ?? 0),
-      offsetY: endpoint === '1' ? y - entity.y1 : endpoint === '2' ? y - entity.y2 : y - (entity.y ?? 0),
-    })
+    if (endpoint === '1') {
+      setMoving({ id: entity.id, endpoint, offsetX: x - entity.x1, offsetY: y - entity.y1 })
+    } else if (endpoint === '2') {
+      setMoving({ id: entity.id, endpoint, offsetX: x - entity.x2, offsetY: y - entity.y2 })
+    } else if (entity.kind === 'wall' || entity.kind === 'ramp') {
+      const cx = (entity.x1 + entity.x2) / 2
+      const cy = (entity.y1 + entity.y2) / 2
+      setMoving({ id: entity.id, endpoint: null, offsetX: x - cx, offsetY: y - cy })
+    } else {
+      setMoving({ id: entity.id, endpoint: null, offsetX: x - (entity.x ?? 0), offsetY: y - (entity.y ?? 0) })
+    }
   }
 
   const onCanvasMouseMove = (e) => {
@@ -193,13 +224,11 @@ export default function BuilderPage() {
       if (moving.endpoint === '1') return { ...ent, x1: nx, y1: ny }
       if (moving.endpoint === '2') return { ...ent, x2: nx, y2: ny }
       if (ent.kind === 'wall' || ent.kind === 'ramp') {
-        const ddx = nx - ent.x1
-        const ddy = ny - ent.y1
         const cx = (ent.x1 + ent.x2) / 2
         const cy = (ent.y1 + ent.y2) / 2
-        const shiftX = (x - moving.offsetX) - cx
-        const shiftY = (y - moving.offsetY) - cy
-        return { ...ent, x1: ent.x1 + shiftX, y1: ent.y1 + shiftY, x2: ent.x2 + shiftX, y2: ent.y2 + shiftY }
+        const dx = nx - cx
+        const dy = ny - cy
+        return { ...ent, x1: ent.x1 + dx, y1: ent.y1 + dy, x2: ent.x2 + dx, y2: ent.y2 + dy }
       }
       return { ...ent, x: nx, y: ny }
     }))

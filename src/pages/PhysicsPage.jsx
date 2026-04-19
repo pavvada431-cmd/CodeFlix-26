@@ -8,7 +8,7 @@ import EmptyState from '../components/EmptyState'
 import useSimulation from '../hooks/useSimulation'
 import usePerformanceMonitor from '../hooks/usePerformanceMonitor'
 import useSession from '../hooks/useSession'
-import { getPhysicsDemos } from '../data/demos'
+import { getPhysicsDemos, getChemistryDemos } from '../data/demos'
 
 const AI_PROVIDER_STORAGE_KEY = 'simusolve.aiProvider-physics'
 const AI_PROVIDERS = ['anthropic', 'openai', 'gemini', 'groq', 'ollama']
@@ -68,10 +68,15 @@ export default function PhysicsPage({ sidebarWidth, onSidebarWidthChange, rightP
   }, [aiProvider, session, simulation])
 
   const handleSelectSimulation = useCallback((simulationType) => {
-    const demo = getPhysicsDemos().find(d => d.type === simulationType)
-    if (demo) {
-      simulation.solve(demo.parsedData, aiProvider)
+    const demo = [...getPhysicsDemos(), ...getChemistryDemos()].find(d => d.type === simulationType)
+    const parsedData = demo?.parsedData ?? {
+      domain: 'physics',
+      type: simulationType,
+      variables: {},
+      units: {},
+      steps: [],
     }
+    simulation.solve(parsedData, aiProvider)
     setShowLibrary(false)
   }, [aiProvider, simulation])
 
