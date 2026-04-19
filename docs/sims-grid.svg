@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" width="1200" height="360" role="img" aria-label="Simulation categories">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0b1020"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <linearGradient id="indigo" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#818cf8"/><stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="violet" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#c084fc"/><stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="360" fill="url(#bg2)" rx="16"/>
+
+  <g font-family="Inter, system-ui, sans-serif" fill="#f8fafc">
+    <!-- Row 1 -->
+    <g transform="translate(40 40)">
+      <rect width="270" height="130" rx="14" fill="rgba(34,211,238,0.08)" stroke="rgba(34,211,238,0.3)"/>
+      <!-- projectile arc -->
+      <path d="M20 100 Q90 20 160 100" fill="none" stroke="url(#cyan)" stroke-width="2"/>
+      <circle cx="160" cy="100" r="4" fill="#22d3ee"/>
+      <circle cx="20" cy="100" r="4" fill="#22d3ee"/>
+      <text x="20" y="124" font-size="12" font-weight="700" fill="#22d3ee">MECHANICS · 6</text>
+      <text x="180" y="30" font-size="11" fill="#cbd5e1">Projectile · Pendulum</text>
+      <text x="180" y="46" font-size="11" fill="#cbd5e1">Inclined plane</text>
+      <text x="180" y="62" font-size="11" fill="#cbd5e1">Circular motion</text>
+      <text x="180" y="78" font-size="11" fill="#cbd5e1">Collisions · Rotation</text>
+    </g>
+
+    <g transform="translate(330 40)">
+      <rect width="270" height="130" rx="14" fill="rgba(129,140,248,0.08)" stroke="rgba(129,140,248,0.3)"/>
+      <!-- spring -->
+      <path d="M20 50 l10 -10 l10 20 l10 -20 l10 20 l10 -20 l10 20 l10 -20 l10 20 l10 -10" fill="none" stroke="url(#indigo)" stroke-width="2"/>
+      <!-- orbit -->
+      <ellipse cx="140" cy="80" rx="28" ry="16" fill="none" stroke="url(#indigo)" stroke-width="1.5"/>
+      <circle cx="140" cy="80" r="3" fill="#fbbf24"/>
+      <circle cx="168" cy="80" r="2" fill="#818cf8"/>
+      <text x="20" y="124" font-size="12" font-weight="700" fill="#818cf8">ENERGY · 2</text>
+      <text x="180" y="46" font-size="11" fill="#cbd5e1">Spring-mass SHM</text>
+      <text x="180" y="62" font-size="11" fill="#cbd5e1">Gravitational orbits</text>
+    </g>
+
+    <g transform="translate(620 40)">
+      <rect width="270" height="130" rx="14" fill="rgba(192,132,252,0.08)" stroke="rgba(192,132,252,0.3)"/>
+      <!-- wave -->
+      <path d="M15 70 Q40 40 65 70 T115 70 T165 70 T215 70 T265 70" fill="none" stroke="url(#violet)" stroke-width="2"/>
+      <text x="20" y="124" font-size="12" font-weight="700" fill="#c084fc">WAVES · 4</text>
+      <text x="20" y="108" font-size="11" fill="#cbd5e1">Transverse · longitudinal · standing · interference</text>
+    </g>
+
+    <g transform="translate(910 40)">
+      <rect width="250" height="130" rx="14" fill="rgba(251,191,36,0.08)" stroke="rgba(251,191,36,0.3)"/>
+      <!-- PV diagram -->
+      <path d="M30 100 L30 40 L90 40 C120 40 140 60 140 80 C140 95 130 100 100 100 Z" fill="rgba(251,191,36,0.1)" stroke="url(#amber)" stroke-width="1.5"/>
+      <line x1="20" y1="105" x2="220" y2="105" stroke="#475569" stroke-width="1"/>
+      <line x1="20" y1="105" x2="20" y2="30"  stroke="#475569" stroke-width="1"/>
+      <text x="20" y="124" font-size="12" font-weight="700" fill="#fbbf24">FLUIDS/THERMO · 4</text>
+      <text x="160" y="56" font-size="11" fill="#cbd5e1">Buoyancy</text>
+      <text x="160" y="72" font-size="11" fill="#cbd5e1">Bernoulli</text>
+      <text x="160" y="88" font-size="11" fill="#cbd5e1">Gas laws</text>
+    </g>
+
+    <!-- Row 2 -->
+    <g transform="translate(40 190)">
+      <rect width="270" height="130" rx="14" fill="rgba(34,211,238,0.08)" stroke="rgba(34,211,238,0.3)"/>
+      <!-- field lines -->
+      <circle cx="60" cy="70" r="12" fill="none" stroke="url(#cyan)" stroke-width="1.5"/>
+      <text x="54" y="75" font-size="18" fill="#22d3ee" font-weight="700">+</text>
+      <path d="M74 62 L130 42 M74 70 L140 70 M74 78 L130 98" stroke="#22d3ee" stroke-width="1" fill="none" marker-end="url(#arr)"/>
+      <text x="20" y="124" font-size="12" font-weight="700" fill="#22d3ee">E &amp; M · 3</text>
+      <text x="160" y="56" font-size="11" fill="#cbd5e1">Electric fields</text>
+      <text x="160" y="72" font-size="11" fill="#cbd5e1">Magnetic fields</text>
+      <text x="160" y="88" font-size="11" fill="#cbd5e1">Circuits</text>
+    </g>
+
+    <g transform="translate(330 190)">
+      <rect width="270" height="130" rx="14" fill="rgba(129,140,248,0.08)" stroke="rgba(129,140,248,0.3)"/>
+      <!-- lens + ray -->
+      <ellipse cx="140" cy="70" rx="10" ry="40" fill="none" stroke="url(#indigo)" stroke-width="1.5"/>
+      <path d="M30 60 L140 60 L240 90" stroke="#818cf8" stroke-width="1.5" fill="none"/>
+      <path d="M30 80 L140 80 L240 50" stroke="#818cf8" stroke-width="1.5" fill="none"/>
+      <text x="20" y="124" font-size="12" font-weight="700" fill="#818cf8">OPTICS · 1</text>
+      <text x="20" y="108" font-size="11" fill="#cbd5e1">Lenses · mirrors · ray diagrams</text>
+    </g>
+
+    <g transform="translate(620 190)">
+      <rect width="270" height="130" rx="14" fill="rgba(251,113,133,0.08)" stroke="rgba(251,113,133,0.3)"/>
+      <!-- decay curve -->
+      <path d="M20 40 C50 40 70 90 150 100 L250 100" fill="none" stroke="#fb7185" stroke-width="2"/>
+      <circle cx="40" cy="45" r="3" fill="#fb7185"/>
+      <circle cx="80" cy="65" r="3" fill="#fb7185"/>
+      <circle cx="140" cy="95" r="3" fill="#fb7185"/>
+      <text x="20" y="124" font-size="12" font-weight="700" fill="#fb7185">NUCLEAR · 1</text>
+      <text x="20" y="108" font-size="11" fill="#cbd5e1">Radioactive decay · half-life</text>
+    </g>
+
+    <g transform="translate(910 190)">
+      <rect width="250" height="130" rx="14" fill="rgba(134,239,172,0.08)" stroke="rgba(134,239,172,0.35)"/>
+      <!-- molecule -->
+      <circle cx="60" cy="70" r="10" fill="#86efac"/>
+      <circle cx="100" cy="50" r="8" fill="#6ee7b7"/>
+      <circle cx="100" cy="90" r="8" fill="#6ee7b7"/>
+      <line x1="60" y1="70" x2="100" y2="50" stroke="#86efac" stroke-width="2"/>
+      <line x1="60" y1="70" x2="100" y2="90" stroke="#86efac" stroke-width="2"/>
+      <text x="20" y="124" font-size="12" font-weight="700" fill="#86efac">CHEMISTRY · 7</text>
+      <text x="140" y="46" font-size="11" fill="#cbd5e1">Stoichiometry</text>
+      <text x="140" y="62" font-size="11" fill="#cbd5e1">Titration · Bonds</text>
+      <text x="140" y="78" font-size="11" fill="#cbd5e1">Organic · Combustion</text>
+      <text x="140" y="94" font-size="11" fill="#cbd5e1">Atom · Gas laws</text>
+    </g>
+  </g>
+</svg>
