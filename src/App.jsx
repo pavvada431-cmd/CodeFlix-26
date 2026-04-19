@@ -111,7 +111,7 @@ export default function App() {
 
   const runExampleFromOnboarding = (text) => {
     setCurrentPage('physics')
-    window.dispatchEvent(new CustomEvent('codeflix:run-example', {
+    window.dispatchEvent(new CustomEvent('sts:run-example', {
       detail: { text, domain: 'physics' },
     }))
   }
@@ -131,17 +131,17 @@ export default function App() {
         case ' ':
           // Space: toggle play/pause
           e.preventDefault()
-          window.dispatchEvent(new CustomEvent('codeflix:toggle-play'))
+          window.dispatchEvent(new CustomEvent('sts:toggle-play'))
           break
         case 'r':
           // R: reset simulation
           e.preventDefault()
-          window.dispatchEvent(new CustomEvent('codeflix:reset-simulation'))
+          window.dispatchEvent(new CustomEvent('sts:reset-simulation'))
           break
         case 'd':
           // D: load random demo
           e.preventDefault()
-          window.dispatchEvent(new CustomEvent('codeflix:random-demo'))
+          window.dispatchEvent(new CustomEvent('sts:random-demo'))
           break
         case 'escape':
           // Escape: blur focus and close modals

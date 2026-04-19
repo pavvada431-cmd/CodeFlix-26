@@ -149,8 +149,8 @@ export default function ProblemInput({
       submitProblemText(cleaned)
     }
 
-    window.addEventListener('codeflix:run-example', handler)
-    return () => window.removeEventListener('codeflix:run-example', handler)
+    window.addEventListener('sts:run-example', handler)
+    return () => window.removeEventListener('sts:run-example', handler)
   }, [domain, submitProblemText])
 
   const content = (

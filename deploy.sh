@@ -22,7 +22,7 @@ if [[ ! -f ".env" ]]; then
 fi
 
 DROPLET_USER="${DROPLET_USER:-root}"
-APP_DIR="${APP_DIR:-/opt/codeflix}"
+APP_DIR="${APP_DIR:-/opt/seethescience}"
 REPO_BRANCH="${REPO_BRANCH:-main}"
 REPO_URL="${REPO_URL:-$(git config --get remote.origin.url || true)}"
 SSH_KEY_PATH="${SSH_KEY_PATH:-}"

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion as Motion, AnimatePresence } from 'framer-motion'
 import { PencilLine, Brain, Play, Sparkles, Zap, FlaskConical } from 'lucide-react'
 
-export const ONBOARDING_STORAGE_KEY = 'codeflix_onboarded'
+export const ONBOARDING_STORAGE_KEY = 'sts_onboarded'
 export const ONBOARDING_EXAMPLE = 'A ball is thrown at 25 m/s at 60 degrees'
 
 function AnimatedInputToSim() {
@@ -90,7 +90,7 @@ export default function Onboarding({
         <AnimatePresence mode="wait">
           {stepIndex === 0 && (
             <Motion.div key="welcome" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <h2 className="text-3xl font-bold">Welcome to CodeFlix! 🔬</h2>
+              <h2 className="text-3xl font-bold">Welcome to SeeTheScience</h2>
               <p className="mt-2 text-[var(--color-text-muted)]">
                 Type any physics or chemistry problem in plain English and watch it come alive.
               </p>

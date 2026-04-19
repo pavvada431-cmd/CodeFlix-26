@@ -104,14 +104,14 @@ export default function PhysicsPage({ sidebarWidth, onSidebarWidthChange, rightP
 
   // Keyboard event handlers
   useEffect(() => {
-    window.addEventListener('codeflix:toggle-play', handleTogglePlay)
-    window.addEventListener('codeflix:reset-simulation', handleReset)
-    window.addEventListener('codeflix:random-demo', handleRandomDemo)
+    window.addEventListener('sts:toggle-play', handleTogglePlay)
+    window.addEventListener('sts:reset-simulation', handleReset)
+    window.addEventListener('sts:random-demo', handleRandomDemo)
 
     return () => {
-      window.removeEventListener('codeflix:toggle-play', handleTogglePlay)
-      window.removeEventListener('codeflix:reset-simulation', handleReset)
-      window.removeEventListener('codeflix:random-demo', handleRandomDemo)
+      window.removeEventListener('sts:toggle-play', handleTogglePlay)
+      window.removeEventListener('sts:reset-simulation', handleReset)
+      window.removeEventListener('sts:random-demo', handleRandomDemo)
     }
   }, [handleTogglePlay, handleReset, handleRandomDemo])
 
