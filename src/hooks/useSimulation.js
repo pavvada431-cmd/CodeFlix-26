@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { parseProblem } from '../utils/problemParser'
+import { recordRecent } from './../utils/recents'
 
 const DEFAULT_PLAYBACK_SPEED = 1
 const MAX_DATA_STREAM_LENGTH = 1000
@@ -40,6 +41,19 @@ export default function useSimulation() {
       isBufferFullRef.current = false
       simulationKeyRef.current += 1
       setIsPlaying(false)
+
+      // Record into Recents (best-effort, non-blocking)
+      try {
+        const labelGuess = result?.label || result?.title || (result?.type ? result.type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Simulation')
+        const problemText = typeof problemInput === 'string' ? problemInput : (result?.problemText || '')
+        recordRecent({
+          id: `solve-${result?.type || 'sim'}-${Date.now().toString(36)}`,
+          label: labelGuess,
+          problemText,
+          domain: result?.domain || 'physics',
+          parsedData: result,
+        })
+      } catch { /* recents are best-effort */ }
 
       return result
     } catch (err) {
@@ -215,6 +229,7 @@ export const SUPPORTED_SIMULATION_TYPES = [
   'gas_laws',
   'chemical_bonding',
   'combustion',
+  'generative',
 ]
 
 export const SIMULATION_DISPLAY_NAMES = {
@@ -243,6 +258,7 @@ export const SIMULATION_DISPLAY_NAMES = {
   atomic_structure: 'Atomic Structure',
   gas_laws: 'Gas Laws',
   chemical_bonding: 'Chemical Bonding',
+  generative: 'Generative Sim',
 }
 
 export const SIMULATION_ICONS = {

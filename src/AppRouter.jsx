@@ -1,7 +1,8 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Landing from './pages/Landing'
 import ErrorBoundary from './components/ErrorBoundary'
+import CommandPalette from './components/CommandPalette'
 
 const App = lazy(() => import('./App'))
 const FormulasPage = lazy(() => import('./pages/FormulasPage'))
@@ -20,6 +21,29 @@ function RouteFallback() {
   )
 }
 
+/* Global ⌘K + ? shortcut wrapper. Available on every route. */
+function GlobalShortcuts() {
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setOpen((v) => !v)
+      } else if (e.key === '/' &&
+                 document.activeElement?.tagName !== 'INPUT' &&
+                 document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault()
+        setOpen(true)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
+  return <CommandPalette open={open} onClose={() => setOpen(false)} />
+}
+
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -33,6 +57,7 @@ export default function AppRouter() {
           </Routes>
         </Suspense>
       </ErrorBoundary>
+      <GlobalShortcuts />
     </BrowserRouter>
   )
 }

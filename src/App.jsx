@@ -116,6 +116,23 @@ export default function App() {
     }))
   }
 
+  // Listen for cross-route page-change events from the command palette
+  useEffect(() => {
+    const onSetPage = (e) => {
+      const next = e?.detail?.page
+      if (next === 'physics' || next === 'chemistry' || next === 'builder') {
+        setCurrentPage(next)
+      }
+    }
+    const onOpenSettings = () => setShowSettings(true)
+    window.addEventListener('sts:set-page', onSetPage)
+    window.addEventListener('sts:open-settings', onOpenSettings)
+    return () => {
+      window.removeEventListener('sts:set-page', onSetPage)
+      window.removeEventListener('sts:open-settings', onOpenSettings)
+    }
+  }, [])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {

@@ -12,6 +12,9 @@ import { getChemistryDemos } from '../data/demos'
 import PageHeader from '../components/ui/PageHeader'
 import Button from '../components/ui/Button'
 import { BookOpen, Dice5 } from 'lucide-react'
+import ShareButton from '../components/ShareButton'
+import ConversationDrawer from '../components/ConversationDrawer'
+import { readShareFromHash, payloadToParsedData } from '../utils/share'
 
 const AI_PROVIDER_STORAGE_KEY = 'simusolve.aiProvider-chemistry'
 const AI_PROVIDERS = ['anthropic', 'openai', 'gemini', 'groq', 'ollama']
@@ -53,6 +56,31 @@ export default function ChemistryPage({ sidebarWidth, onSidebarWidthChange, righ
   useEffect(() => {
     window.localStorage.setItem(AI_PROVIDER_STORAGE_KEY, aiProvider)
   }, [aiProvider])
+
+  // Hydrate from a shared scenario URL (#s=...).
+  const hydratedFromHashRef = useRef(false)
+  useEffect(() => {
+    if (hydratedFromHashRef.current) return
+    const payload = readShareFromHash()
+    if (payload && payload.d === 'chemistry') {
+      const parsed = payloadToParsedData(payload)
+      if (parsed?.type) {
+        hydratedFromHashRef.current = true
+        simulation.solve(parsed, aiProvider).catch(() => {})
+      }
+    }
+  }, [simulation, aiProvider])
+
+  // Cross-route demo runs from the command palette.
+  useEffect(() => {
+    const handler = (e) => {
+      const detail = e?.detail || {}
+      if (detail.parsedData) simulation.solve(detail.parsedData, aiProvider).catch(() => {})
+      else if (detail.text) simulation.solve(detail.text, aiProvider).catch(() => {})
+    }
+    window.addEventListener('sts:run-example', handler)
+    return () => window.removeEventListener('sts:run-example', handler)
+  }, [simulation, aiProvider])
 
   useEffect(() => {
     const measureLoop = () => {
@@ -125,6 +153,11 @@ export default function ChemistryPage({ sidebarWidth, onSidebarWidthChange, righ
             ]}
             actions={
               <>
+                <ShareButton
+                  parsedData={simulation.parsedData}
+                  currentVariables={simulation.currentVariables}
+                  problemText={simulation.parsedData?.problemText}
+                />
                 <Button variant="secondary" onClick={() => setShowLibrary(true)}>
                   <BookOpen className="mr-2 h-4 w-4" /> Library
                 </Button>
@@ -173,6 +206,17 @@ export default function ChemistryPage({ sidebarWidth, onSidebarWidthChange, righ
         onClose={() => setShowLibrary(false)}
         onSelectSimulation={handleSelectSimulation}
         category="chemistry"
+      />
+
+      <ConversationDrawer
+        parsedData={simulation.parsedData}
+        currentVariables={simulation.currentVariables}
+        isLoading={simulation.isLoading}
+        onAsk={(question, ctx) => {
+          const base = ctx?.parsedData?.problemText || ''
+          const merged = base ? `${base} — follow-up: ${question}` : question
+          simulation.solve(merged, aiProvider).catch(() => {})
+        }}
       />
     </div>
   )

@@ -26,6 +26,7 @@ const AtomicStructure = lazy(() => import(/* webpackChunkName: "sim-atomic-struc
 const GasLaws = lazy(() => import(/* webpackChunkName: "sim-gas-laws" */ '../simulations/GasLaws2D'))
 const ChemicalBonding = lazy(() => import(/* webpackChunkName: "sim-chemical-bonding" */ '../simulations/ChemicalBonding'))
 const Combustion = lazy(() => import(/* webpackChunkName: "sim-combustion" */ '../simulations/Combustion2D'))
+const GenericSim = lazy(() => import(/* webpackChunkName: "sim-generative" */ '../simulations/GenericSim2D'))
 
 function LoadingSimulation() {
   return (
@@ -362,6 +363,12 @@ case 'gas_laws':
         fuelMoles: safeNum(resolvedVariables.fuelMoles ?? resolvedVariables.moles, 1),
         variables: resolvedVariables,
       }
+    case 'generative':
+      return {
+        ...defaultProps,
+        spec: resolvedVariables.spec || resolvedVariables._spec,
+        variables: resolvedVariables,
+      }
     default:
       return {
         ...defaultProps,
@@ -417,6 +424,8 @@ function renderSingleSimulation(simulationType, simulationProps, commonProps) {
       return <ChemicalBonding {...simulationProps} {...commonProps} />
     case 'combustion':
       return <Combustion {...simulationProps} {...commonProps} />
+    case 'generative':
+      return <GenericSim {...simulationProps} {...commonProps} />
     default:
       return <SimulationNotSupported simulationType={simulationType} />
   }

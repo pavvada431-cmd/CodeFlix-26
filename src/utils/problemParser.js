@@ -222,7 +222,61 @@ EXAMPLES:
 - "A 2kg mass on a spring with k=100 N/m" → type: "spring_mass", variables: {mass: 2, k: 100}
 - "Electron moving at 1e6 m/s in 0.5T magnetic field" → type: "electromagnetic", variables: {charge: 1.6e-19, velocity: 1e6, magneticField: 0.5}
 - "Uranium-238 with half-life of 4.5 billion years" → type: "radioactive_decay", variables: {initialAtoms: 100, halfLife: 1.42e17}
-- "Light passing through a convex lens with f=10cm, object at 30cm" → type: "optics_lens", variables: {focalLength: 0.1, objectDistance: 0.3, lensType: "convex"}`
+- "Light passing through a convex lens with f=10cm, object at 30cm" → type: "optics_lens", variables: {focalLength: 0.1, objectDistance: 0.3, lensType: "convex"}
+
+============================================================
+GENERATIVE FALLBACK (use only when no canonical type fits):
+============================================================
+If — and only if — the problem describes a scenario that does not cleanly map to any of the canonical types above (multi-body interactions, unusual geometries, custom contraptions, "what if X collides with Y on a ramp", etc.), respond with type "generative" and put the entire physical scene into "variables.spec".
+
+The "generative" payload shape is:
+{
+  "domain": "physics",
+  "type": "generative",
+  "variables": {
+    "spec": {
+      "world": {
+        "gravity": { "x": 0, "y": 1 },             // y > 0 = downward
+        "bounds": { "width": 20, "height": 12 }    // world units (meters)
+      },
+      "entities": [
+        // Dynamic ball:
+        { "id": "b1", "kind": "ball", "x": 4, "y": 2, "r": 0.4, "mass": 1, "vx": 5, "vy": 0, "color": "#22d3ee" },
+        // Dynamic box:
+        { "id": "block", "kind": "box", "x": 10, "y": 8, "w": 1, "h": 1, "mass": 0.8, "color": "#a78bfa" },
+        // Static obstacle / ramp / wall (kind="static"):
+        { "id": "ramp", "kind": "static", "x": 14, "y": 9, "w": 8, "h": 0.3, "angle": -25, "color": "#4b5563" }
+      ],
+      "constraints": [
+        // Optional springs / rods between two entity ids:
+        { "from": "b1", "to": "block", "stiffness": 0.05, "length": 3 }
+      ]
+    }
+  },
+  "units": {},
+  "formula": "F = m·a (rigid-body simulation)",
+  "steps": [
+    "Brief plain-English narration of what the scene does",
+    "Mention the dominant forces / interactions",
+    "Predict roughly what the user will observe"
+  ],
+  "answer": { "value": null, "unit": "scene", "explanation": "Watch the simulation — the result is visual." },
+  "label": "Short title (≤ 4 words)"
+}
+
+GENERATIVE RULES:
+- Use realistic SI-ish units. World is meters, gravity y ≈ 1 (≈ Earth) unless the prompt says otherwise.
+- Place every entity inside the world bounds. Avoid spawning bodies inside each other.
+- Always include at least 2 dynamic entities OR 1 dynamic + interesting static geometry.
+- Pick distinctive colors from: #22d3ee, #67e8f9, #a78bfa, #f472b6, #facc15, #f43f5e, #34d399.
+- "kind" must be one of "ball", "box", or "static". No other kinds.
+- DO NOT use "generative" if a canonical type would work — generative is the fallback, not the default.
+
+EXAMPLES of when to use generative:
+- "Two balls drop into a funnel made of two ramps" → generative
+- "A wrecking ball swings into a tower of bricks" → generative
+- "Five marbles in a pinball-style maze" → generative
+- "A dumbbell of two masses joined by a stiff rod, tossed onto an incline" → generative`
 
 const STRICT_SYSTEM_PROMPT = `${BASE_SYSTEM_PROMPT}
 
@@ -401,8 +455,9 @@ async function parseWithRetry(problemText, systemPrompt, provider, maxRetries = 
   try {
     const rawResponse = await requestProblemParse(problemText, systemPrompt, provider)
     let parsedProblem = normalizeMultiConceptShape(parseModelJson(rawResponse))
-    
+
     parsedProblem = mergeExtractedVariables(parsedProblem, extractedVariables)
+    parsedProblem = applyGenerativeDefaults(parsedProblem)
     console.log('Parser parsed JSON output:', parsedProblem)
     return assertValidParsedProblem(parsedProblem)
   } catch (error) {
@@ -421,8 +476,9 @@ async function parseWithRetry(problemText, systemPrompt, provider, maxRetries = 
     try {
       const rawResponse = await requestProblemParse(problemText, retryPrompt, provider)
       let parsedProblem = normalizeMultiConceptShape(parseModelJson(rawResponse))
-      
+
       parsedProblem = mergeExtractedVariables(parsedProblem, extractedVariables)
+      parsedProblem = applyGenerativeDefaults(parsedProblem)
       console.log('Parser parsed JSON output:', parsedProblem)
       return assertValidParsedProblem(parsedProblem)
     } catch (error) {
@@ -445,9 +501,16 @@ function mergeExtractedVariables(parsedProblem, extractedVariables) {
   if (!parsedProblem || !extractedVariables || Object.keys(extractedVariables).length === 0) {
     return parsedProblem
   }
-  
+
+  // Generative scenes carry their physics inside variables.spec — do NOT spread
+  // loose numeric extractions onto them; that would break validator units checks
+  // and the renderer expects only { spec }.
+  if (parsedProblem.type === 'generative') {
+    return parsedProblem
+  }
+
   const merged = { ...parsedProblem }
-  
+
   if (merged.isMultiConcept && Array.isArray(merged.stages)) {
     if (merged.stages.length > 0) {
       merged.stages = merged.stages.map((stage, idx) => {
@@ -475,6 +538,60 @@ function mergeExtractedVariables(parsedProblem, extractedVariables) {
   }
   
   return merged
+}
+
+/**
+ * Backfill any fields the validator requires for `type: "generative"` so
+ * a slightly-incomplete model response still renders. Also lightly
+ * sanitizes the spec — drops malformed entities, clamps obvious nonsense.
+ */
+function applyGenerativeDefaults(parsedProblem) {
+  if (!parsedProblem || parsedProblem.type !== 'generative') return parsedProblem
+
+  const out = { ...parsedProblem }
+  out.domain = 'physics'
+
+  // variables.spec must exist and be an object
+  const rawSpec = out.variables?.spec
+  if (!rawSpec || typeof rawSpec !== 'object') {
+    out.variables = { spec: { world: { gravity: { x: 0, y: 1 }, bounds: { width: 20, height: 12 } }, entities: [], constraints: [] } }
+  } else {
+    const cleanEntities = Array.isArray(rawSpec.entities)
+      ? rawSpec.entities.filter((e) => e && typeof e === 'object' && ['ball', 'box', 'static'].includes(e.kind))
+      : []
+    out.variables = {
+      spec: {
+        world: {
+          gravity: {
+            x: Number.isFinite(rawSpec?.world?.gravity?.x) ? rawSpec.world.gravity.x : 0,
+            y: Number.isFinite(rawSpec?.world?.gravity?.y) ? rawSpec.world.gravity.y : 1,
+          },
+          bounds: {
+            width:  Number.isFinite(rawSpec?.world?.bounds?.width)  ? Math.min(60, Math.max(6, rawSpec.world.bounds.width))  : 20,
+            height: Number.isFinite(rawSpec?.world?.bounds?.height) ? Math.min(40, Math.max(6, rawSpec.world.bounds.height)) : 12,
+          },
+        },
+        entities: cleanEntities,
+        constraints: Array.isArray(rawSpec.constraints) ? rawSpec.constraints : [],
+      },
+    }
+  }
+
+  out.units = out.units && typeof out.units === 'object' ? out.units : {}
+  if (typeof out.formula !== 'string' || out.formula.trim().length === 0) {
+    out.formula = 'F = m·a (rigid-body simulation)'
+  }
+  if (!Array.isArray(out.steps) || out.steps.length === 0 || out.steps.some((s) => typeof s !== 'string' || !s.trim())) {
+    out.steps = [
+      'AI generated a custom physics scene from your prompt.',
+      'Bodies and forces are simulated by Matter.js in real time.',
+      'Watch the simulation — the result is visual.',
+    ]
+  }
+  if (!out.answer || typeof out.answer !== 'object') {
+    out.answer = { value: null, unit: 'scene', explanation: 'Watch the simulation — the result is visual.' }
+  }
+  return out
 }
 
 function humanizeParseError(error, normalized) {

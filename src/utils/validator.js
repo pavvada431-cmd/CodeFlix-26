@@ -28,6 +28,7 @@ const ALLOWED_TYPES = new Set([
   'atomic_structure',
   'gas_laws',
   'chemical_bonding',
+  'generative',
 ])
 
 const DOMAIN_TYPES = {
@@ -51,6 +52,7 @@ const DOMAIN_TYPES = {
     'radioactive_decay',
     'electromagnetic',
     'circuit',
+    'generative',
   ]),
   chemistry: new Set([
     'titration',
